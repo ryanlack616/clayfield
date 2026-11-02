@@ -1,0 +1,136 @@
+# Development and release
+
+Install Python 3.12 or newer and run:
+
+```sh
+python -m venv .venv
+.venv/bin/pip install -e '.[test,bundle]'
+PYTHONPATH=.:src .venv/bin/pytest -q
+```
+
+The normal tests use Qt's offscreen platform and skip integration tests that
+need external programs or a real OpenGL context. To run the additional checks:
+
+```sh
+CLAYFIELD_STRESS=1 .venv/bin/pytest -q tests/test_stress.py
+QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb CLAYFIELD_TEST_GL=1 .venv/bin/pytest -q tests/test_gpu_pipeline.py
+CLAYFIELD_PRUSA_SLICER=/path/to/prusa-slicer .venv/bin/pytest -q tests/test_slicer_integration.py
+```
+
+The GPU test compares supported tonal operations with the CPU reference at an
+absolute tolerance of 0.001, including blur and sharpening. The slicer test checks both STL and 3MF dimensions,
+manifoldness, and successful G-code generation. `clayfield --self-test` checks
+packaged resources and mesh generation; `clayfield --gl-self-test` additionally
+renders a terrain in a desktop OpenGL context.
+
+## V2 pre-release checks
+
+Before V2 release work is considered complete:
+
+1. Validate the V1 archive contents with a 7-Zip-compatible tool and retain its
+   SHA-256 checksum and restore procedure.
+2. Run the V1 baseline and current full test suite in a clean virtual
+   environment.
+3. Verify image-primary and procedural-primary composition produce equivalent
+   field, mapping, fabrication, and export semantics.
+4. Verify complete external artifacts, hashes, and
+   normalized working fields survive project save/load according to the chosen
+   artifact policy.
+5. Verify the final export-resolution fabrication metrics are shown before
+   export confirmation.
+6. Verify cancellation during generator, processing, analysis, mesh,
+   and file-writing stages.
+7. Run STL/3MF slicer checks for native, composed, and imported
+   representative projects.
+8. Verify fresh wheel, bundle, packaged self-test, and OpenGL self-test paths.
+
+The authoritative task status and release blockers are maintained in
+[`V2-MASTER-PLAN.md`](../V2-MASTER-PLAN.md), Sections 21 and 22.
+The concise daily execution board is
+[`V2-MASTER-TASK-LIST.md`](../V2-MASTER-TASK-LIST.md).
+The single completion roadmap is
+[`V2-CANONICAL-ROADMAP.md`](../V2-CANONICAL-ROADMAP.md).
+The V1 rollback procedure is in [`v1_restore.md`](v1_restore.md).
+
+## Numerical compatibility policy
+
+Same-stack deterministic generators should match reference fixtures within
+`2e-5` absolute field tolerance. CPU/GPU preview agreement uses the existing
+`0.001` absolute tolerance. Physical bounds and exported dimensions must match
+within `1e-4` mm where the format and floating-point path allow it.
+
+Supported development targets begin at Python 3.12 with the dependency ranges
+declared in `pyproject.toml`. A dependency upgrade that changes field samples,
+mapping results, or mesh dimensions requires refreshed fixtures and a documented
+compatibility decision.
+
+Current local hardening observations:
+
+- The current suite passes `181 passed, 7 skipped`.
+- `clayfield --self-test` passes.
+- A wheel builds successfully and installs/imports in a clean temporary Python
+  environment.
+- Full 1024 x 1024 mesh validation can peak around 3.5 GiB on this host. The
+  exporter now uses a conservative 20x working-set estimate and may reject
+  1024² exports; prefer 512² or lower until the target machine is profiled.
+- No live ComfyUI endpoint, PrusaSlicer executable, 7-Zip-compatible command,
+  additional GPU/OS target, or physical printer is configured in this
+  environment.
+
+Run `.venv/bin/python benchmarks/benchmark_pipeline.py` for local image and mesh
+timings and peak RSS. On the Ubuntu 26.04 development host with Python 3.12,
+a 2048² image took 0.028 s cold and 0.003 s for a cached blur-only edit; a
+1024² mesh was quick to construct but full validation can peak substantially
+above the persistent mesh arrays. These are observations, not performance
+guarantees, and should be treated as safety limits rather than promises.
+
+Generate deterministic V2 sample projects and artifacts with:
+
+```sh
+.venv/bin/python benchmarks/v2_samples.py --output dist/v2-samples --size 128
+```
+
+The sample generator writes noise, wave, and Mandelbrot `.clayfield` projects,
+STL files, and PNG heightmaps.
+
+Generate fabrication calibration panels with:
+
+```sh
+.venv/bin/python benchmarks/fabrication_calibration.py --output dist/fabrication-calibration --size 256
+```
+
+The calibration generator writes STL and 3MF panels for feature width, slope,
+and recessed wall-depth inspection. These digital artifacts still require a
+physical print before fabrication-profile limits can be considered validated.
+
+## Linux bundle
+
+Build on a Linux system compatible with the intended target systems:
+
+```sh
+.venv/bin/python -m PyInstaller --noconfirm --distpath dist/2.0.0 clayfield.spec
+dist/2.0.0/clayfield/clayfield --self-test
+dist/2.0.0/clayfield/clayfield --gl-self-test
+tar -C dist/2.0.0 -czf dist/clayfield-2.0.0-linux-x86_64.tar.gz clayfield
+```
+
+The resulting directory contains the application and its bundled libraries.
+It still requires a working desktop and a host OpenGL driver. PyInstaller
+bundles are built for the build machine's architecture and libc baseline.
+
+## Release Process
+
+Update the version in `pyproject.toml` and `src/clayfield/__init__.py`, add
+release notes to `CHANGELOG.md`, run the full test suite, build a fresh wheel,
+and run the PyInstaller self-test before publishing a release.
+
+For a source archive from the repository root:
+
+```sh
+git archive --format=tar.gz --prefix=clayfield-2.0.0/ HEAD \
+  -o dist/clayfield-2.0.0-source.tar.gz
+```
+
+For a Linux application bundle, use the commands in the Linux bundle section.
+Do not include `.venv`, `build`, `dist`, credentials, or local project files in
+source commits.

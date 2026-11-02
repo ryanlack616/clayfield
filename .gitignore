@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.dist/
+dist/
+build/
+
+# Local editor and OS files
+.vscode/
+.idea/
+*.swp
+
+# Local credentials and runtime files
+sshkey
+sshkey.pub
+*.pem
+*.key
+.env
+.env.*
+*.log
+*.clayfield
+relief*.stl
+relief*.3mf
+clayfield-v1.7z

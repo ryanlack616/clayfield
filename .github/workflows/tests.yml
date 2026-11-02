@@ -1,0 +1,47 @@
+name: ClayField tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e '.[test,bundle]'
+      - name: Install headless OpenGL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri libegl1 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-randr0 libxcb-xinerama0
+      - name: Compile Python sources
+        run: python -m compileall -q main.py src tests
+      - name: Run tests
+         run: xvfb-run -a env PYTHONPATH=.:src QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb CLAYFIELD_TEST_GL=1 CLAYFIELD_STRESS=1 pytest -q
+      - name: Build wheel
+        run: python -m pip wheel --no-deps . -w dist
+      - name: Verify a clean wheel install
+        run: |
+          python -m venv /tmp/clayfield-clean
+          /tmp/clayfield-clean/bin/pip install dist/*.whl
+          /tmp/clayfield-clean/bin/clayfield --self-test
+          xvfb-run -a env QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb /tmp/clayfield-clean/bin/clayfield --gl-self-test
+      - name: Build and verify Linux bundle
+        run: |
+          python -m PyInstaller --noconfirm clayfield.spec
+          dist/clayfield/clayfield --self-test
+          xvfb-run -a env QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb dist/clayfield/clayfield --gl-self-test
+          tar -C dist -czf dist/clayfield-linux-x86_64.tar.gz clayfield
+      - name: Publish build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clayfield-linux
+          path: |
+            dist/*.whl
+            dist/clayfield-linux-x86_64.tar.gz

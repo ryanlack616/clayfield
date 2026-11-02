@@ -1,0 +1,113 @@
+# ClayField
+
+ClayField is a PySide6 desktop application for turning images, procedural fields,
+and QFractalNow configurations into physical relief models for fabrication.
+It provides a live OpenGL viewport, physically meaningful millimeter controls,
+validated STL/3MF export, heightmap export, and portable `.clayfield` projects.
+
+## Highlights
+
+- Image, deterministic procedural, and QFractalNow `.config` sources
+- Background processing with cancellation and CPU-authoritative export results
+- Levels, curves, brightness, contrast, blur, sharpen, threshold, and inversion
+- Procedural composition with source-specific secondary-field controls and masks
+- Physical dimensions, base thickness, relief mode, and optional container walls
+- Floating canvas preview and compose controls with a camera-aware XYZ gizmo
+- STL, 3MF, PNG, and TIFF export with validation and safety checks
+- Portable projects with embedded source images and QFractalNow configs
+- Optional GPU preview; CPU processing and export do not require a GPU
+
+## Requirements
+
+- Python 3.12 or newer
+- OpenGL 3.3 Core-capable desktop for the live viewport
+- Python dependencies declared in `pyproject.toml`
+- Optional: `fractalnow` from FractalNow for `.config` sources
+
+## Install and Run
+
+```sh
+python -m venv .venv
+.venv/bin/python -m pip install -e '.[test,bundle]'
+.venv/bin/clayfield
+```
+
+On Linux systems with desktop-theme conflicts:
+
+```sh
+QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb .venv/bin/clayfield
+```
+
+## Basic Workflow
+
+1. Choose a primary source in the left panel.
+2. Load an image, choose a procedural generator, or choose `QFractalNow config` and load a `.config` file.
+3. Configure the source-specific controls.
+4. Use `COMPOSE` at the bottom of the left panel for a secondary field or mask.
+5. Use `PROCESS` for preview selection, curves, levels, and image adjustments.
+6. Set physical dimensions and fabrication settings in the right panel.
+7. Inspect the viewport and export STL, 3MF, or a heightmap.
+
+QFractalNow configs are embedded into the ClayField project. ClayField invokes
+the headless `fractalnow` renderer at the selected preview or export resolution.
+The command must be available on `PATH` when opening or regenerating that source.
+
+## Resolution Guidance
+
+For a `250 × 250 mm` relief:
+
+| Resolution | Approximate sample spacing | Typical use |
+| --- | ---: | --- |
+| 1024 × 1024 | 0.244 mm | General 0.4 mm-nozzle FDM |
+| 2048 × 2048 | 0.122 mm | Fine FDM or resin detail |
+| 4096 × 4096 | 0.061 mm | High-detail resin, high memory cost |
+
+ClayField defaults to `2048 × 2048`. Procedural sources follow the physical
+width/depth ratio, so a `250 × 200 mm` model uses approximately `2048 × 1638`
+samples instead of stretching a square field.
+
+## Tests
+
+```sh
+PYTHONPATH=.:src .venv/bin/pytest -q
+```
+
+Optional checks:
+
+```sh
+CLAYFIELD_STRESS=1 .venv/bin/pytest -q tests/test_stress.py
+QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb CLAYFIELD_TEST_GL=1 .venv/bin/pytest -q tests/test_gpu_pipeline.py
+CLAYFIELD_PRUSA_SLICER=/path/to/prusa-slicer .venv/bin/pytest -q tests/test_slicer_integration.py
+```
+
+## Build A Linux Bundle
+
+```sh
+.venv/bin/python -m PyInstaller --noconfirm --distpath dist/2.0.0 clayfield.spec
+dist/2.0.0/clayfield/clayfield --self-test
+tar -C dist/2.0.0 -czf dist/clayfield-2.0.0-linux-x86_64.tar.gz clayfield
+```
+
+For a source archive:
+
+```sh
+git archive --format=tar.gz --prefix=clayfield-2.0.0/ HEAD \
+  -o dist/clayfield-2.0.0-source.tar.gz
+```
+
+## Project Layout
+
+- `src/clayfield/app`: application lifecycle, state, persistence, and workers
+- `src/clayfield/field`: normalized fields, procedural sources, composition
+- `src/clayfield/image`: loading, grayscale conversion, curves, and processing
+- `src/clayfield/terrain`: physical mapping and fabrication analysis
+- `src/clayfield/geometry`: solid mesh and container generation
+- `src/clayfield/export`: STL, 3MF, heightmap output, and verification
+- `src/clayfield/ui`: Qt panels, viewport, camera, overlays, and controls
+- `designer/image_panel.ui`: editable Qt Designer layout reference
+- `tests`: unit, UI, export, persistence, and integration tests
+- `docs`: user, development, and print-validation documentation
+
+## License
+
+See [LICENSE](LICENSE).
