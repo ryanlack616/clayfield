@@ -73,6 +73,29 @@ def test_image_primary_can_use_v2_secondary_composition(window, tmp_path: Path):
     assert win.state.pipeline_snapshot is not None
 
 
+def test_image_primary_composition_preserves_non_square_preview_resolution(window, tmp_path: Path):
+    win, app = window
+    path = tmp_path / "wide-primary.png"
+    assert cv2.imwrite(str(path), np.arange(32, dtype=np.uint8).reshape(4, 8))
+    win.image_panel.load_path(str(path))
+    wait_for(app, lambda: win.state.physical_heightfield is not None)
+    assert win.state.heightfield_resolution == (32, 16)
+
+    original = win.state.physical_heightfield.copy()
+
+    win.image_panel.composition_controls["enabled"].setChecked(True)
+
+    wait_for(
+        app,
+        lambda: (
+            win.state.pipeline_snapshot is not None
+            and win.state.physical_heightfield is not None
+            and not np.array_equal(win.state.physical_heightfield, original)
+        ),
+    )
+
+    assert win.state.physical_heightfield.shape == (16, 32)
+
 def test_image_primary_mask_composition_uses_v2_pipeline(window, tmp_path: Path):
     win, app = window
     path = tmp_path / "primary-mask.png"
@@ -134,6 +157,16 @@ def test_procedural_noise_builds_terrain_without_an_image(window):
     win.image_panel.procedural_controls["noise_seed"].setValue(9)
     wait_for(app, lambda: win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, first))
     assert win.image_panel._procedural_preview is not None
+
+
+def test_procedural_preview_preserves_non_square_resolution(window):
+    win, app = window
+    win.terrain_panel.depth.setValue(50)
+    win.image_panel.source_mode.setCurrentText("Fractal noise")
+    wait_for(app, lambda: win.state.physical_heightfield is not None)
+
+    assert win.state.heightfield_resolution == (32, 16)
+    assert win.state.physical_heightfield.shape == (16, 32)
 
 
 def test_procedural_composition_and_mask_are_persisted(window, tmp_path: Path):

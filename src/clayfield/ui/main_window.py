@@ -420,7 +420,7 @@ class MainWindow(QMainWindow):
         worker = FunctionWorker(
             evaluate_serialized_pipeline,
             snapshot,
-            resolution,
+            (resolution[1], resolution[0]),
             primary_field=primary,
             external_fields=self._external_fields(),
             inject_control=True,
@@ -498,7 +498,7 @@ class MainWindow(QMainWindow):
         token = self._heightfield_generation
         self.state.physical_heightfield = None
         self.image_panel.set_heightfield_preview(None)
-        worker = FunctionWorker(evaluate_serialized_pipeline, snapshot, resolution, external_fields=self._external_fields(), inject_control=True)
+        worker = FunctionWorker(evaluate_serialized_pipeline, snapshot, (resolution[1], resolution[0]), external_fields=self._external_fields(), inject_control=True)
         self._heightfield_workers[token] = worker
         worker.signals.progress.connect(lambda percent, message: self.statusBar().showMessage(f"Procedural field: {percent}% — {message}"))
         worker.signals.finished.connect(lambda result, generation=token: self._procedural_finished(generation, result))
