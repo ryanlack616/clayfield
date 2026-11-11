@@ -11,6 +11,8 @@ def test_viewport_shaders_expose_height_coloring_contract():
     assert "uniform bool height_coloring" in fragment
     assert "uniform float height_min" in fragment
     assert "uniform float height_max" in fragment
+    assert "uniform vec3 height_low_color" in fragment
+    assert "uniform vec3 height_high_color" in fragment
     assert "surface_height" in fragment
 
 

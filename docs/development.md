@@ -147,6 +147,28 @@ saved layer with `atol=1e-5` mm (ten nanometres) after a fast exact check, so
 undoing a stroke back onto the saved layer clears the title marker instead of
 leaving the document marked as changed.
 
+## Viewport rendering
+
+`src/clayfield/resources/test_grid.vert` and `test_grid.frag` draw both the grid
+and the terrain surface in one program. `paintGL` selects the path per draw call
+by setting the `height_coloring` and `lit_surface` uniforms; the grid is unlit and
+never height-coloured, so it stays readable under any ramp.
+
+*Height coloring uses two colours.* The fragment shader mixes `height_low_color`
+at `height_min` to `height_high_color` at `height_max`, both as `vec3` in 0.0-1.0.
+`Viewport.set_height_colors` validates the pair (three finite channels each, all
+within range) and rejects anything else, because a bad triple would only surface
+as a black or blown-out surface after a GPU upload. `HeightColorDialog` in
+`ui/height_colors.py` edits the pair and returns it; the window applies it on
+accept. It never touches the viewport, so it runs without a GL context.
+
+*The default view hides construction aids.* The grid starts hidden and height
+coloring starts on. The View menu reads both check marks from the viewport's
+current state instead of hardcoding them, so the menu cannot claim a mode the
+renderer is not using — the same failure the Dark Theme check mark had. Heights
+cross into the shader as `height_min_mm / 20.0`; `surface_height` is already in
+viewport units, so the comparison happens in one space.
+
 ## Numerical compatibility policy
 
 Same-stack deterministic generators should match reference fixtures within

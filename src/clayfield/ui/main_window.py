@@ -57,6 +57,7 @@ from clayfield.terrain.heightfield import (
 from clayfield.terrain.mapping import MappingSettings
 from clayfield.ui.cross_section import CrossSectionDialog
 from clayfield.ui.export_preview import ExportPreviewDialog
+from clayfield.ui.height_colors import HeightColorDialog
 from clayfield.ui.image_panel import ImagePanel
 from clayfield.ui.sculpt_panel import SculptPanel
 from clayfield.ui.terrain_panel import TerrainPanel
@@ -330,19 +331,26 @@ class MainWindow(QMainWindow):
         orthographic = view_menu.addAction("Orthographic Projection")
         orthographic.setCheckable(True)
         orthographic.toggled.connect(self.viewport.set_orthographic)
-        grid = view_menu.addAction("Show Grid")
-        grid.setCheckable(True)
-        grid.setChecked(True)
-        grid.toggled.connect(self.viewport.set_grid_visible)
+        self.grid_action = view_menu.addAction("Show Grid")
+        self.grid_action.setCheckable(True)
+        # Both check marks read the viewport's starting state instead of
+        # hardcoding one, so the menu cannot contradict what paintGL draws.
+        self.grid_action.setChecked(self.viewport.show_grid)
+        self.grid_action.toggled.connect(self.viewport.set_grid_visible)
         # The theme comes from the saved settings, so the check mark has to match
         # the palette that __init__ already applied instead of assuming dark.
         self.dark_theme_action = view_menu.addAction("Dark Theme")
         self.dark_theme_action.setCheckable(True)
         self.dark_theme_action.setChecked(bool(self._settings.value("dark_theme", False, type=bool)))
         self.dark_theme_action.toggled.connect(self._set_dark_theme)
-        height_coloring = view_menu.addAction("Height Coloring")
-        height_coloring.setCheckable(True)
-        height_coloring.toggled.connect(self.viewport.set_height_coloring)
+        self.height_coloring_action = view_menu.addAction("Height Coloring")
+        self.height_coloring_action.setCheckable(True)
+        self.height_coloring_action.setChecked(self.viewport.height_coloring)
+        self.height_coloring_action.setToolTip("Colour the surface by elevation instead of a flat colour")
+        self.height_coloring_action.toggled.connect(self.viewport.set_height_coloring)
+        height_colors = view_menu.addAction("Height Colors…")
+        height_colors.setToolTip("Choose the low and high colours of the height ramp")
+        height_colors.triggered.connect(self._choose_height_colors)
         self.gpu_preview_action = view_menu.addAction("GPU Image Preview")
         self.gpu_preview_action.setCheckable(True)
         self.gpu_preview_action.setChecked(True)
@@ -1196,10 +1204,18 @@ class MainWindow(QMainWindow):
             action.triggered.connect(lambda checked=False, selected=path: self._open_project_path(selected))
 
     def _choose_surface_color(self) -> None:
+        """Pick the flat terrain colour.
+
+        The flat colour is invisible while the height ramp is on, so accepting a
+        colour switches back to it. Picking a colour is a request to see it, and
+        the height ramp does the mirror image when it is chosen.
+        """
         current = QColor.fromRgbF(*self.viewport.surface_color)
         color = QColorDialog.getColor(current, self, "Terrain Color")
         if color.isValid():
             self.viewport.surface_color = (color.redF(), color.greenF(), color.blueF())
+            if self.height_coloring_action.isChecked():
+                self.height_coloring_action.setChecked(False)
             self.viewport.update()
 
     def _set_dark_theme(self, enabled: bool) -> None:
@@ -1220,6 +1236,17 @@ class MainWindow(QMainWindow):
     def _gpu_preview_failed(self, message: str) -> None:
         self.gpu_preview_action.setChecked(False)
         self.statusBar().showMessage(message, 10_000)
+
+    def _choose_height_colors(self) -> None:
+        """Edit the two ends of the height ramp."""
+        dialog = HeightColorDialog(self.viewport.height_low_color, self.viewport.height_high_color, self)
+        if dialog.exec():
+            low, high = dialog.colors()
+            self.viewport.set_height_colors(low, high)
+            # Choosing a ramp is a request to see it, even if height colouring
+            # was switched off earlier.
+            if not self.height_coloring_action.isChecked():
+                self.height_coloring_action.setChecked(True)
 
     def _choose_light_direction(self) -> None:
         angle, accepted = QInputDialog.getDouble(

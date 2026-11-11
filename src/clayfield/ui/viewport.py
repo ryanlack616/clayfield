@@ -21,6 +21,19 @@ from clayfield.ui.camera import OrbitCamera
 from clayfield.ui.gpu_pipeline import GpuImagePipeline, supports_gpu_adjustments
 
 
+def _validate_color(color, name: str) -> tuple[float, float, float]:
+    """Return ``color`` as three floats in 0.0-1.0, or raise ``ValueError``."""
+    try:
+        channels = tuple(float(channel) for channel in color)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{name.capitalize()} color must be three numbers") from error
+    if len(channels) != 3:
+        raise ValueError(f"{name.capitalize()} color must be three numbers")
+    if not all(math.isfinite(channel) and 0.0 <= channel <= 1.0 for channel in channels):
+        raise ValueError(f"{name.capitalize()} color channels must be between 0.0 and 1.0")
+    return channels
+
+
 def _block_mean(values: np.ndarray, target_rows: int, target_columns: int) -> np.ndarray:
     """Downscale a 2D array by averaging non-overlapping blocks (box filter).
 
@@ -99,10 +112,15 @@ class Viewport(QOpenGLWidget):
         self._drag_button = None
         self.wireframe = False
         self.orthographic = False
-        self.show_grid = True
-        self.height_coloring = False
+        # The grid reads as a construction aid, not as part of the model, so it
+        # starts hidden. Height coloring starts on because a single flat colour
+        # hides the relief the terrain exists to show.
+        self.show_grid = False
+        self.height_coloring = True
         self.height_min_mm = 0.0
         self.height_max_mm = 8.0
+        self.height_low_color = (0.08, 0.25, 0.85)
+        self.height_high_color = (0.9, 0.2, 0.08)
         self.surface_color = (0.42, 0.64, 0.82)
         self.light_azimuth = 135.0
         self._surface_extent = 5.0
@@ -227,6 +245,8 @@ class Viewport(QOpenGLWidget):
             glUniform1i(glGetUniformLocation(self.program, "height_coloring"), int(self.height_coloring))
             glUniform1f(glGetUniformLocation(self.program, "height_min"), self.height_min_mm / 20.0)
             glUniform1f(glGetUniformLocation(self.program, "height_max"), self.height_max_mm / 20.0)
+            glUniform3f(glGetUniformLocation(self.program, "height_low_color"), *self.height_low_color)
+            glUniform3f(glGetUniformLocation(self.program, "height_high_color"), *self.height_high_color)
             glUniform3f(glGetUniformLocation(self.program, "color"), *self.surface_color)
             glBindVertexArray(self.surface_vao)
             glDrawArrays(GL_TRIANGLES, 0, self.surface_vertex_count)
@@ -305,6 +325,16 @@ class Viewport(QOpenGLWidget):
     def set_height_coloring(self, enabled: bool) -> None:
         """Toggle height-based terrain coloring in the fragment shader."""
         self.height_coloring = bool(enabled)
+        self.update()
+
+    def set_height_colors(self, low, high) -> None:
+        """Set the two ends of the height ramp in linear RGB, each 0.0 to 1.0.
+
+        The shader mixes them by normalised height, so the pair describes the
+        whole surface: ``low`` at the minimum height and ``high`` at the maximum.
+        """
+        self.height_low_color = _validate_color(low, "low")
+        self.height_high_color = _validate_color(high, "high")
         self.update()
 
     def set_wireframe(self, enabled: bool) -> None:

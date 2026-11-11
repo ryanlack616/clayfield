@@ -19,9 +19,10 @@
    and offset affect the physical mapping. Smoothing, edge falloff, and
    reproducible multi-octave noise have independent strength controls.
 4. Orbit with left drag, pan with middle drag, and zoom with the wheel. The View
-   menu contains camera presets, fit, wireframe, height coloring, lighting and
-   surface color, grid visibility, orthographic projection, and a dark theme.
-   Undo/redo and portable adjustment/terrain presets are in the Edit menu.
+   menu contains camera presets, fit, wireframe, height coloring and its colour
+   ramp, lighting and surface color, grid visibility, orthographic projection,
+   and a dark theme. Undo/redo and portable adjustment/terrain presets are in the
+   Edit menu.
 5. Choose original, adjusted, or final-heightmap preview from **PROCESS**; save a `.clayfield`
    project or export STL, 3MF, or a PNG/TIFF heightmap. The export dialog shows
    dimensions, an estimated minimum wall, and sampled mesh validation.
@@ -110,6 +111,21 @@ For digital print QA, run `benchmarks/print_qa.py` with
 `CLAYFIELD_PRUSA_SLICER` set. It generates both mesh formats, records slicer
 dimensions/manifold status, and produces G-code. Physical printing still needs
 to be performed on the target printer.
+
+## Viewport shading
+
+The viewport opens with **Height Coloring** on and the construction grid hidden.
+Height coloring mixes two colours across the model's height range: the low colour
+at the minimum height and the high colour at the maximum. Open
+`View → Height Colors…` to change either end; the dialog previews the resulting
+ramp before you accept it. Choosing a ramp switches height coloring back on if it
+was off.
+
+Turn height coloring off to see the flat **Surface Color**, and switch **Show
+Grid** on when you need a size reference under the model. Picking a colour in
+`View → Surface Color…` switches height coloring off so you can see the flat
+colour you just chose. Neither setting changes the geometry or the export; they
+only change how the viewport draws it.
 
 ## Troubleshooting
 

@@ -765,6 +765,66 @@ def test_dark_theme_action_matches_the_applied_palette(window):
     assert not win.dark_theme_action.isChecked()
 
 
+def test_view_actions_match_the_viewport_defaults(window):
+    """The menu must not claim a grid or shading mode the viewport is not using."""
+    win, app = window
+    assert not win.viewport.show_grid
+    assert not win.grid_action.isChecked()
+    assert win.viewport.height_coloring
+    assert win.height_coloring_action.isChecked()
+    win.grid_action.setChecked(True)
+    assert win.viewport.show_grid
+    win.height_coloring_action.setChecked(False)
+    assert not win.viewport.height_coloring
+
+
+def test_height_colors_reach_the_viewport_and_reject_invalid_triples(window):
+    win, app = window
+    win.viewport.set_height_colors((0.1, 0.2, 0.3), (0.9, 0.8, 0.7))
+    assert win.viewport.height_low_color == (0.1, 0.2, 0.3)
+    assert win.viewport.height_high_color == (0.9, 0.8, 0.7)
+    with pytest.raises(ValueError, match="between 0.0 and 1.0"):
+        win.viewport.set_height_colors((1.4, 0.0, 0.0), (0.0, 0.0, 0.0))
+    with pytest.raises(ValueError, match="three numbers"):
+        win.viewport.set_height_colors((0.1, 0.2), (0.0, 0.0, 0.0))
+
+
+def test_height_color_dialog_returns_the_swatch_colours(window):
+    """The dialog only edits colours; the viewport applies them on accept."""
+    win, app = window
+    from PySide6.QtGui import QColor
+
+    from clayfield.ui.height_colors import HeightColorDialog
+
+    dialog = HeightColorDialog((0.08, 0.25, 0.85), (0.9, 0.2, 0.08), win)
+    # QColor keeps 16 bits per channel, so a float triple survives the round trip
+    # to about 1.5e-5 rather than exactly. That is invisible in the shader.
+    low, high = dialog.colors()
+    assert low == pytest.approx((0.08, 0.25, 0.85), abs=1e-5)
+    assert high == pytest.approx((0.9, 0.2, 0.08), abs=1e-5)
+    dialog.low_swatch.set_color(QColor.fromRgbF(0.2, 0.4, 0.6))
+    low, high = dialog.colors()
+    assert low == pytest.approx((0.2, 0.4, 0.6), abs=1e-5)
+    assert high == pytest.approx((0.9, 0.2, 0.08), abs=1e-5)
+    # The preview follows the swatch without the caller repainting it.
+    assert dialog.preview.low().name() == "#336699"
+    assert dialog.preview.high().name() == QColor.fromRgbF(0.9, 0.2, 0.08).name()
+
+
+def test_choosing_a_flat_colour_switches_height_coloring_off(window, monkeypatch):
+    """A flat colour cannot be seen through the ramp, so the ramp yields to it."""
+    win, app = window
+    from PySide6.QtGui import QColor
+
+    chosen = QColor.fromRgbF(0.25, 0.5, 0.75)
+    monkeypatch.setattr("clayfield.ui.main_window.QColorDialog.getColor", lambda *args, **kwargs: chosen)
+    assert win.height_coloring_action.isChecked()
+    win._choose_surface_color()
+    assert not win.height_coloring_action.isChecked()
+    assert not win.viewport.height_coloring
+    assert win.viewport.surface_color == pytest.approx((0.25, 0.5, 0.75), abs=1e-5)
+
+
 def _mouse_event(kind, x, y, button, buttons):
     position = QPointF(float(x), float(y))
     return QMouseEvent(kind, position, position, button, buttons, Qt.KeyboardModifier.NoModifier)

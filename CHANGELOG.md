@@ -48,6 +48,16 @@
 - Guard the sculpt layer against a shape mismatch on press, so a layer from a
   different grid is discarded with a status message instead of raising inside
   the stroke session.
+- Start the viewport with height coloring on and the construction grid hidden,
+  and read both View-menu check marks from the viewport instead of hardcoding
+  them. A flat surface colour hid the relief and the grid competed with it.
+- Add `View → Height Colors…`, a two-swatch ramp editor with a live gradient
+  preview. The fragment shader now takes `height_low_color` and
+  `height_high_color` uniforms instead of hardcoded endpoints, so the whole
+  height ramp is user-selectable.
+- Switch height coloring back on when a ramp is chosen and off when a flat
+  surface colour is chosen, so each colour dialog shows its own result instead of
+  changing a value the viewport ignores.
 - Read the `View → Dark Theme` check mark from the saved setting instead of
   hardcoding it on. A fresh install starts with the light palette, so the menu
   used to claim a theme the window was not using.

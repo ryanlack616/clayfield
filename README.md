@@ -13,6 +13,7 @@ validated STL/3MF export, heightmap export, and portable `.clayfield` projects.
 - Procedural composition with source-specific secondary-field controls and masks
 - Physical dimensions, base thickness, relief mode, and optional container walls
 - Floating canvas preview and compose controls with a camera-aware XYZ gizmo
+- Height-coloured terrain shading with a selectable low/high colour ramp
 - Surface-aware sculpt brush with Laplacian, Taubin, and bilateral smoothing
 - STL, 3MF, PNG, and TIFF export with validation and safety checks
 - Portable projects with embedded source images and QFractalNow configs
