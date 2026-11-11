@@ -71,6 +71,30 @@ run without a display. Only `--gl-self-test` needs an OpenGL context.
 `env -u PYTHONPATH .venv/bin/python -m pytest -q` → **361 passed, 7 skipped in 192.73s**, exit 0.
 The 7 skips are GPU/display-dependent; no failures.
 
+### Baseline launch behavior
+
+The GUI could not connect to the running X server: `DISPLAY=:0` returns
+"Authorization required, but no authorization protocol specified" and the Qt xcb
+plugin aborts with exit 134. That is an X authorization restriction on this
+session, not an application defect.
+
+Constructing the window on the offscreen platform works and gives the real
+baseline without a display:
+
+| Fact | Value |
+|---|---|
+| Window title | `ClayField — Untitled` |
+| Window size | 1280 × 820 |
+| Central widget | `QSplitter` |
+| Menu bar | File, Edit, View, Operations |
+| Status bar | present |
+| Bottom overlay width | 390 |
+| Result | constructed OK, exit 0 |
+
+Limitation: the `QOpenGLWidget` viewport does not initialize offscreen, so the
+GL path remains unexercised. The `--gl-self-test` mode exists and is the correct
+way to verify it once an authorized display is available.
+
 ### Main window
 
 | Fact | Value |

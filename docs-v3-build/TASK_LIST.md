@@ -4,25 +4,29 @@ Use this as the live execution checklist. Check an item only when its acceptance
 
 ## Phase 0 — Repository audit
 
-- [ ] Record repository root, branch, working-tree status, and recent commit context.
-- [ ] Record Python version and dependency/install workflow.
-- [ ] Identify application entry point and launch command.
-- [ ] Identify main-window class and current widget hierarchy.
-- [ ] Identify existing dock/panel implementation and settings persistence.
-- [ ] Identify current viewport widget and rendering context.
-- [ ] Identify camera controls, lighting, materials, and overlays.
-- [ ] Identify source image loading and preprocessing code.
-- [ ] Identify image-to-heightfield conversion and pixel-to-mm mapping.
-- [ ] Identify mesh generation and current geometry ownership.
-- [ ] Identify Trimesh usage and any mesh repair/validation path.
-- [ ] Identify STL and 3MF export code.
-- [ ] Identify undo/redo, history, snapshots, and original-geometry retention.
-- [ ] Identify tests, fixtures, sample images, and test commands.
-- [ ] Run the current application and record baseline behavior.
-- [ ] Run existing tests and record baseline results.
-- [ ] Create `REPOSITORY_AUDIT.md` with exact paths, verified facts, gaps, and risks.
+- [x] Record repository root, branch, working-tree status, and recent commit context.
+- [x] Record Python version and dependency/install workflow.
+- [x] Identify application entry point and launch command.
+- [x] Identify main-window class and current widget hierarchy.
+- [x] Identify existing dock/panel implementation and settings persistence.
+- [x] Identify current viewport widget and rendering context.
+- [x] Identify camera controls, lighting, materials, and overlays.
+- [x] Identify source image loading and preprocessing code.
+- [x] Identify image-to-heightfield conversion and pixel-to-mm mapping.
+- [x] Identify mesh generation and current geometry ownership.
+- [x] Identify Trimesh usage and any mesh repair/validation path.
+- [x] Identify STL and 3MF export code.
+- [x] Identify undo/redo, history, snapshots, and original-geometry retention.
+- [x] Identify tests, fixtures, sample images, and test commands.
+- [x] Run the current application and record baseline behavior.
+- [x] Run existing tests and record baseline results.
+- [x] Create `REPOSITORY_AUDIT.md` with exact paths, verified facts, gaps, and risks.
 
 **Phase 0 acceptance:** Audit report is complete; current launch/test state is known; no source code has been changed merely to begin the audit.
+
+**Audit completed 2026-11-11** — report at `docs-v3-build/REPOSITORY_AUDIT.md`.
+Baseline: 361 tests pass; window constructs headless at 1280×820; GUI launch
+blocked by X authorization on this session; GL viewport not exercised.
 
 ## Phase 1 — Application shell
 
