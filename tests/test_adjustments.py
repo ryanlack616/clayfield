@@ -1,13 +1,12 @@
 """Tests for Milestone 3 image adjustments."""
 
 import numpy as np
-
-from clayfield.image.pipeline import apply_adjustments
 import pytest
 
 from clayfield.image.curves import apply_curve, curve_lut
 from clayfield.image.filters import adjust_brightness_contrast, apply_gamma, threshold
 from clayfield.image.levels import apply_levels
+from clayfield.image.pipeline import apply_adjustments
 
 
 def test_levels_clips_and_applies_gamma() -> None:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # Mesh creation plus validation retains several topology and coordinate arrays
 # at once. The factor is measured, not guessed: peak RSS for
 # generate_solid_mesh + validate_mesh was 7.2-7.5x the mesh's own persistent

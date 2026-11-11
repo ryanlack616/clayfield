@@ -2,20 +2,27 @@
 
 from pathlib import Path
 
-import numpy as np
 import cv2
+import numpy as np
 import pytest
+import trimesh
 
 from clayfield.app.worker import WorkerCancelled
-from clayfield.export.tasks import analyze_image_export_task, analyze_procedural_export_task, export_heightmap_task, export_mesh_task, export_procedural_heightmap_task, export_procedural_mesh_task
-from clayfield.image.pipeline import AdjustmentCache, apply_adjustments
-from clayfield.geometry.mesh_generator import generate_solid_mesh
-from clayfield.export.stl import export_stl
 from clayfield.export.heightmap import export_heightmap
-from clayfield.terrain.heightfield import PhysicalDimensions
+from clayfield.export.stl import export_stl
+from clayfield.export.tasks import (
+    analyze_image_export_task,
+    analyze_procedural_export_task,
+    export_heightmap_task,
+    export_mesh_task,
+    export_procedural_heightmap_task,
+    export_procedural_mesh_task,
+)
 from clayfield.field import PipelineSnapshot, SourceDescriptor
+from clayfield.geometry.mesh_generator import generate_solid_mesh
+from clayfield.image.pipeline import AdjustmentCache, apply_adjustments
+from clayfield.terrain.heightfield import PhysicalDimensions
 from clayfield.terrain.mapping import MappingSettings
-import trimesh
 
 
 def _raise_value_error():

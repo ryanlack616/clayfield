@@ -16,7 +16,9 @@ def curve_lut(points: list[tuple[float, float]], size: int = 4096, interpolation
     ordered = sorted((float(x), float(y)) for x, y in points)
     if any(not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0) for x, y in ordered):
         raise ValueError("Curve points must be normalized to 0..1")
-    if any(a[0] >= b[0] for a, b in zip(ordered, ordered[1:])):
+    # strict=False is required here: the second sequence is one element shorter
+    # by construction, so zip(strict=True) would always raise.
+    if any(a[0] >= b[0] for a, b in zip(ordered, ordered[1:], strict=False)):
         raise ValueError("Curve input positions must be strictly increasing")
     if ordered[0][0] > 0.0:
         ordered.insert(0, (0.0, ordered[0][1]))

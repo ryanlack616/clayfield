@@ -119,7 +119,8 @@ class CurveEditor(QWidget):
         return (max(0.0, min(1.0, position.x() / max(1, self.width()))), max(0.0, min(1.0, 1.0 - position.y() / max(1, self.height()))))
 
     def _interpolated(self, x: float) -> float:
-        for left, right in zip(self.points, self.points[1:]):
+        # strict=False: adjacent-pair iteration is shorter by one by design.
+        for left, right in zip(self.points, self.points[1:], strict=False):
             if left[0] <= x <= right[0]:
                 fraction = (x - left[0]) / max(1e-6, right[0] - left[0])
                 return left[1] + fraction * (right[1] - left[1])

@@ -7,11 +7,10 @@ import tempfile
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from clayfield.export.stl import ExportError
 from clayfield.core.cancellation import check_cancelled
+from clayfield.export.stl import ExportError
 from clayfield.geometry.mesh_generator import SolidMesh
 from clayfield.geometry.validation import validate_mesh
-
 
 MODEL_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 

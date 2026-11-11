@@ -2,64 +2,65 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
+
+import numpy as np
 
 from clayfield.core.cancellation import check_cancelled
+from clayfield.field.composition import compose_fields
 from clayfield.field.generators import (
-    MandelbrotParameters,
-    NoiseParameters,
-    WaveParameters,
-    generate_fractal_noise,
-    generate_mandelbrot_field,
-    generate_wave_field,
-    RidgedNoiseParameters,
-    SdfParameters,
-    VoronoiParameters,
-    WarpedNoiseParameters,
-    generate_ridged_noise,
-    generate_sdf_field,
-    generate_voronoi_field,
-    generate_warped_noise,
-    ChladniParameters,
-    SpectralParameters,
-    ReactionDiffusionParameters,
-    PhyllotaxisParameters,
     CellularAutomataParameters,
-    generate_chladni_field,
-    generate_spectral_field,
-    generate_reaction_diffusion_field,
-    generate_phyllotaxis_field,
-    generate_cellular_automata_field,
-    FlowFieldParameters,
-    ErosionParameters,
-    generate_flow_field,
-    generate_eroded_field,
-    LSystemParameters,
+    ChladniParameters,
     CrackParameters,
-    generate_lsystem_field,
-    generate_crack_field,
-    TilingParameters,
-    generate_penrose_field,
-    generate_truchet_field,
-    SuperformulaParameters,
+    ErosionParameters,
+    FlowFieldParameters,
+    GaborParameters,
     GaussianPeakParameters,
     JuliaParameters,
+    LSystemParameters,
+    MandelbrotParameters,
     MoireParameters,
-    GaborParameters,
-    generate_superformula_field,
+    NoiseParameters,
+    PhyllotaxisParameters,
+    ReactionDiffusionParameters,
+    RidgedNoiseParameters,
+    SdfParameters,
+    SpectralParameters,
+    SuperformulaParameters,
+    TilingParameters,
+    VoronoiParameters,
+    WarpedNoiseParameters,
+    WaveParameters,
+    generate_cellular_automata_field,
+    generate_chladni_field,
+    generate_crack_field,
+    generate_eroded_field,
+    generate_flow_field,
+    generate_fractal_noise,
+    generate_gabor_field,
     generate_gaussian_peaks_field,
     generate_julia_field,
+    generate_lsystem_field,
+    generate_mandelbrot_field,
     generate_moire_field,
-    generate_gabor_field,
+    generate_penrose_field,
+    generate_phyllotaxis_field,
+    generate_reaction_diffusion_field,
+    generate_ridged_noise,
+    generate_sdf_field,
+    generate_spectral_field,
+    generate_superformula_field,
+    generate_truchet_field,
+    generate_voronoi_field,
+    generate_warped_noise,
+    generate_wave_field,
 )
-from clayfield.field.persistence import PipelineSnapshot
 from clayfield.field.model import FieldMetadata, NormalizedField
+from clayfield.field.persistence import PipelineSnapshot
 from clayfield.field.pipeline import FieldPipelineResult, evaluate_field_pipeline
 from clayfield.field.processing import FieldProcessingSettings, process_field, resize_field
-from clayfield.terrain.mapping import MappingSettings
-from clayfield.field.composition import compose_fields
 from clayfield.field.qfractalnow import render_qfractalnow_config
-import numpy as np
+from clayfield.terrain.mapping import MappingSettings
 
 
 def _generate_source(source, shape, external_fields=None, cancel_check=None):

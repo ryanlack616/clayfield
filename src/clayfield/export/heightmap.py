@@ -9,8 +9,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from clayfield.export.stl import ExportError
 from clayfield.core.cancellation import check_cancelled
+from clayfield.export.stl import ExportError
 from clayfield.resource_budget import DEFAULT_BUDGET, preflight_heightfield
 
 

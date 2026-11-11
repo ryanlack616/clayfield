@@ -6,7 +6,6 @@ import numpy as np
 
 from clayfield.field.model import FieldMetadata, NormalizedField
 
-
 _OPERATIONS = {"add", "subtract", "multiply", "minimum", "maximum", "blend"}
 _RANGE_POLICIES = {"clip", "normalize"}
 

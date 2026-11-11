@@ -1,13 +1,12 @@
 """Tests for the embedded QFractalNow source renderer."""
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
 from clayfield.field.persistence import SourceDescriptor
 from clayfield.field.qfractalnow import render_qfractalnow_config
-
 
 CONFIG = Path("/usr/share/fractalnow/examples/config_files/config01.config")
 

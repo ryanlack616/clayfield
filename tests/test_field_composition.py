@@ -3,8 +3,7 @@
 import numpy as np
 import pytest
 
-from clayfield.field import FieldMetadata, NormalizedField, compose_fields
-from clayfield.field import NoiseParameters, generate_fractal_noise
+from clayfield.field import FieldMetadata, NoiseParameters, NormalizedField, compose_fields, generate_fractal_noise
 from clayfield.geometry.mesh_generator import generate_solid_mesh
 from clayfield.geometry.validation import validate_mesh
 from clayfield.terrain.mapping import MappingSettings, map_field_to_physical

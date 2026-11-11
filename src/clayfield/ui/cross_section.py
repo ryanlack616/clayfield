@@ -1,6 +1,6 @@
 """Cross-section inspection dialog."""
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPointF
 from PySide6.QtGui import QPainter, QPen
 from PySide6.QtWidgets import QComboBox, QDialog, QFormLayout, QLabel, QSpinBox, QVBoxLayout, QWidget
 
@@ -34,11 +34,14 @@ class ProfilePlot(QWidget):
         painter.drawRect(plot)
         painter.setPen(QPen(self.palette().highlight().color(), 2))
         points = []
-        for distance, value in zip(self.distance, self.values):
+        # strict=False: a length mismatch should leave a short plot rather than
+        # raise inside paintEvent, which Qt cannot recover from gracefully.
+        for distance, value in zip(self.distance, self.values, strict=False):
             x = plot.left() + (distance - self.distance[0]) / max(1e-6, self.distance[-1] - self.distance[0]) * plot.width()
             y = plot.bottom() - (value - low) / (high - low) * plot.height()
             points.append(QPointF(x, y))
-        for first, second in zip(points, points[1:]):
+        # strict=False: adjacent-pair iteration is shorter by one by design.
+        for first, second in zip(points, points[1:], strict=False):
             painter.drawLine(first, second)
 
 

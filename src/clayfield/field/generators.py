@@ -5,8 +5,8 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 
-import numpy as np
 import cv2
+import numpy as np
 
 from clayfield.core.cancellation import check_cancelled
 from clayfield.field.model import FieldMetadata, NormalizedField

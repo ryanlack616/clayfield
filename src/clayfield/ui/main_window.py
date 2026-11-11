@@ -2,36 +2,63 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from copy import copy, deepcopy
+from pathlib import Path
 
 import numpy as np
-
 from PySide6.QtCore import QSettings, QThreadPool, QTimer
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QColorDialog, QDialog, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMessageBox, QProgressBar, QScrollArea, QSplitter, QStatusBar, QToolButton, QVBoxLayout
-from clayfield.app.project_io import ProjectIOError, load_project, save_project
+from PySide6.QtWidgets import (
+    QColorDialog,
+    QDialog,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QScrollArea,
+    QSplitter,
+    QStatusBar,
+    QToolButton,
+    QVBoxLayout,
+)
+
 from clayfield.app.history import ParameterHistory, restore_parameters
 from clayfield.app.presets import PresetError, load_preset, save_preset
+from clayfield.app.project_io import ProjectIOError, load_project, save_project
+from clayfield.app.project_state import ProjectState
 from clayfield.app.recovery import discard_recovery_snapshot, find_recovery_snapshots, prepare_recovery_snapshot
 from clayfield.app.worker import FunctionWorker
-from clayfield.export.tasks import analyze_image_export_task, analyze_procedural_export_task, export_heightmap_task, export_mesh_task, export_procedural_heightmap_task, export_procedural_mesh_task
-from clayfield.field.persistence import PipelineSnapshot, SourceDescriptor
+from clayfield.export.tasks import (
+    analyze_image_export_task,
+    analyze_procedural_export_task,
+    export_heightmap_task,
+    export_mesh_task,
+    export_procedural_heightmap_task,
+    export_procedural_mesh_task,
+)
 from clayfield.field.model import FieldMetadata, NormalizedField
+from clayfield.field.persistence import PipelineSnapshot, SourceDescriptor
 from clayfield.field.processing import FieldProcessingSettings
 from clayfield.field.workflow import evaluate_serialized_pipeline
-from clayfield.terrain.mapping import MappingSettings
-from clayfield.terrain.fabrication import FabricationProfile, analyze_heightfield
 from clayfield.geometry.container import ContainerSettings
-
-from clayfield.app.project_state import ProjectState
+from clayfield.terrain.fabrication import FabricationProfile, analyze_heightfield
+from clayfield.terrain.heightfield import (
+    PhysicalDimensions,
+    generate_physical_heightfield,
+    options_from_state,
+    physical_height_bounds,
+)
+from clayfield.terrain.mapping import MappingSettings
+from clayfield.ui.cross_section import CrossSectionDialog
+from clayfield.ui.export_preview import ExportPreviewDialog
 from clayfield.ui.image_panel import ImagePanel
 from clayfield.ui.terrain_panel import TerrainPanel
-from clayfield.ui.viewport import Viewport
 from clayfield.ui.theme import apply_theme
-from clayfield.ui.export_preview import ExportPreviewDialog
-from clayfield.ui.cross_section import CrossSectionDialog
-from clayfield.terrain.heightfield import PhysicalDimensions, generate_physical_heightfield, options_from_state, physical_height_bounds
+from clayfield.ui.viewport import Viewport
 
 
 def _generate_heightfield_with_bounds(*args, **kwargs):

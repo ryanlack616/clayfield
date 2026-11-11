@@ -1,10 +1,10 @@
 """Portable, source-free image and terrain parameter presets."""
 
-from copy import copy
 import json
 import os
-from pathlib import Path
 import tempfile
+from copy import copy
+from pathlib import Path
 
 import numpy as np
 

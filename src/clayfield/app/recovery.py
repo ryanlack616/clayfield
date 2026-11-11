@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import tempfile
 import hashlib
 import os
+import tempfile
 from pathlib import Path
 
 from clayfield.app.project_io import ProjectIOError, autosave_project

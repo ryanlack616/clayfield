@@ -15,14 +15,13 @@ from clayfield.field.generators import (
     VoronoiParameters,
     _generator_workload,
 )
-from clayfield.field.pipeline import FieldPipelineResult
 from clayfield.field.model import FieldMetadata, NormalizedField
-from clayfield.image.pipeline import AdjustmentCache, DEFAULT_ADJUSTMENT_CACHE_BYTES
+from clayfield.field.pipeline import FieldPipelineResult
+from clayfield.image.pipeline import DEFAULT_ADJUSTMENT_CACHE_BYTES, AdjustmentCache
 from clayfield.resource_budget import (
     DEFAULT_BUDGET,
     MAX_ABSOLUTE_RESOLUTION_DIMENSION,
     ResourceBudget,
-    estimate_heightfield,
     estimate_mesh_export,
     preflight_heightfield,
     preflight_mesh_export,

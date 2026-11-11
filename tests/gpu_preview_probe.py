@@ -1,17 +1,17 @@
 """Exercise the GPU preview and authoritative CPU replacement in a real window."""
 
-from pathlib import Path
 import sys
 import time
 import traceback
+from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
-from clayfield.app.application import configure_opengl
 import clayfield.ui.image_panel as image_panel
 import clayfield.ui.main_window as main_window
+from clayfield.app.application import configure_opengl
 from clayfield.ui.gpu_pipeline import GpuImagePipeline
 
 configure_opengl()

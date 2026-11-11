@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from threading import Lock
 
 import numpy as np
-from threading import Lock
 
 from clayfield.core.cancellation import check_cancelled
 from clayfield.image.curves import apply_curve
@@ -30,7 +30,10 @@ def apply_adjustments(
     image, the returned array may be the input itself; callers must not mutate
     it. Every stage operation otherwise returns a new owned array.
     """
-    get = lambda name, default: float(settings.get(name, default))
+    def get(name: str, default: float) -> float:
+        value: float | bool = settings.get(name, default)
+        return float(value)
+
     result = invert(image) if bool(settings.get("inverted", False)) else image
     result = apply_levels(
         result,
@@ -104,7 +107,10 @@ class AdjustmentCache:
         return key in self._stages
 
     def apply(self, image, settings, curve_points, *, cancel_check=None):
-        get = lambda name, default: float(settings.get(name, default))
+        def get(name: str, default: float) -> float:
+            value: float | bool = settings.get(name, default)
+            return float(value)
+
         level = (bool(settings.get("inverted", False)), get("Black point", 0), get("Gamma", 1),
                  get("White point", 1), get("Output black", 0), get("Output white", 1))
         curve = (tuple(tuple(p) for p in curve_points), str(settings.get("Curve interpolation", "linear")))

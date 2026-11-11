@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
-import xml.etree.ElementTree as ET
 
 import cv2
 import numpy as np
 import trimesh
-from clayfield.core.cancellation import check_cancelled
 
+from clayfield.core.cancellation import check_cancelled
 from clayfield.export.stl import ExportError
 from clayfield.geometry.mesh_generator import SolidMesh
 

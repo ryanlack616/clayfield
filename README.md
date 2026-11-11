@@ -84,6 +84,17 @@ QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb CLAYFIELD_TEST_GL=1 .venv/bin/pytes
 CLAYFIELD_PRUSA_SLICER=/path/to/prusa-slicer .venv/bin/pytest -q tests/test_slicer_integration.py
 ```
 
+## Linting and formatting
+
+```sh
+.venv/bin/pip install -e '.[dev,test]'
+.venv/bin/ruff check .          # lint; expected to report no findings
+.venv/bin/ruff format --check . # format check without rewriting files
+```
+
+With uv: `uv run --extra dev ruff check .`. Configuration is in `pyproject.toml`
+(`line-length = 120`, rules `E`, `F`, `I`, `UP`, `B`).
+
 ## Build A Linux Bundle
 
 ```sh

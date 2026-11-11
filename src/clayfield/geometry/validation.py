@@ -8,8 +8,8 @@ from dataclasses import dataclass
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.csgraph as csgraph
-from clayfield.core.cancellation import check_cancelled
 
+from clayfield.core.cancellation import check_cancelled
 from clayfield.geometry.mesh_generator import SolidMesh
 
 
@@ -98,7 +98,10 @@ def validate_mesh(mesh: SolidMesh, *, cancel_check=None) -> MeshValidation:
     if vertices.ndim != 2 or vertices.shape[1] != 3 or faces.ndim != 2 or faces.shape[1] != 3 or not finite or len(vertices) == 0 or len(faces) == 0 or not np.issubdtype(faces.dtype, np.integer) or np.any(faces < 0) or np.any(faces >= len(vertices)):
         return MeshValidation(False, False, False, finite, ((0.0, 0.0),) * 3, "Invalid mesh arrays or non-finite coordinates", False, False, False, 0, 0)
     check_cancelled(cancel_check)
-    bounds = tuple((float(low), float(high)) for low, high in zip(vertices.min(axis=0), vertices.max(axis=0)))
+    bounds = tuple(
+        (float(low), float(high))
+        for low, high in zip(vertices.min(axis=0), vertices.max(axis=0), strict=True)
+    )
     # Signed volume and triangle areas are accumulated in face chunks. Expanding
     # all faces at once would create a second copy of the face array scaled by
     # nine floats, which at 4096x4096 is several gigabytes for no reason.

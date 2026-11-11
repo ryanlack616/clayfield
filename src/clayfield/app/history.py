@@ -5,7 +5,6 @@ from time import monotonic
 
 from clayfield.app.project_state import ProjectState
 
-
 PARAMETERS = (
     "source_type", "source_descriptor", "pipeline_snapshot", "secondary_source_descriptor", "mask_source_descriptor", "composition_settings", "secondary_processing_settings", "secondary_field_name", "mask_field_name",
     "inverted", "terrain_width_mm", "terrain_depth_mm", "minimum_height_mm",

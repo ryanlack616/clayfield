@@ -3,14 +3,26 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QLabel, QPushButton, QSizePolicy, QSpinBox, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from clayfield.app.project_state import ProjectState
 from clayfield.geometry.estimates import estimate_solid_mesh
-from clayfield.ui.curve_editor import CurveEditor
 from clayfield.image.geometry import processed_dimensions
+from clayfield.terrain.fabrication import FABRICATION_PROFILES, FabricationMetrics
 from clayfield.terrain.heightfield import PhysicalDimensions, options_from_state, physical_height_bounds
-from clayfield.terrain.fabrication import FABRICATION_PROFILES, FabricationMetrics, analyze_heightfield
+from clayfield.ui.curve_editor import CurveEditor
 from clayfield.ui.parameter_row import parameter_row
 
 
@@ -244,8 +256,12 @@ class TerrainPanel(QWidget):
         self.container_mode.blockSignals(False)
         self._update_container_controls(self.container_mode.currentText())
         for widget, value in ((self.container_wall, self.state.container_wall_thickness_mm), (self.container_clearance, self.state.container_clearance_mm)):
-            widget.blockSignals(True); widget.setValue(value); widget.blockSignals(False)
-        self.container_outside.blockSignals(True); self.container_outside.setChecked(self.state.container_outside_dimensions); self.container_outside.blockSignals(False)
+            widget.blockSignals(True)
+            widget.setValue(value)
+            widget.blockSignals(False)
+        self.container_outside.blockSignals(True)
+        self.container_outside.setChecked(self.state.container_outside_dimensions)
+        self.container_outside.blockSignals(False)
         self.resolution.blockSignals(True)
         self.resolution.setValue(max(self.state.heightfield_resolution) if self.state.heightfield_resolution else 2048)
         self.resolution.blockSignals(False)

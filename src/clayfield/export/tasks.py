@@ -11,11 +11,11 @@ from clayfield.export.stl import export_stl
 from clayfield.export.three_mf import export_3mf
 from clayfield.field.persistence import PipelineSnapshot
 from clayfield.field.workflow import evaluate_serialized_pipeline
-from clayfield.geometry.mesh_generator import generate_solid_mesh
 from clayfield.geometry.container import ContainerSettings, prepare_container_heightfield
+from clayfield.geometry.mesh_generator import generate_solid_mesh
 from clayfield.resource_budget import DEFAULT_BUDGET, preflight_heightfield, preflight_mesh_export
-from clayfield.terrain.heightfield import PhysicalDimensions, generate_physical_heightfield
 from clayfield.terrain.fabrication import FabricationMetrics, analyze_heightfield
+from clayfield.terrain.heightfield import generate_physical_heightfield
 
 
 def _check_cancel(cancel_check) -> None:

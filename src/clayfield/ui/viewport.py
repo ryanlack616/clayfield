@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from array import array
 import ctypes
 import math
+from array import array
 from pathlib import Path
 
 import numpy as np
@@ -14,10 +14,10 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QMatrix4x4
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
-from clayfield.ui.camera import OrbitCamera
-from clayfield.ui.axis_gizmo import AxisGizmo
-from clayfield.ui.gpu_pipeline import GpuImagePipeline, supports_gpu_adjustments
 from clayfield.image.curves import curve_lut
+from clayfield.ui.axis_gizmo import AxisGizmo
+from clayfield.ui.camera import OrbitCamera
+from clayfield.ui.gpu_pipeline import GpuImagePipeline, supports_gpu_adjustments
 
 
 def _block_mean(values: np.ndarray, target_rows: int, target_columns: int) -> np.ndarray:
@@ -472,8 +472,11 @@ class Viewport(QOpenGLWidget):
         program = glCreateProgram()
         vertex = compile_shader(GL_VERTEX_SHADER, self.shader_dir / "test_grid.vert")
         fragment = compile_shader(GL_FRAGMENT_SHADER, self.shader_dir / "test_grid.frag")
-        glAttachShader(program, vertex); glAttachShader(program, fragment); glLinkProgram(program)
+        glAttachShader(program, vertex)
+        glAttachShader(program, fragment)
+        glLinkProgram(program)
         if not glGetProgramiv(program, GL_LINK_STATUS):
             raise RuntimeError(glGetProgramInfoLog(program).decode())
-        glDeleteShader(vertex); glDeleteShader(fragment)
+        glDeleteShader(vertex)
+        glDeleteShader(fragment)
         return program

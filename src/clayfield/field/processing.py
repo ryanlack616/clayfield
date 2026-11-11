@@ -13,7 +13,6 @@ from clayfield.image.curves import apply_curve
 from clayfield.image.filters import adjust_brightness_contrast, gaussian_blur, sharpen, threshold
 from clayfield.image.levels import apply_levels
 
-
 FIELD_PROCESSING_STAGE_ORDER = (
     "source_resampling",
     "levels",

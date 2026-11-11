@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
-from copy import deepcopy
 import hashlib
 import json
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from clayfield.field.processing import FieldProcessingSettings
 from clayfield.terrain.mapping import MappingSettings
-
 
 SOURCE_TYPES = {"image", "heightmap", "qfractalnow_config", "fractal_noise", "wave_interference", "mandelbrot", "voronoi", "ridged_noise", "warped_noise", "sdf", "chladni", "spectral", "reaction_diffusion", "phyllotaxis", "cellular_automata", "flow_field", "erosion", "lsystem", "cracks", "penrose", "truchet", "superformula", "gaussian_peaks", "julia", "moire", "gabor", "radial_mask"}
 SUPPORTED_ALGORITHM_VERSIONS = {
@@ -60,7 +59,7 @@ class SourceDescriptor:
         }
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "SourceDescriptor":
+    def from_dict(cls, value: dict[str, Any]) -> SourceDescriptor:
         if not isinstance(value, dict):
             raise ValueError("Source descriptor must be an object")
         descriptor = cls(
@@ -160,7 +159,7 @@ class PipelineSnapshot:
         mask_source: SourceDescriptor | None = None,
         composition: dict[str, Any] | None = None,
         algorithm_versions: dict[str, str] | None = None,
-    ) -> "PipelineSnapshot":
+    ) -> PipelineSnapshot:
         snapshot = cls(
             source=source,
             processing=asdict(processing or FieldProcessingSettings()),
@@ -180,7 +179,7 @@ class PipelineSnapshot:
         return snapshot
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "PipelineSnapshot":
+    def from_dict(cls, value: dict[str, Any]) -> PipelineSnapshot:
         if not isinstance(value, dict):
             raise ValueError("Pipeline snapshot must be an object")
         processing = deepcopy(value.get("processing", {}))

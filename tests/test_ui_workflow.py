@@ -1,8 +1,8 @@
 """Exercise the image-to-terrain and project lifecycle through Qt widgets."""
 
 import os
-import time
 import threading
+import time
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -10,9 +10,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import cv2
 import numpy as np
 import pytest
-from PySide6.QtWidgets import QApplication, QDialog, QSlider, QToolButton
 from PySide6.QtCore import QSettings
 from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QApplication, QDialog, QSlider, QToolButton
 
 from clayfield.app.project_io import load_project, save_project
 from clayfield.app.project_state import ProjectState

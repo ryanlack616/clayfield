@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import math
 import os
 import tempfile
@@ -21,8 +21,8 @@ from clayfield.field.persistence import PipelineSnapshot, SourceDescriptor
 from clayfield.image.geometry import validate_geometry
 from clayfield.image.loader import ImageLoadError, load_image_bytes
 from clayfield.resource_budget import MAX_ABSOLUTE_RESOLUTION_DIMENSION
-from clayfield.terrain.heightfield import options_from_state
 from clayfield.terrain.fabrication import FabricationProfile
+from clayfield.terrain.heightfield import options_from_state
 
 
 class ProjectIOError(RuntimeError):
@@ -354,7 +354,9 @@ def _parse_curve_points(value, field_name: str) -> list[tuple[float, float]]:
         if any(not math.isfinite(item) or not 0.0 <= item <= 1.0 for item in normalized):
             raise ProjectIOError(f"Project contains an invalid {field_name}")
         points.append(normalized)
-    if any(left[0] >= right[0] for left, right in zip(points, points[1:])):
+    # strict=False is required here: the second sequence is one element shorter
+    # by construction, so zip(strict=True) would always raise.
+    if any(left[0] >= right[0] for left, right in zip(points, points[1:], strict=False)):
         raise ProjectIOError(f"Project contains non-increasing {field_name}")
     return points
 

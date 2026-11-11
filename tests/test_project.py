@@ -2,10 +2,10 @@
 
 
 
-from pathlib import Path
 import json
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import cv2
 import numpy as np

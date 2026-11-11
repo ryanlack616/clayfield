@@ -31,6 +31,7 @@ def run() -> int:
         return 0
     if sys.argv[1:] == ["--self-test"]:
         import numpy as np
+
         from clayfield.geometry.mesh_generator import generate_solid_mesh
         from clayfield.geometry.validation import validate_mesh
         resources = Path(__file__).resolve().parents[1] / "resources"
@@ -45,6 +46,7 @@ def run() -> int:
     if sys.argv[1:] == ["--gl-self-test"]:
         import numpy as np
         from PySide6.QtCore import QTimer
+
         from clayfield.ui.viewport import Viewport
         configure_opengl()
         application = QApplication([sys.argv[0]])

@@ -8,6 +8,7 @@ from threading import Event
 from typing import Any
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
+
 from clayfield.app.cancellation import WorkerCancelled
 
 

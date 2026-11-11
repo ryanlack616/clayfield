@@ -13,6 +13,24 @@ is only needed when invoking a pytest outside the project. With uv, use
 `uv run --extra test python -m pytest -q` so the project environment (and its
 test extra) is used.
 
+## Linting and formatting
+
+`ruff` is the lint and format gate, installed by the `dev` extra:
+
+```sh
+.venv/bin/pip install -e '.[dev,test]'
+.venv/bin/ruff check .          # lint; expected to report no findings
+.venv/bin/ruff format --check . # format check without rewriting files
+.venv/bin/ruff format .         # apply formatting
+```
+
+With uv, use `uv run --extra dev ruff check .` and
+`uv run --extra dev ruff format .`. Configuration lives in `pyproject.toml`:
+`line-length = 120`, rules `E`, `F`, `I`, `UP`, `B`, with `E501` ignored because
+the codebase deliberately uses long explanatory comments and docstrings. The two
+PyOpenGL modules are exempt from `F403`/`F405` because the library's public API
+is conventionally star-imported.
+
 The normal tests use Qt's offscreen platform and skip integration tests that
 need external programs or a real OpenGL context. To run the additional checks:
 

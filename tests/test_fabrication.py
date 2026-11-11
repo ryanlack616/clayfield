@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
+from benchmarks.fabrication_calibration import generate_calibration_panels
 from clayfield.app.cancellation import WorkerCancelled
 from clayfield.terrain.fabrication import FabricationProfile, analyze_heightfield
-from benchmarks.fabrication_calibration import generate_calibration_panels
 
 
 def test_positive_surface_reports_range_and_wall() -> None:

@@ -1,16 +1,16 @@
 """Export dimensions, heightmap, and low-resolution mesh validation preview."""
 
 import numpy as np
-from PySide6.QtCore import QThreadPool, Qt
+from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
 from clayfield.app.worker import FunctionWorker
+from clayfield.geometry.container import ContainerSettings, container_footprint
 from clayfield.geometry.estimates import estimate_solid_mesh
 from clayfield.geometry.mesh_generator import generate_solid_mesh
 from clayfield.geometry.validation import validate_mesh
 from clayfield.terrain.fabrication import FabricationProfile, analyze_heightfield
-from clayfield.geometry.container import ContainerSettings, container_footprint
 
 
 def _validate_preview(heightfield, width, depth, base, mode):

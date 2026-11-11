@@ -2,27 +2,43 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import hashlib
+from pathlib import Path
 
 import cv2
 import numpy as np
-from PySide6.QtCore import QThreadPool, QTimer, Qt, Signal
+from PySide6.QtCore import Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtWidgets import QFileDialog, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel, QLayout, QLineEdit, QPushButton, QSizePolicy, QSpinBox, QStackedWidget, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLayout,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from clayfield.app.project_state import ProjectState
 from clayfield.app.worker import FunctionWorker
-from clayfield.image.grayscale import to_grayscale
-from clayfield.image.pipeline import AdjustmentCache
 from clayfield.core.cancellation import check_cancelled
+from clayfield.field.generators import MandelbrotParameters, NoiseParameters, WaveParameters
+from clayfield.field.persistence import SourceDescriptor
+from clayfield.image.geometry import apply_image_geometry
+from clayfield.image.grayscale import to_grayscale
+from clayfield.image.loader import load_image
+from clayfield.image.pipeline import AdjustmentCache
 from clayfield.ui.curve_editor import CurveEditor
 from clayfield.ui.histogram import HistogramWidget
 from clayfield.ui.parameter_row import parameter_row
-from clayfield.image.loader import load_image
-from clayfield.image.geometry import apply_image_geometry
-from clayfield.field.generators import MandelbrotParameters, NoiseParameters, WaveParameters
-from clayfield.field.persistence import SourceDescriptor
 
 
 def _downscale_preview(image: np.ndarray, max_edge: int) -> np.ndarray:
@@ -260,7 +276,6 @@ class ImagePanel(QWidget):
         self._update_provenance()
 
     def _update_provenance(self) -> None:
-        primary = self.state.source_type
         secondary = self.state.secondary_source_descriptor or {}
         mask = self.state.mask_source_descriptor or {}
         lines = []
@@ -278,13 +293,29 @@ class ImagePanel(QWidget):
         controls: dict[str, object] = {}
         noise_page = QWidget()
         noise_form = QFormLayout(noise_page)
-        controls["noise_seed"] = QSpinBox(); controls["noise_seed"].setRange(-2147483648, 2147483647)
-        controls["noise_frequency"] = QDoubleSpinBox(); controls["noise_frequency"].setRange(0.1, 64.0); controls["noise_frequency"].setValue(2.0); controls["noise_frequency"].setSingleStep(0.1)
-        controls["noise_octaves"] = QSpinBox(); controls["noise_octaves"].setRange(1, 12); controls["noise_octaves"].setValue(6)
-        controls["noise_persistence"] = QDoubleSpinBox(); controls["noise_persistence"].setRange(0.0, 1.0); controls["noise_persistence"].setValue(0.5); controls["noise_persistence"].setSingleStep(0.05)
-        controls["noise_lacunarity"] = QDoubleSpinBox(); controls["noise_lacunarity"].setRange(0.1, 8.0); controls["noise_lacunarity"].setValue(2.0); controls["noise_lacunarity"].setSingleStep(0.1)
-        controls["noise_amplitude"] = QDoubleSpinBox(); controls["noise_amplitude"].setRange(0.0, 1.0); controls["noise_amplitude"].setValue(1.0); controls["noise_amplitude"].setSingleStep(0.05)
-        controls["noise_normalization"] = QComboBox(); controls["noise_normalization"].addItems(["Auto", "Fixed"])
+        controls["noise_seed"] = QSpinBox()
+        controls["noise_seed"].setRange(-2147483648, 2147483647)
+        controls["noise_frequency"] = QDoubleSpinBox()
+        controls["noise_frequency"].setRange(0.1, 64.0)
+        controls["noise_frequency"].setValue(2.0)
+        controls["noise_frequency"].setSingleStep(0.1)
+        controls["noise_octaves"] = QSpinBox()
+        controls["noise_octaves"].setRange(1, 12)
+        controls["noise_octaves"].setValue(6)
+        controls["noise_persistence"] = QDoubleSpinBox()
+        controls["noise_persistence"].setRange(0.0, 1.0)
+        controls["noise_persistence"].setValue(0.5)
+        controls["noise_persistence"].setSingleStep(0.05)
+        controls["noise_lacunarity"] = QDoubleSpinBox()
+        controls["noise_lacunarity"].setRange(0.1, 8.0)
+        controls["noise_lacunarity"].setValue(2.0)
+        controls["noise_lacunarity"].setSingleStep(0.1)
+        controls["noise_amplitude"] = QDoubleSpinBox()
+        controls["noise_amplitude"].setRange(0.0, 1.0)
+        controls["noise_amplitude"].setValue(1.0)
+        controls["noise_amplitude"].setSingleStep(0.05)
+        controls["noise_normalization"] = QComboBox()
+        controls["noise_normalization"].addItems(["Auto", "Fixed"])
         controls["noise_tileable"] = QCheckBox("Tileable (integer frequencies only)")
         for label, name in (("Seed", "noise_seed"), ("Base frequency", "noise_frequency"), ("Octaves", "noise_octaves"), ("Persistence", "noise_persistence"), ("Lacunarity", "noise_lacunarity"), ("Amplitude", "noise_amplitude"), ("Normalization", "noise_normalization")):
             noise_form.addRow(label, controls[name])
@@ -292,65 +323,141 @@ class ImagePanel(QWidget):
 
         wave_page = QWidget()
         wave_form = QFormLayout(wave_page)
-        controls["wave_mode"] = QComboBox(); controls["wave_mode"].addItems(["Planar", "Radial"])
-        controls["wave_frequency_x"] = QDoubleSpinBox(); controls["wave_frequency_x"].setRange(0.1, 64.0); controls["wave_frequency_x"].setValue(3.0)
-        controls["wave_frequency_y"] = QDoubleSpinBox(); controls["wave_frequency_y"].setRange(0.1, 64.0); controls["wave_frequency_y"].setValue(3.0)
-        controls["wave_amplitude_x"] = QDoubleSpinBox(); controls["wave_amplitude_x"].setRange(-1.0, 1.0); controls["wave_amplitude_x"].setValue(1.0); controls["wave_amplitude_x"].setSingleStep(0.05)
-        controls["wave_amplitude_y"] = QDoubleSpinBox(); controls["wave_amplitude_y"].setRange(-1.0, 1.0); controls["wave_amplitude_y"].setValue(1.0); controls["wave_amplitude_y"].setSingleStep(0.05)
-        controls["wave_output_amplitude"] = QDoubleSpinBox(); controls["wave_output_amplitude"].setRange(0.0, 1.0); controls["wave_output_amplitude"].setValue(1.0); controls["wave_output_amplitude"].setSingleStep(0.05)
+        controls["wave_mode"] = QComboBox()
+        controls["wave_mode"].addItems(["Planar", "Radial"])
+        controls["wave_frequency_x"] = QDoubleSpinBox()
+        controls["wave_frequency_x"].setRange(0.1, 64.0)
+        controls["wave_frequency_x"].setValue(3.0)
+        controls["wave_frequency_y"] = QDoubleSpinBox()
+        controls["wave_frequency_y"].setRange(0.1, 64.0)
+        controls["wave_frequency_y"].setValue(3.0)
+        controls["wave_amplitude_x"] = QDoubleSpinBox()
+        controls["wave_amplitude_x"].setRange(-1.0, 1.0)
+        controls["wave_amplitude_x"].setValue(1.0)
+        controls["wave_amplitude_x"].setSingleStep(0.05)
+        controls["wave_amplitude_y"] = QDoubleSpinBox()
+        controls["wave_amplitude_y"].setRange(-1.0, 1.0)
+        controls["wave_amplitude_y"].setValue(1.0)
+        controls["wave_amplitude_y"].setSingleStep(0.05)
+        controls["wave_output_amplitude"] = QDoubleSpinBox()
+        controls["wave_output_amplitude"].setRange(0.0, 1.0)
+        controls["wave_output_amplitude"].setValue(1.0)
+        controls["wave_output_amplitude"].setSingleStep(0.05)
         for label, name in (("Mode", "wave_mode"), ("Frequency X", "wave_frequency_x"), ("Frequency Y", "wave_frequency_y"), ("Amplitude X", "wave_amplitude_x"), ("Amplitude Y", "wave_amplitude_y"), ("Output amplitude", "wave_output_amplitude")):
             wave_form.addRow(label, controls[name])
 
         mandelbrot_page = QWidget()
         mandelbrot_form = QFormLayout(mandelbrot_page)
-        controls["mandelbrot_center_real"] = QDoubleSpinBox(); controls["mandelbrot_center_real"].setRange(-2.0, 2.0); controls["mandelbrot_center_real"].setValue(-0.5); controls["mandelbrot_center_real"].setSingleStep(0.05)
-        controls["mandelbrot_center_imaginary"] = QDoubleSpinBox(); controls["mandelbrot_center_imaginary"].setRange(-2.0, 2.0); controls["mandelbrot_center_imaginary"].setValue(0.0); controls["mandelbrot_center_imaginary"].setSingleStep(0.05)
-        controls["mandelbrot_zoom"] = QDoubleSpinBox(); controls["mandelbrot_zoom"].setRange(0.1, 1000.0); controls["mandelbrot_zoom"].setValue(1.0); controls["mandelbrot_zoom"].setSingleStep(0.1)
-        controls["mandelbrot_iterations"] = QSpinBox(); controls["mandelbrot_iterations"].setRange(1, 2000); controls["mandelbrot_iterations"].setValue(100)
-        controls["mandelbrot_contrast"] = QDoubleSpinBox(); controls["mandelbrot_contrast"].setRange(0.1, 10.0); controls["mandelbrot_contrast"].setValue(1.0); controls["mandelbrot_contrast"].setSingleStep(0.1)
+        controls["mandelbrot_center_real"] = QDoubleSpinBox()
+        controls["mandelbrot_center_real"].setRange(-2.0, 2.0)
+        controls["mandelbrot_center_real"].setValue(-0.5)
+        controls["mandelbrot_center_real"].setSingleStep(0.05)
+        controls["mandelbrot_center_imaginary"] = QDoubleSpinBox()
+        controls["mandelbrot_center_imaginary"].setRange(-2.0, 2.0)
+        controls["mandelbrot_center_imaginary"].setValue(0.0)
+        controls["mandelbrot_center_imaginary"].setSingleStep(0.05)
+        controls["mandelbrot_zoom"] = QDoubleSpinBox()
+        controls["mandelbrot_zoom"].setRange(0.1, 1000.0)
+        controls["mandelbrot_zoom"].setValue(1.0)
+        controls["mandelbrot_zoom"].setSingleStep(0.1)
+        controls["mandelbrot_iterations"] = QSpinBox()
+        controls["mandelbrot_iterations"].setRange(1, 2000)
+        controls["mandelbrot_iterations"].setValue(100)
+        controls["mandelbrot_contrast"] = QDoubleSpinBox()
+        controls["mandelbrot_contrast"].setRange(0.1, 10.0)
+        controls["mandelbrot_contrast"].setValue(1.0)
+        controls["mandelbrot_contrast"].setSingleStep(0.1)
         controls["mandelbrot_invert"] = QCheckBox("Invert escape field")
         for label, name in (("Center real", "mandelbrot_center_real"), ("Center imaginary", "mandelbrot_center_imaginary"), ("Zoom", "mandelbrot_zoom"), ("Iterations", "mandelbrot_iterations"), ("Contrast", "mandelbrot_contrast")):
             mandelbrot_form.addRow(label, controls[name])
         mandelbrot_form.addRow(controls["mandelbrot_invert"])
 
-        voronoi_page = QWidget(); voronoi_form = QFormLayout(voronoi_page)
-        controls["voronoi_seed"] = QSpinBox(); controls["voronoi_seed"].setRange(-2147483648, 2147483647)
-        controls["voronoi_density"] = QDoubleSpinBox(); controls["voronoi_density"].setRange(1.0, 64.0); controls["voronoi_density"].setValue(8.0)
-        controls["voronoi_jitter"] = QDoubleSpinBox(); controls["voronoi_jitter"].setRange(0.0, 1.0); controls["voronoi_jitter"].setValue(1.0); controls["voronoi_jitter"].setSingleStep(0.05)
-        controls["voronoi_mode"] = QComboBox(); controls["voronoi_mode"].addItems(["Boundary", "Distance", "Cells"])
+        voronoi_page = QWidget()
+        voronoi_form = QFormLayout(voronoi_page)
+        controls["voronoi_seed"] = QSpinBox()
+        controls["voronoi_seed"].setRange(-2147483648, 2147483647)
+        controls["voronoi_density"] = QDoubleSpinBox()
+        controls["voronoi_density"].setRange(1.0, 64.0)
+        controls["voronoi_density"].setValue(8.0)
+        controls["voronoi_jitter"] = QDoubleSpinBox()
+        controls["voronoi_jitter"].setRange(0.0, 1.0)
+        controls["voronoi_jitter"].setValue(1.0)
+        controls["voronoi_jitter"].setSingleStep(0.05)
+        controls["voronoi_mode"] = QComboBox()
+        controls["voronoi_mode"].addItems(["Boundary", "Distance", "Cells"])
         for label, name in (("Seed", "voronoi_seed"), ("Cell density", "voronoi_density"), ("Jitter", "voronoi_jitter"), ("Mode", "voronoi_mode")):
             voronoi_form.addRow(label, controls[name])
 
-        ridged_page = QWidget(); ridged_form = QFormLayout(ridged_page)
-        controls["ridged_seed"] = QSpinBox(); controls["ridged_seed"].setRange(-2147483648, 2147483647)
-        controls["ridged_frequency"] = QDoubleSpinBox(); controls["ridged_frequency"].setRange(0.1, 64.0); controls["ridged_frequency"].setValue(2.0)
-        controls["ridged_octaves"] = QSpinBox(); controls["ridged_octaves"].setRange(1, 12); controls["ridged_octaves"].setValue(6)
-        controls["ridged_sharpness"] = QDoubleSpinBox(); controls["ridged_sharpness"].setRange(0.1, 8.0); controls["ridged_sharpness"].setValue(2.0); controls["ridged_sharpness"].setSingleStep(0.1)
+        ridged_page = QWidget()
+        ridged_form = QFormLayout(ridged_page)
+        controls["ridged_seed"] = QSpinBox()
+        controls["ridged_seed"].setRange(-2147483648, 2147483647)
+        controls["ridged_frequency"] = QDoubleSpinBox()
+        controls["ridged_frequency"].setRange(0.1, 64.0)
+        controls["ridged_frequency"].setValue(2.0)
+        controls["ridged_octaves"] = QSpinBox()
+        controls["ridged_octaves"].setRange(1, 12)
+        controls["ridged_octaves"].setValue(6)
+        controls["ridged_sharpness"] = QDoubleSpinBox()
+        controls["ridged_sharpness"].setRange(0.1, 8.0)
+        controls["ridged_sharpness"].setValue(2.0)
+        controls["ridged_sharpness"].setSingleStep(0.1)
         for label, name in (("Seed", "ridged_seed"), ("Base frequency", "ridged_frequency"), ("Octaves", "ridged_octaves"), ("Sharpness", "ridged_sharpness")):
             ridged_form.addRow(label, controls[name])
 
-        warped_page = QWidget(); warped_form = QFormLayout(warped_page)
-        controls["warped_seed"] = QSpinBox(); controls["warped_seed"].setRange(-2147483648, 2147483647)
-        controls["warped_frequency"] = QDoubleSpinBox(); controls["warped_frequency"].setRange(0.1, 64.0); controls["warped_frequency"].setValue(2.0)
-        controls["warped_warp_frequency"] = QDoubleSpinBox(); controls["warped_warp_frequency"].setRange(0.1, 64.0); controls["warped_warp_frequency"].setValue(2.0)
-        controls["warped_strength"] = QDoubleSpinBox(); controls["warped_strength"].setRange(0.0, 2.0); controls["warped_strength"].setValue(0.25); controls["warped_strength"].setSingleStep(0.05)
-        controls["warped_octaves"] = QSpinBox(); controls["warped_octaves"].setRange(1, 12); controls["warped_octaves"].setValue(5)
+        warped_page = QWidget()
+        warped_form = QFormLayout(warped_page)
+        controls["warped_seed"] = QSpinBox()
+        controls["warped_seed"].setRange(-2147483648, 2147483647)
+        controls["warped_frequency"] = QDoubleSpinBox()
+        controls["warped_frequency"].setRange(0.1, 64.0)
+        controls["warped_frequency"].setValue(2.0)
+        controls["warped_warp_frequency"] = QDoubleSpinBox()
+        controls["warped_warp_frequency"].setRange(0.1, 64.0)
+        controls["warped_warp_frequency"].setValue(2.0)
+        controls["warped_strength"] = QDoubleSpinBox()
+        controls["warped_strength"].setRange(0.0, 2.0)
+        controls["warped_strength"].setValue(0.25)
+        controls["warped_strength"].setSingleStep(0.05)
+        controls["warped_octaves"] = QSpinBox()
+        controls["warped_octaves"].setRange(1, 12)
+        controls["warped_octaves"].setValue(5)
         for label, name in (("Seed", "warped_seed"), ("Base frequency", "warped_frequency"), ("Warp frequency", "warped_warp_frequency"), ("Warp strength", "warped_strength"), ("Octaves", "warped_octaves")):
             warped_form.addRow(label, controls[name])
 
-        sdf_page = QWidget(); sdf_form = QFormLayout(sdf_page)
-        controls["sdf_shape"] = QComboBox(); controls["sdf_shape"].addItems(["Circle", "Rectangle"])
-        controls["sdf_radius"] = QDoubleSpinBox(); controls["sdf_radius"].setRange(0.01, 1.0); controls["sdf_radius"].setValue(0.35); controls["sdf_radius"].setSingleStep(0.05)
-        controls["sdf_width"] = QDoubleSpinBox(); controls["sdf_width"].setRange(0.01, 1.0); controls["sdf_width"].setValue(0.6)
-        controls["sdf_height"] = QDoubleSpinBox(); controls["sdf_height"].setRange(0.01, 1.0); controls["sdf_height"].setValue(0.6)
-        controls["sdf_repeats_x"] = QSpinBox(); controls["sdf_repeats_x"].setRange(1, 64)
-        controls["sdf_repeats_y"] = QSpinBox(); controls["sdf_repeats_y"].setRange(1, 64)
-        controls["sdf_softness"] = QDoubleSpinBox(); controls["sdf_softness"].setRange(0.001, 1.0); controls["sdf_softness"].setValue(0.05); controls["sdf_softness"].setSingleStep(0.01)
+        sdf_page = QWidget()
+        sdf_form = QFormLayout(sdf_page)
+        controls["sdf_shape"] = QComboBox()
+        controls["sdf_shape"].addItems(["Circle", "Rectangle"])
+        controls["sdf_radius"] = QDoubleSpinBox()
+        controls["sdf_radius"].setRange(0.01, 1.0)
+        controls["sdf_radius"].setValue(0.35)
+        controls["sdf_radius"].setSingleStep(0.05)
+        controls["sdf_width"] = QDoubleSpinBox()
+        controls["sdf_width"].setRange(0.01, 1.0)
+        controls["sdf_width"].setValue(0.6)
+        controls["sdf_height"] = QDoubleSpinBox()
+        controls["sdf_height"].setRange(0.01, 1.0)
+        controls["sdf_height"].setValue(0.6)
+        controls["sdf_repeats_x"] = QSpinBox()
+        controls["sdf_repeats_x"].setRange(1, 64)
+        controls["sdf_repeats_y"] = QSpinBox()
+        controls["sdf_repeats_y"].setRange(1, 64)
+        controls["sdf_softness"] = QDoubleSpinBox()
+        controls["sdf_softness"].setRange(0.001, 1.0)
+        controls["sdf_softness"].setValue(0.05)
+        controls["sdf_softness"].setSingleStep(0.01)
         controls["sdf_invert"] = QCheckBox("Invert shape")
-        controls["sdf_boolean_shape"] = QComboBox(); controls["sdf_boolean_shape"].addItems(["None", "Circle", "Rectangle"])
-        controls["sdf_boolean_operation"] = QComboBox(); controls["sdf_boolean_operation"].addItems(["Union", "Difference", "Intersection"])
-        controls["sdf_boolean_offset_x"] = QDoubleSpinBox(); controls["sdf_boolean_offset_x"].setRange(-1.0, 1.0); controls["sdf_boolean_offset_x"].setSingleStep(0.05)
-        controls["sdf_boolean_offset_y"] = QDoubleSpinBox(); controls["sdf_boolean_offset_y"].setRange(-1.0, 1.0); controls["sdf_boolean_offset_y"].setSingleStep(0.05)
+        controls["sdf_boolean_shape"] = QComboBox()
+        controls["sdf_boolean_shape"].addItems(["None", "Circle", "Rectangle"])
+        controls["sdf_boolean_operation"] = QComboBox()
+        controls["sdf_boolean_operation"].addItems(["Union", "Difference", "Intersection"])
+        controls["sdf_boolean_offset_x"] = QDoubleSpinBox()
+        controls["sdf_boolean_offset_x"].setRange(-1.0, 1.0)
+        controls["sdf_boolean_offset_x"].setSingleStep(0.05)
+        controls["sdf_boolean_offset_y"] = QDoubleSpinBox()
+        controls["sdf_boolean_offset_y"].setRange(-1.0, 1.0)
+        controls["sdf_boolean_offset_y"].setSingleStep(0.05)
         for label, name in (("Shape", "sdf_shape"), ("Radius", "sdf_radius"), ("Width", "sdf_width"), ("Height", "sdf_height"), ("Repeat X", "sdf_repeats_x"), ("Repeat Y", "sdf_repeats_y"), ("Edge softness", "sdf_softness")):
             sdf_form.addRow(label, controls[name])
         sdf_form.addRow(controls["sdf_invert"])
@@ -359,12 +466,18 @@ class ImagePanel(QWidget):
 
         advanced_pages = []
         def advanced_page(title, specifications):
-            page = QWidget(); form = QFormLayout(page)
+            page = QWidget()
+            form = QFormLayout(page)
             for name, kind, value, minimum, maximum in specifications:
                 if kind == "int":
-                    widget = QSpinBox(); widget.setRange(int(minimum), int(maximum)); widget.setValue(int(value))
+                    widget = QSpinBox()
+                    widget.setRange(int(minimum), int(maximum))
+                    widget.setValue(int(value))
                 elif kind == "float":
-                    widget = QDoubleSpinBox(); widget.setRange(float(minimum), float(maximum)); widget.setValue(float(value)); widget.setSingleStep(max(0.01, (float(maximum) - float(minimum)) / 100.0))
+                    widget = QDoubleSpinBox()
+                    widget.setRange(float(minimum), float(maximum))
+                    widget.setValue(float(value))
+                    widget.setSingleStep(max(0.01, (float(maximum) - float(minimum)) / 100.0))
                 elif kind == "check":
                     widget = QCheckBox()
                     widget.setChecked(bool(value))
@@ -425,43 +538,103 @@ class ImagePanel(QWidget):
         controls["box"] = box
         controls["enabled"] = QCheckBox("Enable secondary field")
         secondary_sources = ["Fractal noise", "Wave interference", "Mandelbrot", "Voronoi", "Ridged noise", "Warped noise", "SDF shapes", "Chladni", "Spectral", "Reaction-diffusion", "Phyllotaxis", "Cellular automata", "Flow field", "Erosion", "L-system", "Cracks", "Penrose", "Truchet", "Superformula", "Gaussian peaks", "Julia", "Moiré", "Gabor", "Imported heightmap", "Primary source"]
-        controls["source"] = QComboBox(); controls["source"].addItems(secondary_sources)
-        controls["seed"] = QSpinBox(); controls["seed"].setRange(-2147483648, 2147483647); controls["seed"].setValue(17)
-        controls["frequency"] = QDoubleSpinBox(); controls["frequency"].setRange(0.1, 64.0); controls["frequency"].setValue(4.0); controls["frequency"].setSingleStep(0.1)
-        controls["octaves"] = QSpinBox(); controls["octaves"].setRange(1, 12); controls["octaves"].setValue(4)
-        controls["persistence"] = QDoubleSpinBox(); controls["persistence"].setRange(0.0, 1.0); controls["persistence"].setValue(0.5); controls["persistence"].setSingleStep(0.05)
-        controls["operation"] = QComboBox(); controls["operation"].addItems(["Blend", "Add", "Subtract", "Multiply", "Minimum", "Maximum"])
-        controls["amount"] = QDoubleSpinBox(); controls["amount"].setRange(0.0, 1.0); controls["amount"].setValue(0.5); controls["amount"].setSingleStep(0.05)
-        controls["secondary_gamma"] = QDoubleSpinBox(); controls["secondary_gamma"].setRange(0.1, 5.0); controls["secondary_gamma"].setValue(1.0); controls["secondary_gamma"].setSingleStep(0.05)
-        controls["secondary_contrast"] = QDoubleSpinBox(); controls["secondary_contrast"].setRange(0.0, 4.0); controls["secondary_contrast"].setValue(1.0); controls["secondary_contrast"].setSingleStep(0.05)
-        controls["secondary_blur"] = QDoubleSpinBox(); controls["secondary_blur"].setRange(0.0, 20.0); controls["secondary_blur"].setSingleStep(0.1)
+        controls["source"] = QComboBox()
+        controls["source"].addItems(secondary_sources)
+        controls["seed"] = QSpinBox()
+        controls["seed"].setRange(-2147483648, 2147483647)
+        controls["seed"].setValue(17)
+        controls["frequency"] = QDoubleSpinBox()
+        controls["frequency"].setRange(0.1, 64.0)
+        controls["frequency"].setValue(4.0)
+        controls["frequency"].setSingleStep(0.1)
+        controls["octaves"] = QSpinBox()
+        controls["octaves"].setRange(1, 12)
+        controls["octaves"].setValue(4)
+        controls["persistence"] = QDoubleSpinBox()
+        controls["persistence"].setRange(0.0, 1.0)
+        controls["persistence"].setValue(0.5)
+        controls["persistence"].setSingleStep(0.05)
+        controls["operation"] = QComboBox()
+        controls["operation"].addItems(["Blend", "Add", "Subtract", "Multiply", "Minimum", "Maximum"])
+        controls["amount"] = QDoubleSpinBox()
+        controls["amount"].setRange(0.0, 1.0)
+        controls["amount"].setValue(0.5)
+        controls["amount"].setSingleStep(0.05)
+        controls["secondary_gamma"] = QDoubleSpinBox()
+        controls["secondary_gamma"].setRange(0.1, 5.0)
+        controls["secondary_gamma"].setValue(1.0)
+        controls["secondary_gamma"].setSingleStep(0.05)
+        controls["secondary_contrast"] = QDoubleSpinBox()
+        controls["secondary_contrast"].setRange(0.0, 4.0)
+        controls["secondary_contrast"].setValue(1.0)
+        controls["secondary_contrast"].setSingleStep(0.05)
+        controls["secondary_blur"] = QDoubleSpinBox()
+        controls["secondary_blur"].setRange(0.0, 20.0)
+        controls["secondary_blur"].setSingleStep(0.1)
         controls["secondary_invert"] = QCheckBox("Invert secondary")
         controls["mask_enabled"] = QCheckBox("Use radial mask")
-        controls["mask_radius"] = QDoubleSpinBox(); controls["mask_radius"].setRange(0.01, 1.5); controls["mask_radius"].setValue(0.7); controls["mask_radius"].setSingleStep(0.05)
-        controls["mask_feather"] = QDoubleSpinBox(); controls["mask_feather"].setRange(0.0, 1.0); controls["mask_feather"].setValue(0.1); controls["mask_feather"].setSingleStep(0.05)
+        controls["mask_radius"] = QDoubleSpinBox()
+        controls["mask_radius"].setRange(0.01, 1.5)
+        controls["mask_radius"].setValue(0.7)
+        controls["mask_radius"].setSingleStep(0.05)
+        controls["mask_feather"] = QDoubleSpinBox()
+        controls["mask_feather"].setRange(0.0, 1.0)
+        controls["mask_feather"].setValue(0.1)
+        controls["mask_feather"].setSingleStep(0.05)
         controls["mask_invert"] = QCheckBox("Invert mask")
         controls["import_secondary"] = QPushButton("Import Secondary Heightmap…")
         controls["import_mask"] = QPushButton("Import Mask…")
         controls["copy_primary"] = QPushButton("Copy Primary Source")
-        controls["wave_mode"] = QComboBox(); controls["wave_mode"].addItems(["Planar", "Radial"])
-        controls["wave_frequency_x"] = QDoubleSpinBox(); controls["wave_frequency_x"].setRange(0.1, 64.0); controls["wave_frequency_x"].setValue(4.0)
-        controls["wave_frequency_y"] = QDoubleSpinBox(); controls["wave_frequency_y"].setRange(0.1, 64.0); controls["wave_frequency_y"].setValue(4.0)
-        controls["wave_amplitude_x"] = QDoubleSpinBox(); controls["wave_amplitude_x"].setRange(-1.0, 1.0); controls["wave_amplitude_x"].setValue(1.0); controls["wave_amplitude_x"].setSingleStep(0.05)
-        controls["wave_amplitude_y"] = QDoubleSpinBox(); controls["wave_amplitude_y"].setRange(-1.0, 1.0); controls["wave_amplitude_y"].setValue(1.0); controls["wave_amplitude_y"].setSingleStep(0.05)
-        controls["wave_output_amplitude"] = QDoubleSpinBox(); controls["wave_output_amplitude"].setRange(0.0, 1.0); controls["wave_output_amplitude"].setValue(1.0); controls["wave_output_amplitude"].setSingleStep(0.05)
-        controls["mandelbrot_center_real"] = QDoubleSpinBox(); controls["mandelbrot_center_real"].setRange(-2.0, 2.0); controls["mandelbrot_center_real"].setValue(-0.5); controls["mandelbrot_center_real"].setSingleStep(0.05)
-        controls["mandelbrot_center_imaginary"] = QDoubleSpinBox(); controls["mandelbrot_center_imaginary"].setRange(-2.0, 2.0); controls["mandelbrot_center_imaginary"].setValue(0.0); controls["mandelbrot_center_imaginary"].setSingleStep(0.05)
-        controls["mandelbrot_zoom"] = QDoubleSpinBox(); controls["mandelbrot_zoom"].setRange(0.1, 1000.0); controls["mandelbrot_zoom"].setValue(1.0); controls["mandelbrot_zoom"].setSingleStep(0.1)
-        controls["mandelbrot_iterations"] = QSpinBox(); controls["mandelbrot_iterations"].setRange(1, 2000); controls["mandelbrot_iterations"].setValue(100)
-        controls["mandelbrot_contrast"] = QDoubleSpinBox(); controls["mandelbrot_contrast"].setRange(0.1, 10.0); controls["mandelbrot_contrast"].setValue(1.0); controls["mandelbrot_contrast"].setSingleStep(0.1)
+        controls["wave_mode"] = QComboBox()
+        controls["wave_mode"].addItems(["Planar", "Radial"])
+        controls["wave_frequency_x"] = QDoubleSpinBox()
+        controls["wave_frequency_x"].setRange(0.1, 64.0)
+        controls["wave_frequency_x"].setValue(4.0)
+        controls["wave_frequency_y"] = QDoubleSpinBox()
+        controls["wave_frequency_y"].setRange(0.1, 64.0)
+        controls["wave_frequency_y"].setValue(4.0)
+        controls["wave_amplitude_x"] = QDoubleSpinBox()
+        controls["wave_amplitude_x"].setRange(-1.0, 1.0)
+        controls["wave_amplitude_x"].setValue(1.0)
+        controls["wave_amplitude_x"].setSingleStep(0.05)
+        controls["wave_amplitude_y"] = QDoubleSpinBox()
+        controls["wave_amplitude_y"].setRange(-1.0, 1.0)
+        controls["wave_amplitude_y"].setValue(1.0)
+        controls["wave_amplitude_y"].setSingleStep(0.05)
+        controls["wave_output_amplitude"] = QDoubleSpinBox()
+        controls["wave_output_amplitude"].setRange(0.0, 1.0)
+        controls["wave_output_amplitude"].setValue(1.0)
+        controls["wave_output_amplitude"].setSingleStep(0.05)
+        controls["mandelbrot_center_real"] = QDoubleSpinBox()
+        controls["mandelbrot_center_real"].setRange(-2.0, 2.0)
+        controls["mandelbrot_center_real"].setValue(-0.5)
+        controls["mandelbrot_center_real"].setSingleStep(0.05)
+        controls["mandelbrot_center_imaginary"] = QDoubleSpinBox()
+        controls["mandelbrot_center_imaginary"].setRange(-2.0, 2.0)
+        controls["mandelbrot_center_imaginary"].setValue(0.0)
+        controls["mandelbrot_center_imaginary"].setSingleStep(0.05)
+        controls["mandelbrot_zoom"] = QDoubleSpinBox()
+        controls["mandelbrot_zoom"].setRange(0.1, 1000.0)
+        controls["mandelbrot_zoom"].setValue(1.0)
+        controls["mandelbrot_zoom"].setSingleStep(0.1)
+        controls["mandelbrot_iterations"] = QSpinBox()
+        controls["mandelbrot_iterations"].setRange(1, 2000)
+        controls["mandelbrot_iterations"].setValue(100)
+        controls["mandelbrot_contrast"] = QDoubleSpinBox()
+        controls["mandelbrot_contrast"].setRange(0.1, 10.0)
+        controls["mandelbrot_contrast"].setValue(1.0)
+        controls["mandelbrot_contrast"].setSingleStep(0.1)
         controls["mandelbrot_invert"] = QCheckBox("Invert escape field")
-        fractal_page = QWidget(); fractal_form = QFormLayout(fractal_page)
+        fractal_page = QWidget()
+        fractal_form = QFormLayout(fractal_page)
         for label, name in (("Seed", "seed"), ("Base frequency", "frequency"), ("Octaves", "octaves"), ("Persistence", "persistence")):
             fractal_form.addRow(label, controls[name])
-        wave_page = QWidget(); wave_form = QFormLayout(wave_page)
+        wave_page = QWidget()
+        wave_form = QFormLayout(wave_page)
         for label, name in (("Mode", "wave_mode"), ("Frequency X", "wave_frequency_x"), ("Frequency Y", "wave_frequency_y"), ("Amplitude X", "wave_amplitude_x"), ("Amplitude Y", "wave_amplitude_y"), ("Output amplitude", "wave_output_amplitude")):
             wave_form.addRow(label, controls[name])
-        mandelbrot_page = QWidget(); mandelbrot_form = QFormLayout(mandelbrot_page)
+        mandelbrot_page = QWidget()
+        mandelbrot_form = QFormLayout(mandelbrot_page)
         for label, name in (("Center real", "mandelbrot_center_real"), ("Center imaginary", "mandelbrot_center_imaginary"), ("Zoom", "mandelbrot_zoom"), ("Iterations", "mandelbrot_iterations"), ("Contrast", "mandelbrot_contrast")):
             mandelbrot_form.addRow(label, controls[name])
         mandelbrot_form.addRow(controls["mandelbrot_invert"])
@@ -1031,14 +1204,16 @@ class ImagePanel(QWidget):
         self.curve_interpolation.blockSignals(False)
         self.curve_editor.points = list(self.state.curve_points)
         self.curve_editor.update()
-        for widget, value in zip(self.crop_controls, self.state.crop_margins):
+        for widget, value in zip(self.crop_controls, self.state.crop_margins, strict=True):
             widget.blockSignals(True)
             widget.setValue(value)
             widget.blockSignals(False)
         self.resize_enabled.blockSignals(True)
         self.resize_enabled.setChecked(self.state.image_resize is not None)
         self.resize_enabled.blockSignals(False)
-        for widget, value in zip((self.resize_width, self.resize_height), self.state.image_resize or (512, 512)):
+        for widget, value in zip(
+            (self.resize_width, self.resize_height), self.state.image_resize or (512, 512), strict=True
+        ):
             widget.blockSignals(True)
             widget.setValue(value)
             widget.setEnabled(self.state.image_resize is not None)
