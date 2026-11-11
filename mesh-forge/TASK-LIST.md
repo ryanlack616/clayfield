@@ -41,7 +41,7 @@ Refs: README §0, §2, §12, §13, §16
 - [x] dependency-cruiser boundaries (11 edge rules, verified by injection); forbidden-domain-terms lint in CI
 - [x] CI skeleton (`ci.yml`) calls `scripts/check.sh`, the same gate as a local run;
       `main` is protected against force-push and deletion (direct pushes still allowed, matching the trunk-based workflow). **GitHub Actions cannot start jobs: the account is locked on a billing issue.** Every step the workflow runs passes locally; the CI *run* is unverified until the lock clears.
-- [x] ADR folder + template in place; first ADR still to write
+- [x] ADR folder + template in place; ADR-0001 (`docs/adr/0001-v4-projects-read-only.md`) recorded
 - [x] **Exit:** empty packages build; boundaries enforced; MF-1–MF-7 decided
 
 ### C1 — Primitives + taxonomy
