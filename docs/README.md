@@ -16,6 +16,7 @@ code is `src/`, launched by `main.py`.
 | [../docs-v3-build/GUI_LAYOUT.md](../docs-v3-build/GUI_LAYOUT.md) | Authoritative screen, panel, viewport, and interaction spec |
 | [../docs-v3-build/VISUAL_DESIGN.md](../docs-v3-build/VISUAL_DESIGN.md) | Visual tokens, component styling, states |
 | [../docs-v3-build/IMPLEMENTATION_ROADMAP.md](../docs-v3-build/IMPLEMENTATION_ROADMAP.md) | Phases 0–7, dependencies, risks, acceptance gates |
+| [../docs-v3-build/MEASUREMENT_SPEC.md](../docs-v3-build/MEASUREMENT_SPEC.md) | Proposed measurement layer: metric definitions, mask contract, calibrated fixture |
 | [../docs-v3-build/TASK_LIST.md](../docs-v3-build/TASK_LIST.md) | Execution checklist; Phase 0 closed |
 | [../docs-v3-build/REPOSITORY_AUDIT.md](../docs-v3-build/REPOSITORY_AUDIT.md) | Phase 0 audit: verified paths, facts, gaps, risks |
 
@@ -91,5 +92,6 @@ The desktop v2 roadmap/task lists moved to [`../legacy-v2/`](../legacy-v2/):
 2. [../docs-v3-build/REPOSITORY_AUDIT.md](../docs-v3-build/REPOSITORY_AUDIT.md)
 3. [../docs-v3-build/GUI_LAYOUT.md](../docs-v3-build/GUI_LAYOUT.md)
 4. [../docs-v3-build/IMPLEMENTATION_ROADMAP.md](../docs-v3-build/IMPLEMENTATION_ROADMAP.md)
-5. Shared docs as each phase needs them (security, performance, data, a11y).
-6. Web track docs only when a change is scoped to the web build.
+5. [../docs-v3-build/MEASUREMENT_SPEC.md](../docs-v3-build/MEASUREMENT_SPEC.md) — read before Phase 3; it defines the metrics and mask contract the roadmap's gates assume.
+6. Shared docs as each phase needs them (security, performance, data, a11y).
+7. Web track docs only when a change is scoped to the web build.

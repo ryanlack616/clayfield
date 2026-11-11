@@ -115,6 +115,8 @@ Resolve the central technical dependency before implementing advanced analysis.
 
 ### Required decisions
 
+These are recorded in [`MEASUREMENT_SPEC.md`](MEASUREMENT_SPEC.md) §1–§2 rather than re-derived here. The audit's answers are adopted; this phase implements them and proves them with tests.
+
 - Authoritative editable representation: heightfield, mesh, or a documented hybrid with clear ownership.
 - Physical coordinate mapping from source pixels to model millimeters.
 - Mask sampling domain and mapping to the editable geometry.
@@ -155,7 +157,8 @@ Curvature and Combined Detection follow after the first methods have verified me
 
 ### Work
 
-- Document each metric mathematically and physically.
+- Implement each metric per [`MEASUREMENT_SPEC.md`](MEASUREMENT_SPEC.md) §3; the definition, units, parameters, and validity floor are fixed there.
+- Validate each metric against the calibrated fixture in `MEASUREMENT_SPEC.md` §4, not only against a hand-inspected model.
 - Validate scale limits against actual sample spacing.
 - Implement preview that does not mutate geometry or mask.
 - Display heatmap as replacement and translucent overlay.
