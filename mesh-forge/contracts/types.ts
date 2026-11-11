@@ -15,10 +15,22 @@
  */
 export type Vec3 = readonly [number, number, number];
 export type Mat4 = readonly [
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -82,14 +94,7 @@ export interface Hit {
 
 export type Metrics = Readonly<Record<string, number>>;
 
-export type PortType =
-  | ImageBuffer
-  | Field2D
-  | FieldView
-  | MeshBuffers
-  | Ray
-  | Hit
-  | Metrics;
+export type PortType = ImageBuffer | Field2D | FieldView | MeshBuffers | Ray | Hit | Metrics;
 
 /* ------------------------------------------------------------------ */
 /* §4 — the six capability contracts                                   */
@@ -143,27 +148,17 @@ export interface Query {
 export interface Exporter {
   readonly id: string;
   readonly format: ExportFormat;
-  export(
-    inputs: readonly PortType[],
-    sink: ExportSink,
-    signal?: AbortSignal,
-  ): Promise<void>;
+  export(inputs: readonly PortType[], sink: ExportSink, signal?: AbortSignal): Promise<void>;
 }
 
 export interface Analyzer {
   readonly id: string;
-  run(
-    inputs: readonly PortType[],
-    signal?: AbortSignal,
-  ): Promise<Metrics>;
+  run(inputs: readonly PortType[], signal?: AbortSignal): Promise<Metrics>;
 }
 
 export interface Pipeline {
   readonly stages: OperationSpec;
-  run(
-    input: PortType,
-    options?: PipelineOptions,
-  ): Promise<PortType>;
+  run(input: PortType, options?: PipelineOptions): Promise<PortType>;
 }
 
 export interface PipelineOptions {
@@ -420,11 +415,7 @@ export interface SchemaRegistry {
 }
 
 export interface MigrationRunner {
-  run(
-    doc: unknown,
-    fromVersion: number,
-    toVersion: number,
-  ): Promise<DocumentEnvelope>;
+  run(doc: unknown, fromVersion: number, toVersion: number): Promise<DocumentEnvelope>;
 }
 
 /* ------------------------------------------------------------------ */

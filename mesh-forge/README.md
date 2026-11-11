@@ -301,7 +301,9 @@ wasm-host:   mesh-forge-core, mesh-forge-wasm
 ui:          React, Radix
 ```
 
-Enforced in CI:
+Enforced in CI by `scripts/check.sh` — one script that CI calls and a local run
+calls, so the two cannot drift:
+- Biome 2.6.6 lint + format (`biome.json`); `pnpm lint`, `pnpm lint:fix`.
 - `dependency-cruiser` + package `exports` maps; no deep imports.
 - CI check: `@mesh-forge/*` never imports `@clayfield/*`.
 - Rust `cargo tree` / `cargo deny`: `mesh-forge-core` never depends on a domain

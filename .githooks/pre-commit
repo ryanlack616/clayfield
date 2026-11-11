@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Fast gate for commits. Wired up by `git config core.hooksPath .githooks`.
+# Skips cleanly when a commit touches nothing the gate covers, so a docs-only
+# or root-file commit is not slowed down. Bypass once with `git commit --no-verify`
+# when you know why.
+
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT" || exit 1
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -z "$STAGED" ] && exit 0
+
+# The heavier gate runs only when a path it covers is staged, so a docs-only
+# commit stays fast. The markdown link check always runs (44 files, ~50ms).
+CODE=0
+if printf '%s\n' "$STAGED" | grep -qE '^(mesh-forge/|scripts/|\.githooks/|\.github/)'; then
+  CODE=1
+fi
+
+if [ "$CODE" -eq 1 ]; then
+  printf '\n\033[1m=== pre-commit: lint, typecheck, boundaries, rust check ===\033[0m\n'
+  scripts/check.sh --fast || {
+    printf '\n\033[31m✗ gate failed; fix it, or bypass deliberately with --no-verify\033[0m\n' >&2
+    exit 1
+  }
+fi
+
+printf '\n\033[1m=== pre-commit: markdown link integrity ===\033[0m\n'
+python3 scripts/check_md_links.py . || {
+  printf '\n\033[31m✗ broken markdown link\033[0m\n' >&2
+  exit 1
+}
+
+exit 0

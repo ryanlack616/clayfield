@@ -31,9 +31,16 @@ new date plus an ADR.
 Refs: README §0, §2, §12, §13, §16
 - [x] pnpm workspace, TS project refs, Cargo workspace
 - [x] `pnpm-lock.yaml`, `Cargo.lock`, toolchain pinning (`packageManager`, `.nvmrc`, `rust-toolchain.toml`)
-- [x] `tsconfig.base.json` (strict), `.editorconfig`, `.nvmrc`, `rust-toolchain.toml`; ESLint/Biome and pre-commit still open
+- [x] `tsconfig.base.json` (strict), `.editorconfig`, `.nvmrc`, `rust-toolchain.toml`
+- [x] Biome 2.6.6 for lint + format (`biome.json`, `pnpm lint` / `pnpm lint:fix`); 22 files
+      reformatted on adoption, 0 lint errors remaining. Markdown is excluded from the
+      formatter: padded table columns turn every table edit into a whole-table diff.
+- [x] pre-commit hook in `.githooks/pre-commit` (enable per clone with
+      `git config core.hooksPath .githooks`): link check always, heavier gate when a
+      covered path is staged
 - [x] dependency-cruiser boundaries (11 edge rules, verified by injection); forbidden-domain-terms lint in CI
-- [x] CI skeleton (`ci.yml`); `main` is protected against force-push and deletion (direct pushes still allowed, matching the trunk-based workflow). **GitHub Actions cannot start jobs: the account is locked on a billing issue.** Every step the workflow runs passes locally; the CI *run* is unverified until the lock clears.
+- [x] CI skeleton (`ci.yml`) calls `scripts/check.sh`, the same gate as a local run;
+      `main` is protected against force-push and deletion (direct pushes still allowed, matching the trunk-based workflow). **GitHub Actions cannot start jobs: the account is locked on a billing issue.** Every step the workflow runs passes locally; the CI *run* is unverified until the lock clears.
 - [x] ADR folder + template in place; first ADR still to write
 - [x] **Exit:** empty packages build; boundaries enforced; MF-1–MF-7 decided
 

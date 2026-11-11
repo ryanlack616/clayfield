@@ -6,7 +6,5 @@
     "tsBuildInfoFile": "dist/.tsbuildinfo",
     "declaration": true
   },
-  "include": [
-    "types.ts"
-  ]
+  "include": ["types.ts"]
 }

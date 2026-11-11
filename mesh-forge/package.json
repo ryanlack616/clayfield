@@ -7,12 +7,19 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "lint:boundaries": "depcruise packages apps --config .dependency-cruiser.cjs",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "check": "pnpm lint && pnpm typecheck && pnpm lint:boundaries",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "dependency-cruiser": "^16.0.0"
+    "@biomejs/biome": "^2.6.6",
+    "dependency-cruiser": "^16.0.0",
+    "typescript": "^5.6.0"
   },
   "packageManager": "pnpm@12.15.0"
 }

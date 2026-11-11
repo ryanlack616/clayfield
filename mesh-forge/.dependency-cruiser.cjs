@@ -26,79 +26,108 @@ module.exports = {
     {
       name: 'edge-math',
       severity: 'error',
-      comment: '@mesh-forge/math may not import @mesh-forge/buffers, @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/math may not import @mesh-forge/buffers, @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/math/' },
-      to: { path: '^@mesh-forge/(buffers|geometry|document|render|viewport-react|export|transport|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(buffers|geometry|document|render|viewport-react|export|transport|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-buffers',
       severity: 'error',
-      comment: '@mesh-forge/buffers may not import @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/buffers may not import @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/buffers/' },
-      to: { path: '^@mesh-forge/(geometry|document|render|viewport-react|export|transport|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(geometry|document|render|viewport-react|export|transport|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-geometry',
       severity: 'error',
-      comment: '@mesh-forge/geometry may not import @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/geometry may not import @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/geometry/' },
-      to: { path: '^@mesh-forge/(document|render|viewport-react|export|transport|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(document|render|viewport-react|export|transport|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-document',
       severity: 'error',
-      comment: '@mesh-forge/document may not import @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/document may not import @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/document/' },
-      to: { path: '^@mesh-forge/(render|viewport-react|export|transport|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(render|viewport-react|export|transport|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-render',
       severity: 'error',
-      comment: '@mesh-forge/render may not import @mesh-forge/document, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/render may not import @mesh-forge/document, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/render/' },
-      to: { path: '^@mesh-forge/(document|viewport-react|export|transport|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(document|viewport-react|export|transport|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-viewport-react',
       severity: 'error',
-      comment: '@mesh-forge/viewport-react may not import @mesh-forge/document, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/viewport-react may not import @mesh-forge/document, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/viewport-react/' },
       to: { path: '^@mesh-forge/(document|export|transport|persistence|wasm-host|ui)' },
     },
     {
       name: 'edge-export',
       severity: 'error',
-      comment: '@mesh-forge/export may not import @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/export may not import @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/export/' },
-      to: { path: '^@mesh-forge/(document|render|viewport-react|transport|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(document|render|viewport-react|transport|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-transport',
       severity: 'error',
-      comment: '@mesh-forge/transport may not import @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/transport may not import @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/persistence, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/transport/' },
-      to: { path: '^@mesh-forge/(geometry|document|render|viewport-react|export|persistence|wasm-host|ui)' },
+      to: {
+        path: '^@mesh-forge/(geometry|document|render|viewport-react|export|persistence|wasm-host|ui)',
+      },
     },
     {
       name: 'edge-persistence',
       severity: 'error',
-      comment: '@mesh-forge/persistence may not import @mesh-forge/geometry, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/persistence may not import @mesh-forge/geometry, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/wasm-host, @mesh-forge/ui (README §12)',
       from: { path: '^packages/persistence/' },
       to: { path: '^@mesh-forge/(geometry|render|viewport-react|export|transport|wasm-host|ui)' },
     },
     {
       name: 'edge-wasm-host',
       severity: 'error',
-      comment: '@mesh-forge/wasm-host may not import @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/ui (README §12)',
+      comment:
+        '@mesh-forge/wasm-host may not import @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/ui (README §12)',
       from: { path: '^packages/wasm-host/' },
-      to: { path: '^@mesh-forge/(geometry|document|render|viewport-react|export|transport|persistence|ui)' },
+      to: {
+        path: '^@mesh-forge/(geometry|document|render|viewport-react|export|transport|persistence|ui)',
+      },
     },
     {
       name: 'edge-ui',
       severity: 'error',
-      comment: '@mesh-forge/ui may not import @mesh-forge/math, @mesh-forge/buffers, @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host (README §12)',
+      comment:
+        '@mesh-forge/ui may not import @mesh-forge/math, @mesh-forge/buffers, @mesh-forge/geometry, @mesh-forge/document, @mesh-forge/render, @mesh-forge/viewport-react, @mesh-forge/export, @mesh-forge/transport, @mesh-forge/persistence, @mesh-forge/wasm-host (README §12)',
       from: { path: '^packages/ui/' },
-      to: { path: '^@mesh-forge/(math|buffers|geometry|document|render|viewport-react|export|transport|persistence|wasm-host)' },
+      to: {
+        path: '^@mesh-forge/(math|buffers|geometry|document|render|viewport-react|export|transport|persistence|wasm-host)',
+      },
     },
   ],
   options: {

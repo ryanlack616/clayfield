@@ -24,21 +24,43 @@ tracks. Do not "fix" the desktop app as part of a web-track change.
 ## Setup
 
 ```bash
+git config core.hooksPath .githooks   # enables the pre-commit gate
 cd mesh-forge
-pnpm install            # workspace install; commits pnpm-lock.yaml
-cargo check --workspace # resolves the Rust workspace and the pinned toolchain
+pnpm install                          # workspace install; commits pnpm-lock.yaml
+cargo check --workspace               # resolves the Rust workspace and pinned toolchain
 ```
+
+`pnpm install` runs the workspace's `prepare` script, which sets `core.hooksPath`
+for you; the explicit `git config` line is the fallback if you skip the install.
+The hook runs the markdown link check on every commit and the heavier gate only
+when a covered path is staged. Bypass it deliberately with `git commit --no-verify`.
 
 ## Commands that must pass before you call work done
 
 ```bash
+scripts/check.sh          # the full gate — the same one CI runs
+scripts/check.sh --fast   # lint, typecheck, boundaries, rust check only
+```
+
+`scripts/check.sh` is the single definition of the gate: biome, the TypeScript
+build, the contract compile, the boundary lint, the forbidden-terms lint, cargo
+check and test, the wasm32 smoke, the package pack check, and the markdown link
+sweep. `.github/workflows/ci.yml` calls that script rather than restating the
+steps, so a local pass and a CI pass cannot disagree. Edit the script, not the
+workflow.
+
+Per-step commands, when you want one:
+
+```bash
 cd mesh-forge
-pnpm build                              # tsc -b across project references
-pnpm lint:boundaries                    # dependency-cruiser edge rules
+pnpm lint            # biome check: lint + format
+pnpm lint:fix        # biome check --write
+pnpm build           # tsc -b across project references
+pnpm lint:boundaries # dependency-cruiser edge rules
+pnpm exec tsc --noEmit --strict --target ES2022 --lib ES2022,DOM contracts/types.ts
 cargo check --workspace
 cargo test --workspace
 cargo check -p mesh-forge-wasm --target wasm32-unknown-unknown
-pnpm exec tsc --noEmit --strict --target ES2022 --lib ES2022,DOM contracts/types.ts
 ```
 
 The contract compile is the C1 gate: "types compile" means that command exits 0.
@@ -52,7 +74,7 @@ fails CI is a change that has not been verified.
 ## Definition of done
 
 1. Tests or a manual check that exercises the change.
-2. Lint and format clean.
+2. `scripts/check.sh --fast` passes — lint, format, typecheck, boundaries.
 3. Docs updated in the same commit — the design lives in each build's `README.md`,
    status in its `TASK-LIST.md`. Do not add a new tracker file.
 4. No unrelated changes in the same commit.
