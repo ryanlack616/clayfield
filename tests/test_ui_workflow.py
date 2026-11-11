@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from PySide6.QtCore import QEvent, QPointF, QSettings, Qt
 from PySide6.QtGui import QMouseEvent, QPalette
-from PySide6.QtWidgets import QApplication, QDialog, QSlider, QToolButton
+from PySide6.QtWidgets import QApplication, QDialog, QScrollArea, QSlider, QToolButton
 
 from clayfield.app.project_io import load_project, save_project
 from clayfield.app.project_state import ProjectState
@@ -43,6 +43,26 @@ def wait_for(app, predicate):
             return
         time.sleep(0.005)
     pytest.fail("Timed out waiting for background processing")
+
+
+def test_sidebars_do_not_scroll_horizontally(window):
+    """Both panels hold their own layout width so the splitter cannot squeeze them.
+
+    A QScrollArea's minimum width is far below its content's, so the splitter used
+    to shrink each sidebar a few pixels below what its widest control needed. That
+    produced a horizontal scrollbar across the bottom of both panels, clipping the
+    right edge of the controls.
+    """
+    win, app = window
+    win.resize(1280, 820)
+    app.processEvents()
+    for panel in (win.image_panel, win.terrain_panel):
+        scroll = panel.parentWidget()
+        while scroll is not None and not isinstance(scroll, QScrollArea):
+            scroll = scroll.parentWidget()
+        assert scroll is not None
+        assert scroll.width() >= panel.sizeHint().width()
+        assert not scroll.horizontalScrollBar().isVisible()
 
 
 def test_load_image_builds_terrain_and_inverts_once(window, tmp_path: Path):

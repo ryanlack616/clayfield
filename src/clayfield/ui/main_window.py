@@ -154,6 +154,14 @@ class MainWindow(QMainWindow):
         terrain_scroll = QScrollArea()
         terrain_scroll.setWidgetResizable(True)
         terrain_scroll.setWidget(self.terrain_panel)
+        # A scroll area's minimum width is small, so the splitter will squeeze a
+        # sidebar narrower than its own layout needs. That produced a horizontal
+        # scrollbar across the bottom of both panels, clipping the widest
+        # controls by a few pixels. Holding each scroll area at its content's
+        # hint keeps the splitter from shrinking below it, so the panels never
+        # scroll sideways.
+        for scroll, panel in ((image_scroll, self.image_panel), (terrain_scroll, self.terrain_panel)):
+            scroll.setMinimumWidth(panel.sizeHint().width())
         splitter.addWidget(image_scroll)
         splitter.addWidget(self.viewport)
         splitter.addWidget(terrain_scroll)
