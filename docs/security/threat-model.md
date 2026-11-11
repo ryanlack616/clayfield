@@ -55,11 +55,12 @@ Notes:
 ## Input validation requirements
 
 - Images: allowed extensions/MIME + magic-byte check, max dimensions, max bytes,
-  reject zero/NaN.
-- Archives: max members (e.g., 32), max total uncompressed, max member size,
-  compression-ratio cap, reject path traversal and duplicate entries.
-- JSON/document: schema validation, size caps, op-param range checks.
-- Worker messages: typed envelopes, size caps, generation/cancel validation.
+  reject zero/NaN. Limits: max 8192×8192 px, max 64 MB decoded, max 2048×2048
+  for the authoritative field.
+- Archives: max members 32, max total uncompressed 1 GB, max member 512 MB,
+  compression ratio 100:1, reject path traversal and duplicate entries.
+- JSON/document: schema validation, size cap 64 MB, op-param range checks.
+- Worker messages: typed envelopes, size cap 8 MB, generation/cancel validation.
 
 ## Fuzzing targets (when web work starts)
 

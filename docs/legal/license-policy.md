@@ -15,7 +15,9 @@ created it needs its own `LICENSE` file and license field.
   web scope.
 - Every dependency must be recorded in [NOTICE](../../NOTICE) before a public
   release.
-- Run a license scan in CI once the web workspace exists:
+- **Gate:** C0 owns the first license scan (it is part of the C0 CI skeleton);
+  C8b re-runs it against the packed packages. Run a license scan in CI once the
+  web workspace exists:
   - Rust: `cargo deny check licenses` with `deny.toml` allowlist.
   - JS: a license-checker / `pnpm licenses` step.
 

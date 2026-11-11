@@ -1,7 +1,7 @@
 # ClayField Task Plan
 
 The detailed V2 product roadmap is maintained in
-[V2-MASTER-PLAN.md](V2-MASTER-PLAN.md). This file tracks the current 0.3.x
+[V2-MASTER-PLAN.md](V2-MASTER-PLAN.md). This file tracks the current 2.0.0
 baseline and short-term release work; the master plan governs the procedural
 height-field, fabrication-analysis, and external heightmap/mask interchange.
 
@@ -57,12 +57,13 @@ Status: `[x]` complete, `[~]` partially complete, `[ ]` remaining.
 - [x] Add cross-section inspection with physical distance and height range readouts.
 
 The latest full local run passed **118 tests**, including OpenGL, stress, and
-PrusaSlicer checks. NVIDIA and Mesa software OpenGL checks passed; the 0.3.0
+PrusaSlicer checks. NVIDIA and Mesa software OpenGL checks passed; the 2.0.0
 wheel and Linux bundle passed clean-install and graphics self-tests. The bundle
-archive is `dist/clayfield-0.3.0-linux-x86_64.tar.gz`; the executable is
-`dist/0.3.0/clayfield/clayfield`. The project is intentionally local-only;
-remote CI, online publishing, and GitHub integration are not part of the
-current release process.
+archive is `dist/clayfield-2.0.0-linux-x86_64.tar.gz`; the executable is
+`dist/2.0.0/clayfield/clayfield`. The desktop 2.0.0 release is intentionally
+local-only; remote CI, online publishing, and GitHub integration are not part
+of that release process. The planned web builds (`mesh-forge/`,
+`clayfield-web/`) do add CI gates.
 
 Digital print QA artifacts are in `dist/print-qa/`: STL and 3MF are 60 × 40 ×
 8 mm, manifold, and both produced G-code through PrusaSlicer. Physical print
@@ -96,7 +97,7 @@ Local validation includes NVIDIA and Mesa 26.0.8 software rendering on Ubuntu
 - [~] Add validation-stage cancellation checkpoints; individual Trimesh/OpenCV calls remain indivisible.
 - [x] Debounce rapid edits and cache unaffected image-processing stages.
 - [x] Benchmark large images and meshes and retain conservative export safeguards.
-- [x] Migrate version 1/2 projects to version 3 and add recovery/compatibility tests.
+- [x] Migrate version 1/2/3 projects to version 4 and add recovery/compatibility tests.
 
 ### 3. GPU processing
 

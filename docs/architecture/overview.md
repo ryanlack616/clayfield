@@ -12,7 +12,8 @@ clayfield/                      # monorepo root
 ├─ mesh-forge/                  # domain-agnostic core
 │  ├─ packages/                 # @mesh-forge/* (TS)
 │  ├─ crates/                   # mesh-forge-core, mesh-forge-wasm (Rust)
-│  └─ apps/mesh-lab/            # reuse proof (packed packages)
+│  ├─ apps/mesh-lab/            # reuse proof (packed packages)
+│  └─ contracts/                # C8a frozen artifacts
 ├─ clayfield-web/               # first consumer (app plan D0–D8)
 └─ docs/                        # shared policies (this directory)
 ```
@@ -39,7 +40,7 @@ The dependency direction is one-way: `@clayfield/* → @mesh-forge/*` and
 image bytes
   → host decode (createImageBitmap; @clayfield/relief 16-bit TIFF)
   → NormalizedField (0..1)
-  → PROCESS stack (levels → curve → tone → blur → sharpen → threshold → invert)
+  → PROCESS stack (invert → levels → curve → tone → blur → sharpen → threshold)
   → height.map (normalized → mm)
   → base Heightfield
   → base + sculptOffsets = evaluated Heightfield

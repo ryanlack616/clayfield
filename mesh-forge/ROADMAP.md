@@ -16,7 +16,7 @@ ClayField/relief concepts.
 C0  Foundations (workspace, toolchain, boundaries, CI)
 C1  Primitives + taxonomy
 C2  Document + undo
-C3  Transport + WASM ABI
+C3  Transport + WASM host (ABI v1)
 C8a Partial freeze (consumed contracts)   <-- unblocks ClayField D0
 C4  Renderer + viewport
 C5  Export framework
@@ -27,7 +27,7 @@ C8b Full-stack reuse proof
 
 ## Critical path
 
-C0 → C1–C3 → **C8a** → (ClayField D0–D2) → C4–C7 → C8b → ClayField D8.
+C0 → C1–C3 → **C8a** → (ClayField D0–D2) → C4–C7 → ClayField D3–D7 → C8b → ClayField D8.
 
 C8a is the partial freeze point: ClayField builds against the frozen C1–C3
 subset and never chases a moving core. C8b is the full-stack reuse proof with
@@ -38,10 +38,10 @@ C8a subset.
 
 | Milestone | Meaning |
 |---|---|
-| M1 — Partial contracts frozen (C8a) | ClayField can start D0 |
-| M2 — Renderer (C4) | `SceneSnapshot` viewport + plugin registries |
-| M3 — Export + persistence + UI (C5–C7) | Core feature-complete |
-| M4 — Reuse proven (C8b) | mesh-forge validated by mesh-lab; no changes required to the C8a subset |
+| MF-M1 — Partial contracts frozen (C8a) | ClayField can start D0 |
+| MF-M2 — Renderer (C4) | `SceneSnapshot` viewport + plugin registries |
+| MF-M3 — Export + persistence + UI (C5–C7) | Core feature-complete |
+| MF-M4 — Reuse proven (C8b) | mesh-forge validated by mesh-lab; no changes required to the C8a subset |
 
 ## Effort
 

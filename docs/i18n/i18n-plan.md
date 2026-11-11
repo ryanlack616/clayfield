@@ -13,7 +13,9 @@ Start English-only, but structure strings so translation is not a rewrite later.
 ## Setup (when web work starts)
 
 - Pick a small i18n library (e.g., `@formatjs/intl` or `i18next`).
-- Message catalogs per locale; extract keys in CI.
+- Message catalogs per locale; extract keys in CI. **Gate:** C7 owns the key
+  extraction check; D7 owns the no-hard-coded-strings lint. A build with a
+  hard-coded user-facing string fails the D7 gate.
 - Keep domain terms in a glossary ([docs/reference/glossary.md] if added).
 - Avoid layout assumptions that break with longer translations; use flex/grid.
 - Plan for RTL (logical CSS properties) even if no RTL locale ships initially.

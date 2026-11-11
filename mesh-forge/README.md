@@ -86,6 +86,7 @@ mesh-forge/
 │  └─ mesh-forge-wasm/      ABI helpers only; no domain ops
 ├─ apps/
 │  └─ mesh-lab/             reuse proof; consumes packed packages
+├─ contracts/               C8a artifacts: version.json, api-report.md, *.d.ts
 └─ tooling/                 dependency-cruiser, eslint boundaries, CI
 ```
 
@@ -116,7 +117,8 @@ Note: `Field2D`/`ImageBuffer`/`MeshBuffers` live in `@mesh-forge/buffers`, not i
 
 ## 4. Contract taxonomy (the key fix)
 
-Do **not** model every capability as `Operation`. Use six separate contracts.
+Do **not** model every capability as `Operation`. Use six capability contracts
+(plus `Command` for undo).
 
 | Contract | Responsibility | Produces/consumes |
 |---|---|---|
@@ -189,8 +191,11 @@ pipeline stack.
 - Control block layout (little-endian, 8-byte aligned): `magic` u32, `version`
   u32, `generation` u32, `cancel` u32, `progress` u32, `dirtyRectCount` u32,
   `dirtyRects` u32[4*16] (max 16 rects, each `x,y,w,h`).
-- Single-writer rules: one worker owns `offsets`/`evaluated`; pipeline writes
-  `base` under the same seqlock; readers retry on odd/changed counters.
+- Single-writer rule: one writer owns `base`/`offsets`/`evaluated`; each buffer
+  has its own generation counter. Readers use `Atomics.load` and a double-buffer
+  swap (write the inactive buffer, then `Atomics.store` the index); never rely on
+  plain payload ordering. A seqlock is valid only with atomic payload accesses,
+  which is why the double buffer is the default.
 - Dirty-rect reporting for incremental texture upload.
 - Transferable-`ArrayBuffer` fallback with the same logical layout when
   `crossOriginIsolated` is false.
@@ -208,7 +213,8 @@ pipeline stack.
 - Registries: `MaterialRegistry`, `OverlayRegistry`, `PickProviderRegistry`.
 - `Material`: program + declared uniform schema + feature flags + depth/state.
 - `Overlay`: world/screen-space lines/points, depth-test flag.
-- `PickProvider`: receives a ray, returns hits; renderer only supplies the ray.
+- `PickProvider`: receives a ray, returns a `Promise<Hit[]>`; worker-backed queries
+  are async. The renderer only supplies the ray.
 - R32F texture rules, custom uniform binding, shader composition, resource
   ownership/disposal, and context-loss behavior are documented.
 - C4 exit criteria: a **custom domain material, overlay, and pick provider**
@@ -245,8 +251,11 @@ Define before D0:
   (ABI version, core version, opset version, op list, export formats, limits).
 - Capability aggregation across `mesh-forge-wasm` + domain ABI crates.
 - Alloc/free + handle arena with explicit `release(handle)`. Handle is `u64`
-  (generation in the high 32 bits, index in the low 32); memory growth invalidates
-  all raw pointers; callers must re-acquire handles after growth.
+  (generation in the high 32 bits, index in the low 32) and crosses the JS
+  boundary as `BigInt`. Memory growth detaches raw pointers and typed-array views;
+  handles stay valid, so callers re-acquire views after growth.
+- `invoke(opId, paramsPtr, paramsLen) -> resultHandle`: the single entry point for
+  registered domain ops. Result handles are released like any other handle.
 - Core error codes: `MF-<AREA>-<NNN>` (e.g. `MF-BUF-001`). App-level codes remain
   `CF-<AREA>-<NNN>` in `../docs/reference/error-codes.md`.
 - Bulk buffer descriptors `(ptr, len, dtype, shape)`; caller-allocated preferred.
@@ -301,13 +310,13 @@ Enforced in CI:
 | **C0** Foundations | Workspace scaffold, TS project refs, Rust workspace, boundary lint, CI, decisions §0 | Empty packages build; boundaries enforced; MF-1–MF-7 decided |
 | **C1** Primitives + taxonomy | `@mesh-forge/math`, `@mesh-forge/buffers`, `@mesh-forge/geometry`, `mesh-forge-core` buffers | Property tests native; wasm build smoke; taxonomy types compile |
 | **C2** Document + undo | Envelope, nodes, operation stack, command/transaction/undo, dirty tracking | Apply/invert invariants; sculpt-like rectangular-patch command test; coalescing; bounded history |
-| **C3** Transport + WASM host | Worker pool, multi-buffer SAB, ABI v1 handshake, transferable fallback | Multi-buffer + cancellation + fallback + crash/restart + ABI handshake/version-mismatch + memory ownership + bounds + handle release tests |
-| **C8a** Partial contract freeze | Freeze the C1–C3 subset that ClayField consumes | `contracts/version.json` + `contracts/api-report.md` + `contracts/*.d.ts` checked in; CI drift check; semver policy set; packed 0.x tarball installed into a clean `clayfield-web` fixture and builds |
-| **C4** Renderer | `@mesh-forge/render` + `@mesh-forge/viewport-react` on `SceneSnapshot`, registries | Custom material/overlay/pick-provider test; resource lifecycle; camera math; picking contract; overlay depth; context-loss recovery; frame-time smoke at 512² |
-| **C5** Export | `@mesh-forge/export`: sink, registry, STL + 3MF writers | Streaming STL; custom exporter test; validation hooks; cancel; byte-identical STL to reference; 3MF opens in lib3mf/slicer |
+| **C3** Transport + WASM host | Worker pool, multi-buffer SAB, ABI v1 handshake, transferable fallback | Multi-buffer + cancellation + fallback + crash/restart + ABI handshake/version-mismatch + memory ownership + bounds + handle release + worker message validation tests |
+| **C8a** Partial freeze of consumed contracts | Freeze the C1–C3 subset that ClayField consumes | `contracts/version.json` + `contracts/api-report.md` + `contracts/*.d.ts` checked in; CI drift check; semver policy set; packed 0.x tarball installed into a clean `clayfield-web` fixture and builds |
+| **C4** Renderer + viewport | `@mesh-forge/render` + `@mesh-forge/viewport-react` on `SceneSnapshot`, registries | Custom material/overlay/pick-provider test; resource lifecycle; camera math; picking contract; overlay depth; context-loss recovery; frame-time smoke at 512² |
+| **C5** Export framework | `@mesh-forge/export`: sink, registry, STL + 3MF writers | Streaming STL; custom exporter test; validation hooks; cancel; binary STL byte-identical to the Python reference writer (fixed triangle order, unit normals, 80-byte header); 3MF opens in lib3mf/slicer (OPC parts `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model`) |
 | **C6** Persistence | Container, manifest, blob store, `SchemaRegistry`, migrations | Round-trip; second-app schema fixture; migration chain; atomic save; recovery; unknown-version handling; corrupt/malicious archive rejection; archive limits |
 | **C7** UI primitives | `@mesh-forge/ui` + tokens | Controlled `FloatingCard`; `SplitLayout` slots; WCAG 2.2 AA; Storybook/Ladle |
-| **C8b** Full-stack reuse proof | `apps/mesh-lab` on packed packages: import, at least two transforms, custom material with a uniform, one sculpt-like stroke, export STL, save/load. Consumes: `math`, `buffers`, `geometry`, `document`, `render`, `viewport-react`, `export`, `transport`, `persistence`, `wasm-host`, `ui`, `mesh-forge-core`, `mesh-forge-wasm`. Depends on C4–C7. | Zero `@clayfield/*` imports in `@mesh-forge/*`; forbidden-terms lint clean; `pnpm pack` clean install; mesh-lab builds with zero core changes; no changes required to the C8a subset |
+| **C8b** Full-stack reuse proof | `apps/mesh-lab` on packed packages: import, at least two transforms, custom material with a uniform, one sculpt-like stroke, export STL, save/load. Consumes: `math`, `buffers`, `geometry`, `document`, `render`, `viewport-react`, `export`, `transport`, `persistence`, `wasm-host`, `ui`, `mesh-forge-core`, `mesh-forge-wasm`. Depends on C4–C7. | Zero `@clayfield/*` imports in `@mesh-forge/*`; forbidden-terms lint clean; `pnpm pack` clean install; mesh-lab builds with zero core changes; no changes required to the C8a subset; security/fuzz test clean |
 
 **3MF is not streamed:** 3MF is a ZIP container, so its writer needs a
 seekable sink and does two passes (or ZIP64 for large meshes); it buffers more
@@ -322,8 +331,20 @@ ClayField D8. C8a is a partial freeze: C8b is the full-stack reuse proof and may
 only require additive changes to the C8a subset. C8b depends on C4–C7; it is
 independent of ClayField, not of the core.
 
-**Effort:** ~20–26 person-weeks with 20–30% contingency. C4–C7 are sequential for
-a solo developer; "parallel" is not a schedule.
+**Effort:** ~20–26 person-weeks with 20–30% contingency. Per-phase estimates
+(planning figures, not commitments):
+
+| Phase | Weeks | Phase | Weeks |
+|---|---|---|---|
+| C0 | 1–2 | C4 | 2–3 |
+| C1 | 2–3 | C5 | 1–2 |
+| C2 | 2–3 | C6 | 2–3 |
+| C3 | 3–4 | C7 | 2–3 |
+| C8a | 1–2 | C8b | 2–3 |
+
+C4–C7 are sequential for a solo developer; "parallel" is not a schedule. The
+sum (18–28) brackets the total, so the critical path is checkable: C1–C3 and
+C4–C7 are the long poles, and C8b is off the critical path.
 
 ---
 

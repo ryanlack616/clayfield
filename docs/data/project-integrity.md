@@ -12,7 +12,7 @@ project.zip
   blobs/<sha256>.<ext>
 ```
 
-- Manifest lists every blob with `{id, kind, codec, hash, byteLength, shape?}`.
+- Manifest lists every blob with `{id, kind, codec, dtype?, shape?, hash, byteLength}`.
 - Verify SHA-256 of each blob on load; reject mismatches.
 - Validate document schema; unknown future version opens **read-only** or errors
   clearly.

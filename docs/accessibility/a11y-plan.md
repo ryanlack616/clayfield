@@ -39,6 +39,9 @@ cheap and worth doing.
 ## Testing
 
 - `eslint-plugin-jsx-a11y`, axe in component and E2E tests.
+- Minimum success criteria to verify: 1.4.3 contrast, 2.1.1 keyboard, 2.2.1
+  timing adjustable, 2.4.3 focus order, 2.4.7 focus visible, 2.5.7 dragging
+  movements, 4.1.2 name/role/value. Canvas: text alternative + live regions.
 - Manual screen-reader matrix (NVDA/JAWS on Windows, VoiceOver on macOS/iOS).
 - Keyboard-only pass for each milestone exit.
 

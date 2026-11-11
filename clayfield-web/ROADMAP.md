@@ -42,12 +42,12 @@ D0 cannot start until C8a partially freezes the consumed contracts. See
 
 | Milestone | Meaning |
 |---|---|
-| M1 — Image + PROCESS (D1) | Upload and adjust an image in the browser |
-| M2 — First 3D preview (D3) | Heightfield rendered in the viewport |
-| M3 — Sculpt (D4) | Interactive smoothing at target latency |
-| M4 — Export (D5) | Valid STL/3MF from the browser |
-| M5 — Projects + layout (D6–D7) | Save/load, final UI |
-| M6 — Release-ready (D8) | PWA, fallbacks, security, cross-browser |
+| CF-M1 — Image + PROCESS (D1) | Upload and adjust an image in the browser |
+| CF-M2 — First 3D preview (D3) | Heightfield rendered in the viewport |
+| CF-M3 — Sculpt (D4) | Interactive smoothing at target latency |
+| CF-M4 — Export (D5) | Valid STL/3MF from the browser |
+| CF-M5 — Projects + layout (D6–D7) | Save/load, final UI |
+| CF-M6 — Release-ready (D8) | PWA, fallbacks, security, cross-browser |
 
 ## Effort
 
@@ -60,5 +60,5 @@ of overlap with the core. See
 - Image upload only; no procedural/QFractalNow/composition/ComfyUI.
 - Left: upload + PROCESS + brush; center: viewport; right: fabrication; floating
   source card upper-left.
-- ≤2048² authoritative heightfield; streamed export.
+- ≤2048² authoritative heightfield; streamed STL export, 3MF buffered/seekable.
 - `evaluated = base + sculptOffsets`; export reads the evaluated field.

@@ -24,7 +24,7 @@ measurements exist. Desktop-first (Chromium/Edge), with graceful degradation.
 
 - **Preflight before allocating**: estimate buffers and reject with a clear
   message if over the cap (2048² authoritative).
-- **Stream exports** to a `FileSink`/Blob; never assemble the whole file in memory
+- **Stream exports** to an `ExportSink`/Blob; never assemble the whole file in memory
   when avoidable.
 - **Dirty-rect texture uploads** during sculpt; avoid full re-upload.
 - **Backpressure**: one in-flight job per worker kind; coalesce pointer events to

@@ -1,6 +1,7 @@
 # ClayField on mesh-forge — Implementation Plan
 
-Status: draft for review. Docs index: [../docs/README.md](../docs/README.md).
+Status: reviewed 2026-11-11; owner: Ryan. CF-1–CF-11 remain open. Docs index:
+[../docs/README.md](../docs/README.md).
 Companion doc: [../mesh-forge/README.md](../mesh-forge/README.md).
 
 ClayField is the first consumer of the mesh-forge core. This plan covers only
@@ -19,13 +20,13 @@ changes.
 
 | # | Decision | Recommendation |
 |---|---|---|
-| CF-1 | Desktop feature parity scope: presets, crop/resize, cross-section, export preview, recent projects, dark theme, ComfyUI | Keep: recent projects, dark theme, cross-section, export preview. Drop: ComfyUI. Decide presets and crop/resize (see §11). |
+| CF-1 | Desktop feature parity scope: presets, crop/resize, cross-section, export preview, recent projects, dark theme, ComfyUI | Keep: recent projects, light and dark themes, cross-section, export preview. Drop: ComfyUI. Decide presets and crop/resize (see §11). |
 | CF-2 | Project compatibility: v1–v4 desktop projects | Open v4 with a clear unsupported-feature policy; reject or read-only for features dropped from web v1. Do not silently lose data. |
 | CF-3 | Terrain noise stage (in `terrain/heightfield.py`) | Decide in/out. If kept, replace with a deterministic, cross-platform RNG and pin it in fixtures. |
 | CF-4 | Color policy | sRGB by default, optional linear-light; no ICC transforms in v1; document 16-bit preview tone mapping. |
 | CF-5 | Units | Millimetres only in v1; label clearly. |
 | CF-6 | Crop/resize | Keep if v4 projects must round-trip `image_geometry`; otherwise drop and reject v4 projects that use it. |
-| CF-7 | Browser support matrix | Primary: current Chrome/Edge. Secondary: Firefox + Safari (WebGL2, no SAB). Define a minimum-version policy and a graceful-degradation path. |
+| CF-7 | Browser support matrix | Primary: current Chrome/Edge. Secondary: Firefox + Safari (WebGL2; SAB where `crossOriginIsolated`). Define a minimum-version policy and a graceful-degradation path. |
 | CF-8 | Mobile/touch support | Desktop-first. On touch, support pinch/pan and avoid hover-only interactions; lower default resolution. Not a v1 gate. |
 | CF-9 | Hosting + headers | Static host that can set COOP/COEP/CSP (e.g., Cloudflare Pages/Netlify/Vercel); GitHub Pages cannot, so it uses the no-SAB fallback. |
 | CF-10 | PWA update strategy | Prompt to reload on new build (never silently reload mid-edit); keep the previous build deployable for rollback. |
@@ -58,7 +59,7 @@ ComfyUI, batch/headless adapter.
 ## 2. Packages
 
 ```
-clayfield/
+clayfield-web/                # sibling of mesh-forge/ and docs/
 ├─ packages/
 │  ├─ relief/          @clayfield/relief  (schemas, ops, presets?, domain types)
 │  └─ app/             @clayfield/app     (Vite PWA, layout, stores, worker wiring)
@@ -97,7 +98,7 @@ rows marked Operation go in the pipeline stack.**
 | `mesh.orient` | `Operation` | mesh → mesh |
 | `export.stl` / `export.3mf` | `Exporter` (thin adapter over `@mesh-forge/export`) | no reimplementation |
 | `export.heightmap` | `Exporter` (domain) | PNG/TIFF 8/16-bit |
-| `analyze.fabrication` | `Analyzer` | metrics + warnings |
+| `analyze.fabrication` | `Analyzer` | metrics + warnings; **warning order** = errors before warnings, then minimum-wall, overhang, base, container |
 | `analyze.crossSection` | `Analyzer` / TS | UI-only profile extraction |
 
 ---
@@ -186,8 +187,8 @@ Registered with mesh-forge `@mesh-forge/render` registries (no renderer edits):
   are distinct. Define which number "v5" refers to.
 - Desktop migration:
   - Support v1–v4 per an explicit policy (migrate / reject / read-only).
-  - v4 features dropped from web (procedural, QFractalNow, composition,
-    crop/resize) must not be silently discarded.
+  - v4 features dropped from web (procedural, QFractalNow, composition) must not
+    be silently discarded; crop/resize remains an open decision (CF-6).
   - v4 `sculpt_offsets.npz` requires a migration path (zip.js + minimal `.npy`
     parser in `@clayfield/relief`) or a documented rejection.
   - Preserve unknown fields when saving if read-only migration is offered.
@@ -220,15 +221,16 @@ Run fixtures against both SIMD and scalar WASM builds with documented tolerances
 
 | Phase | Depends on | Deliverable | Exit criteria |
 |---|---|---|---|
-| **D0** | C1, C3, **C8a** | Domain scaffold, image decode + grayscale, `pipeline.worker`, parity harness | Decode/grayscale parity (8-bit exact, 16-bit); channel/color policy verified; fixtures in CI |
+| **D0** | C1, C3 via **C8a** | Domain scaffold, image decode + grayscale, `pipeline.worker`, parity harness | Decode/grayscale parity (8-bit exact, 16-bit); channel/color policy verified; fixtures in CI |
 | **D1** | D0 | Full PROCESS stack + debounce/cancel | All adjustment parity; stale generation cancelled |
-| **D2** | D1 | Height mapping + fabrication analysis + budgets | mm parity; warning order matches; 2048 cap enforced; terrain-modifier decision applied |
+| **D2** | D1 | Height mapping + fabrication analysis + budgets | mm parity; warning order matches §3 definition; 2048 cap enforced; terrain-noise
+decision (CF-3) applied |
 | **D3** | C4, D2 | Viewport materials/overlays/pick provider | 60 fps at 512²; picking parity; custom plugins registered |
 | **D4** | C2, C3 (multi-buffer SAB), D2, D3 | Sculpt engine + SAB worker + patch undo + brush ring | Dab parity; ≥30 Hz at 2048²; bounded history; resolution-change discards layer |
 | **D5** | C5, D4 | Mesh + container + orient + STL/3MF/heightmap | Byte-identical STL; 3MF opens in lib3mf/slicer; progress/cancel; verification |
 | **D6** | C2, C6, D5 | Document schema, save/load, v1–v4 migration, autosave | Round-trip; corrupt/malicious archive rejected; unsupported-feature policy enforced; recovery |
 | **D7** | C2, C4, C7, D3–D6 | App shell + locked layout | Layout matches §7; card drag/resize persists; controlled `FloatingCard` |
-| **D8** | C3, C4, C5, C6, C8b | PWA, no-SAB fallback, Safari/iOS, parity/fuzz, security, release | Offline start; installable; cross-browser matrix; security/fuzz clean |
+| **D8** | C3, C4, C5, C6, C7, C8b, D7 | PWA, no-SAB fallback, Safari/iOS, parity/fuzz, security, release | Offline start; installable; cross-browser matrix; security/fuzz clean |
 
 **Sequencing:** D0–D2 start after **C8a** (partial freeze). C4–C7 proceed
 sequentially (interleaved for a solo developer); D3–D7 consume them. D8 starts

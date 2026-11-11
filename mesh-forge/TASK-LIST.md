@@ -61,7 +61,10 @@ Refs: README §13
 - [ ] Freeze the C1–C3 subset ClayField consumes
 - [ ] Check in `contracts/version.json`, `contracts/api-report.md`, `contracts/*.d.ts`
 - [ ] CI drift check; semver policy set
-- [ ] **Exit:** packed 0.x tarball installs into a clean `clayfield-web` fixture and builds
+- [ ] **Exit:** packed 0.x tarball installs into a clean throwaway consumer fixture
+      (empty Vite app outside the workspace, `--offline`) and builds. The real
+      `clayfield-web` packages arrive in D0; C8a only needs a fixture that proves
+      the packed packages install and resolve.
 
 ### C4 — Renderer + viewport
 Refs: README §9
@@ -74,7 +77,7 @@ Refs: README §9
 Refs: README §3 (Exporter), §13
 - [ ] `Exporter`/`ExportFormat`/`ExportJob`, low-level `ExportSink`, registry
 - [ ] STL + 3MF writers; validation hooks
-- [ ] **Exit:** streaming STL; custom exporter test; validation hooks; cancel; byte-identical STL to reference; 3MF opens in lib3mf/slicer
+- [ ] **Exit:** streaming STL; custom exporter test; validation hooks; cancel; binary STL byte-identical to reference writer; 3MF opens in lib3mf/slicer (OPC parts present)
 
 ### C6 — Persistence
 Refs: README §10
@@ -94,7 +97,7 @@ Refs: README §13, §12
 - [ ] `apps/mesh-lab` on **packed** packages: mesh import, at least two transforms, custom material with a uniform, one sculpt-like stroke, export STL, save/load
 - [ ] Consume: `math`, `buffers`, `geometry`, `document`, `render`, `viewport-react`, `export`, `transport`, `persistence`, `wasm-host`, `ui`, `mesh-forge-core`, `mesh-forge-wasm`
 - [ ] `pnpm pack` + clean-fixture install test
-- [ ] **Exit:** zero `@clayfield/*` imports in `@mesh-forge/*`; forbidden-terms lint clean; mesh-lab builds with zero core changes; no changes required to the C8a subset
+- [ ] **Exit:** zero `@clayfield/*` imports in `@mesh-forge/*`; forbidden-terms lint clean; mesh-lab builds with zero core changes; no changes required to the C8a subset; security/fuzz test clean
 
 ---
 

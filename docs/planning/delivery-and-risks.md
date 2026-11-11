@@ -17,7 +17,7 @@ Highest-risk, highest-effort items: **sculpting interactivity (D4)** and
 
 ## Critical path
 
-C0 → C1–C3 → **C8a (freeze)** → D0–D2 → C4–C7 (parallel) → D3–D7 → C8b → D8.
+C0 → C1–C3 → **C8a (freeze)** → D0–D2 → C4–C7 (sequential, interleaved) → D3–D7 → C8b → D8.
 
 ## Feature parity matrix (desktop → web v1)
 
