@@ -45,7 +45,7 @@ QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb .venv/bin/clayfield
 1. Choose a primary source in the left panel.
 2. Load an image, choose a procedural generator, or choose `QFractalNow config` and load a `.config` file.
 3. Configure the source-specific controls.
-4. Use `COMPOSE` at the bottom of the left panel for a secondary field or mask.
+4. Use `View → Compose…` for a secondary field or mask; the overlay's `×` closes it.
 5. Use `PROCESS` for preview selection, curves, levels, and image adjustments.
 6. Set physical dimensions and fabrication settings in the right panel.
 7. Optionally switch the sculpt panel to `On` and drag over the surface to smooth it.

@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
         close = QToolButton()
         close.setText("×")
         close.setToolTip("Close compose controls")
-        close.clicked.connect(lambda: self.image_panel.compose_toggle.setChecked(False))
+        close.clicked.connect(lambda: self.image_panel.set_compose_expanded(False))
         header.addWidget(title)
         header.addStretch()
         header.addWidget(close)
@@ -369,6 +369,12 @@ class MainWindow(QMainWindow):
         light.triggered.connect(self._choose_light_direction)
         cross_section = view_menu.addAction("Cross-section…")
         cross_section.triggered.connect(self._show_cross_section)
+        # Composition used to be a section toggle at the bottom of the left
+        # panel. The menu is now its only entry point, so the control stays
+        # discoverable without occupying a row in the scroll area.
+        compose = view_menu.addAction("Compose…")
+        compose.setToolTip("Show the secondary field and mask controls")
+        compose.triggered.connect(lambda: self.image_panel.set_compose_expanded(True))
         operation_menu = self.menuBar().addMenu("Operations")
         cancel = operation_menu.addAction("Cancel Current Operation")
         cancel.triggered.connect(self._cancel_current_operation)

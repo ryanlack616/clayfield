@@ -140,6 +140,17 @@ layout, which runs after the parent's `resizeEvent`, so
 that signal after calling `adjustSize()`. Positioning from the parent's resize
 event alone left the panel at a stale height and floating mid-canvas.
 
+*Composition is an overlay, not a sidebar section.* The compose controls used to
+be a `COMPOSE ▸` toolbutton at the bottom of the left panel, below a stretch and
+therefore below the fold of a short window. The controls were already parented to
+a floating overlay, so the sidebar toggle only duplicated the overlay's own close
+button and cost a row in the scroll area. The overlay is now the only presentation:
+`View → Compose…` opens it and its `×` closes it. `ImagePanel.set_compose_expanded`
+holds the state and emits `composition_requested`, so a project restore that had
+composition enabled reopens the overlay without needing a widget to check. Do not
+add a second toggle in the sidebar without removing the menu entry — two entry
+points drift out of sync.
+
 *Dirty state needs a tolerance.* A stroke is undone by subtracting the same
 displacement it added, so a perfect round trip lands within float32 rounding
 rather than exactly on the saved values. `_sculpt_changed` compares against the

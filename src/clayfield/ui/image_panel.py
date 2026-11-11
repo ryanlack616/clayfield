@@ -168,12 +168,13 @@ class ImagePanel(QWidget):
         self.procedural_stack = QStackedWidget()
         self.procedural_controls = self._build_procedural_controls()
         self.composition_controls = self._build_composition_controls()
-        self.compose_toggle = QToolButton()
-        self.compose_toggle.setObjectName("sectionButton")
-        self.compose_toggle.setText("COMPOSE  ▸")
-        self.compose_toggle.setCheckable(True)
-        self.compose_toggle.setChecked(False)
-        self.compose_toggle.toggled.connect(self._toggle_compose)
+        # The compose section has no sidebar toggle. The View menu opens the
+        # compose overlay and the overlay's own close button hides it, so the
+        # left panel ends on the PROCESS controls instead of a section header
+        # that sat below a stretch at the bottom of the scroll area. The state
+        # lives here rather than in a widget so a project restore can reopen the
+        # overlay without a control to check.
+        self._compose_expanded = False
         self.external_status = QLabel("Import a generated heightmap or mask")
         self.provenance = QLabel()
         self.provenance.setWordWrap(True)
@@ -294,7 +295,6 @@ class ImagePanel(QWidget):
         layout.addWidget(process_toggle)
         layout.addWidget(process_content)
         layout.addStretch()
-        layout.addWidget(self.compose_toggle)
         for name, widget in {
             "source_mode": self.source_mode,
             "source_randomize": self.source_randomize,
@@ -310,13 +310,23 @@ class ImagePanel(QWidget):
         )
         self.composition_controls["amount"].setToolTip("How strongly the composition replaces the primary field")
         self._source_mode_changed(0)
-        self._toggle_compose(False)
+        self.set_compose_expanded(False)
         self._update_provenance()
 
-    def _toggle_compose(self, expanded: bool) -> None:
-        self.composition_controls["box"].setVisible(bool(expanded))
-        self.compose_toggle.setText("COMPOSE  ▾" if expanded else "COMPOSE  ▸")
-        self.composition_requested.emit(bool(expanded))
+    def set_compose_expanded(self, expanded: bool) -> None:
+        """Show or hide the composition controls and the canvas overlay.
+
+        The View menu is the entry point and the overlay's close button is the
+        exit. The controls are not a collapsible section of the left panel any
+        more, so the only thing this method drives is the floating overlay.
+        """
+        expanded = bool(expanded)
+        if expanded == self._compose_expanded:
+            return
+        self._compose_expanded = expanded
+        box = self.composition_controls["box"]
+        box.setVisible(expanded)  # type: ignore[attr-defined]
+        self.composition_requested.emit(expanded)
         self._update_provenance()
 
     def _update_provenance(self) -> None:
@@ -1274,8 +1284,8 @@ class ImagePanel(QWidget):
     def _update_composition_state(self) -> None:
         c = self.composition_controls
         enabled = c["enabled"].isChecked()
-        if enabled and not self.compose_toggle.isChecked():
-            self.compose_toggle.setChecked(True)
+        if enabled and not self._compose_expanded:
+            self.set_compose_expanded(True)
         self.state.composition_settings = {
             "enabled": enabled,
             "operation": c["operation"].currentText().lower(),
@@ -1945,7 +1955,7 @@ class ImagePanel(QWidget):
             control.blockSignals(True)
         try:
             controls["enabled"].setChecked(bool(settings.get("enabled", False)))
-            self.compose_toggle.setChecked(bool(settings.get("enabled", False)))
+            self.set_compose_expanded(bool(settings.get("enabled", False)))
             controls["operation"].setCurrentText(str(settings.get("operation", "blend")).title())
             controls["amount"].setValue(float(settings.get("amount", 0.5)))
             source_type = descriptor.get("type")

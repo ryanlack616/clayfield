@@ -60,6 +60,11 @@ headless `fractalnow` command to regenerate them at preview and export
 resolution. Install FractalNow and ensure `fractalnow` is on `PATH` before
 opening a project that contains a QFractalNow source.
 
+Composition — a secondary heightmap, mask, or the operation that combines them —
+lives in a floating overlay rather than in the left panel. Open it with
+**View → Compose…** and close it with the overlay's `×` button. The controls are
+unavailable until a primary source exists.
+
 External image tools may generate or process a heightmap or mask. Export the
 result as an image, then use ClayField's **Import Secondary Heightmap** or
 **Import Mask** controls. ClayField validates and processes the imported data

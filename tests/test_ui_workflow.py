@@ -252,15 +252,26 @@ def test_secondary_has_independent_processing_settings(window):
     assert win.state.secondary_processing_settings["contrast"] == 1.5
 
 
-def test_compose_section_collapses_and_expands(window):
+def test_compose_section_is_reachable_from_the_view_menu(window):
+    """The compose controls used to be a section toggle in the left panel.
+
+    The toggle occupied a row at the bottom of the scroll area for a control the
+    user opens rarely. The View menu is now the entry point and the overlay's own
+    close button is the exit, so the sidebar ends on the PROCESS controls.
+    """
     win, app = window
-    assert not win.image_panel.compose_toggle.isChecked()
-    win.image_panel.compose_toggle.click()
-    assert win.image_panel.compose_toggle.isChecked()
-    assert "▾" in win.image_panel.compose_toggle.text()
-    win.image_panel.compose_toggle.click()
-    assert not win.image_panel.compose_toggle.isChecked()
-    assert "▸" in win.image_panel.compose_toggle.text()
+    assert not hasattr(win.image_panel, "compose_toggle")
+    assert not win.image_panel._compose_expanded
+    assert win.compose_overlay.isHidden()
+    view_menu = next(action for action in win.menuBar().actions() if action.text() == "View")
+    compose_action = next(action for action in view_menu.menu().actions() if action.text() == "Compose…")
+    compose_action.trigger()
+    assert win.image_panel._compose_expanded
+    assert not win.compose_overlay.isHidden()
+    close = next(button for button in win.compose_overlay.findChildren(QToolButton) if button.text() == "×")
+    close.click()
+    assert not win.image_panel._compose_expanded
+    assert win.compose_overlay.isHidden()
 
 
 def test_secondary_heightmap_and_mask_imports_are_composed(window, tmp_path: Path, monkeypatch):

@@ -61,6 +61,16 @@
 - Read the `View → Dark Theme` check mark from the saved setting instead of
   hardcoding it on. A fresh install starts with the light palette, so the menu
   used to claim a theme the window was not using.
+- Divide the Laplacian by the neighbour count in the Laplacian and Taubin
+  smoothing kernels. The raw stencil's largest eigenvalue is 8, so a full-strength
+  dab multiplied the highest-frequency component by `1 - 8*lambda` and grew the
+  surface by orders of magnitude per dab until the mesh left the viewport and the
+  driver stalled. Reject non-finite or non-positive `lambda`/`mu` and Taubin pairs
+  that violate the passivity condition `1/lambda + 1/mu > 0`.
+- Remove the `COMPOSE ▸` section toggle from the bottom of the left panel. The
+  compose controls live in a floating overlay, so `View → Compose…` opens it and
+  its own `×` closes it. The sidebar now ends on the PROCESS controls instead of
+  a header below a stretch.
 
 ## V2 development status
 
