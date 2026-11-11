@@ -62,6 +62,53 @@ def test_laplacian_does_not_touch_the_stencil_margin():
     np.testing.assert_array_equal(smoothed[:, -1], block[:, -1])
 
 
+def test_laplacian_does_not_amplify_high_frequency_detail():
+    """The raw Laplacian has an eigenvalue of 8, so a step above 1/4 runs away.
+
+    Smoothing a full-strength stroke over noisy terrain used to multiply the
+    highest-frequency component by ``1 - 8*lambda`` on every dab, growing the
+    surface by orders of magnitude until the model left the viewport.
+    """
+    rng = np.random.default_rng(0)
+    block = rng.random((64, 64)).astype(np.float32)
+    weights = np.ones_like(block)
+    peak = float(np.abs(block).max())
+    smoothed = block.copy()
+    for _ in range(10):
+        smoothed = smooth_laplacian(smoothed, weights)
+    assert np.isfinite(smoothed).all()
+    assert float(np.abs(smoothed).max()) <= peak
+
+
+def test_taubin_does_not_amplify_high_frequency_detail():
+    rng = np.random.default_rng(0)
+    block = rng.random((64, 64)).astype(np.float32)
+    weights = np.ones_like(block)
+    peak = float(np.abs(block).max())
+    smoothed = block.copy()
+    for _ in range(10):
+        smoothed = smooth_taubin(smoothed, weights)
+    assert np.isfinite(smoothed).all()
+    assert float(np.abs(smoothed).max()) <= peak
+
+
+def test_laplacian_rejects_an_invalid_lambda():
+    block = np.zeros((5, 5), dtype=np.float32)
+    weights = np.ones((5, 5), dtype=np.float32)
+    with pytest.raises(ValueError, match="lambda"):
+        smooth_laplacian(block, weights, lambda_=0.0)
+    with pytest.raises(ValueError, match="lambda"):
+        smooth_laplacian(block, weights, lambda_=float("nan"))
+
+
+def test_taubin_rejects_an_unpassive_pair():
+    """``1/lambda + 1/mu <= 0`` amplifies a band instead of damping it."""
+    block = np.zeros((5, 5), dtype=np.float32)
+    weights = np.ones((5, 5), dtype=np.float32)
+    with pytest.raises(ValueError, match="passivity"):
+        smooth_taubin(block, weights, lambda_=0.5, mu=-0.4)
+
+
 def test_laplacian_input_is_not_modified():
     heightfield = _bump_grid()
     settings = BrushSettings(radius_mm=15.0, strength=0.6)
