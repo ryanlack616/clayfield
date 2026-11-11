@@ -23,6 +23,13 @@ the next batch or closing a release gate.
 Post-V2 generator expansion is tracked in
 [V2-PATTERN-SOURCES-PLAN.md](V2-PATTERN-SOURCES-PLAN.md).
 
+The planned client-side web rewrite is split into two builds:
+[mesh-forge/README.md](mesh-forge/README.md) (reusable core; see its
+[roadmap](mesh-forge/ROADMAP.md) and [task list](mesh-forge/TASK-LIST.md)) and
+[clayfield-web/README.md](clayfield-web/README.md) (the app on that core; see its
+[roadmap](clayfield-web/ROADMAP.md) and [task list](clayfield-web/TASK-LIST.md)).
+All docs: [docs/README.md](docs/README.md).
+
 V2 is organized into six manageable build batches: baseline/contracts, field
 engine, pipeline/fabrication, persistence/workers, product UI/external imports,
 and production hardening/release.

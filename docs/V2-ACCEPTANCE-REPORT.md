@@ -52,3 +52,7 @@ The daily execution board is
 [`V2-MASTER-TASK-LIST.md`](../V2-MASTER-TASK-LIST.md). The full specification and
 release-blocker register are in
 [`V2-MASTER-PLAN.md`](../V2-MASTER-PLAN.md).
+
+---
+
+Part of the project docs. Index: [README.md](README.md).

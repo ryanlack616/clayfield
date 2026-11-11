@@ -1,0 +1,29 @@
+ClayField
+Copyright (c) 2026 ClayField contributors
+
+This product includes software developed by third parties. The list below is a
+working record; finalize and verify it before any public release or binary
+distribution.
+
+Current desktop dependencies (see pyproject.toml):
+- PySide6 / Qt — LGPLv3 (dynamic linking; review distribution obligations)
+- PyOpenGL, PyOpenGL-accelerate — BSD-style
+- numpy — BSD-3-Clause
+- opencv-python — Apache-2.0 (OpenCV)
+- Pillow — HPND / PIL license
+- scipy — BSD-3-Clause
+- trimesh — MIT
+- Optional: fractalnow — verify license before bundling (dropped from web scope)
+
+Planned web dependencies (verify before use):
+- React, React DOM — MIT
+- Radix UI — MIT
+- gl-matrix — MIT
+- zip.js — BSD-3-Clause
+- zod — MIT
+- Vite, vite-plugin-pwa — MIT
+- Rust crates: verify each with `cargo deny` (see docs/legal/license-policy.md)
+
+License texts are available from the respective upstream projects. Add full
+attribution text and an in-app "About / Third-party notices" view before a public
+release.

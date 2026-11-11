@@ -21,3 +21,7 @@ The current generated files are:
 - `dist/print-qa/clayfield-qa-3mf.gcode`
 
 Both models report 60 × 40 × 8 mm, one manifold part, and successful slicing.
+
+---
+
+Part of the project docs. Index: [README.md](README.md).

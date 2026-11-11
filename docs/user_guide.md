@@ -139,3 +139,7 @@ On systems with conflicting GNOME theme settings, launching with
 `QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb` may help. Disable **GPU Image
 Preview** from the View menu if the optional preview processing encounters a
 driver issue; CPU processing and export remain available.
+
+---
+
+Part of the project docs. Index: [README.md](README.md).

@@ -262,3 +262,7 @@ git archive --format=tar.gz --prefix=clayfield-2.0.0/ HEAD \
 For a Linux application bundle, use the commands in the Linux bundle section.
 Do not include `.venv`, `build`, `dist`, credentials, or local project files in
 source commits.
+
+---
+
+Part of the project docs. Index: [README.md](README.md).

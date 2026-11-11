@@ -37,3 +37,7 @@ The archive was integrity-tested with `py7zr` and contains 22,596 entries.
 
 Do not restore over the active V2 checkout. The archive is a rollback/reference
 copy, not an in-place migration mechanism.
+
+---
+
+Part of the project docs. Index: [README.md](README.md).
