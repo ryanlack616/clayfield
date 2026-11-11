@@ -15,7 +15,11 @@ Status values: `proposed`, `accepted`, `superseded by NNNN`, `rejected`.
 
 ## Index
 
-- (add entries here as ADRs are written)
+| ADR | Title | Status |
+|---|---|---|
+| [0001](0001-v4-projects-read-only.md) | v4 projects are read-only; web v1 drops presets, crop/resize, and terrain noise | accepted 2026-11-11 |
+
+Add entries here as ADRs are written.
 
 ---
 
