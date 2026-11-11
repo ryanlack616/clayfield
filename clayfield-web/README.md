@@ -1,6 +1,6 @@
 # ClayField on mesh-forge — Implementation Plan
 
-Status: reviewed 2026-11-11; owner: Ryan. CF-1–CF-11 remain open. Docs index:
+Status: reviewed 2026-11-11; owner: Ryan. CF-1–CF-11 accepted (ADR-0001). Docs index:
 [../docs/README.md](../docs/README.md).
 Companion doc: [../mesh-forge/README.md](../mesh-forge/README.md).
 
@@ -16,21 +16,26 @@ changes.
 
 ---
 
-## 0. Decisions needed before D0
+## 0. Decisions — accepted 2026-11-11
 
-| # | Decision | Recommendation |
+All eleven are decided. The four that change v4 behavior are recorded in
+[ADR-0001](../docs/adr/0001-v4-projects-read-only.md); the rest are accepted as
+recommended. D0's gate is satisfied. Change one only by superseding this table
+with a new date and, for the four, an amending ADR.
+
+| # | Decision | Accepted answer |
 |---|---|---|
-| CF-1 | Desktop feature parity scope: presets, crop/resize, cross-section, export preview, recent projects, dark theme, ComfyUI | Keep: recent projects, light and dark themes, cross-section, export preview. Drop: ComfyUI. Decide presets and crop/resize (see §11). |
-| CF-2 | Project compatibility: v1–v4 desktop projects | Open v4 with a clear unsupported-feature policy; reject or read-only for features dropped from web v1. Do not silently lose data. |
-| CF-3 | Terrain noise stage (in `terrain/heightfield.py`) | Decide in/out. If kept, replace with a deterministic, cross-platform RNG and pin it in fixtures. |
+| CF-1 | Desktop feature parity scope: presets, crop/resize, cross-section, export preview, recent projects, dark theme, ComfyUI | Keep: recent projects, light and dark themes, cross-section, export preview. Drop: ComfyUI, presets, crop/resize (CF-6; ADR-0001). |
+| CF-2 | Project compatibility: v1–v4 desktop projects | v4 projects open read-only; a banner names unsupported features. No lossy migration, no silent rewrite. ADR-0001. |
+| CF-3 | Terrain noise stage (in `terrain/heightfield.py`) | Drop. It is an additive modifier on the heightfield, not a generator; v4 projects with `noise_amplitude > 0` open read-only. ADR-0001. |
 | CF-4 | Color policy | sRGB by default, optional linear-light; no ICC transforms in v1; document 16-bit preview tone mapping. |
 | CF-5 | Units | Millimetres only in v1; label clearly. |
-| CF-6 | Crop/resize | Keep if v4 projects must round-trip `image_geometry`; otherwise drop and reject v4 projects that use it. |
+| CF-6 | Crop/resize | Drop. v4 projects using `image_geometry` open read-only. ADR-0001. |
 | CF-7 | Browser support matrix | Primary: current Chrome/Edge. Secondary: Firefox + Safari (WebGL2; SAB where `crossOriginIsolated`). Define a minimum-version policy and a graceful-degradation path. |
 | CF-8 | Mobile/touch support | Desktop-first. On touch, support pinch/pan and avoid hover-only interactions; lower default resolution. Not a v1 gate. |
 | CF-9 | Hosting + headers | Static host that can set COOP/COEP/CSP (e.g., Cloudflare Pages/Netlify/Vercel); GitHub Pages cannot, so it uses the no-SAB fallback. |
 | CF-10 | PWA update strategy | Prompt to reload on new build (never silently reload mid-edit); keep the previous build deployable for rollback. |
-| CF-11 | "v5" semantics | Define whether "v5" means the container version or the document schema version; keep them independent and documented. |
+| CF-11 | "v5" semantics | "v5" means the **document schema version** (`DocumentEnvelope.schemaVersion`). The container version stays separate; both are recorded in `../mesh-forge/contracts/version.json`. |
 
 ---
 
@@ -52,7 +57,8 @@ changes.
 
 ### Out of scope (dropped from desktop)
 Procedural generators, QFractalNow + binary, composition/secondary/mask,
-ComfyUI, batch/headless adapter.
+ComfyUI, batch/headless adapter, presets, crop/resize, terrain noise. v4 projects
+that use any of the last three open read-only (ADR-0001).
 
 ---
 
@@ -61,7 +67,7 @@ ComfyUI, batch/headless adapter.
 ```
 clayfield-web/                # sibling of mesh-forge/ and docs/
 ├─ packages/
-│  ├─ relief/          @clayfield/relief  (schemas, ops, presets?, domain types)
+│  ├─ relief/          @clayfield/relief  (schemas, ops, domain types)
 │  └─ app/             @clayfield/app     (Vite PWA, layout, stores, worker wiring)
 └─ crates/
    ├─ clayfield-relief/   image/terrain/sculpt/geometry/export domain
@@ -134,7 +140,7 @@ Node kind `relief` with payload:
 {
   source: { kind: "image", blobRef, decodedHash, width, height },
   process: OperationInstance[],          // PROCESS stack
-  geometry: { crop?: ..., resize?: ... }, // if CF-6 keeps crop/resize
+  // no geometry/crop/resize: dropped in v1 (CF-6, ADR-0001)
   heightMapping: {...},
   sculpt: { offsetRef, resolution, settings },  // domain payload field, not a core Layer
   fabrication: { baseThickness, reliefMode, profile, container },
@@ -192,14 +198,17 @@ Registered with mesh-forge `@mesh-forge/render` registries (no renderer edits):
 - Blobs: original source bytes; versioned sparse `sculpt_offsets` codec
   (`codec`, `dtype`, `shape`, `hash`, sparse rows/cols/values).
 - Versions: container version, `DocumentEnvelope.schemaVersion`, per-op version
-  are distinct. Define which number "v5" refers to.
-- Desktop migration:
-  - Support v1–v4 per an explicit policy (migrate / reject / read-only).
-  - v4 features dropped from web (procedural, QFractalNow, composition) must not
-    be silently discarded; crop/resize remains an open decision (CF-6).
+  are distinct. "v5" means the document schema version (CF-11).
+- Desktop migration (ADR-0001):
+  - v1–v4 projects open read-only when they use a dropped feature; projects
+    using only kept features migrate to v5.
+  - v4 features dropped from web (procedural, QFractalNow, composition, presets,
+    crop/resize, terrain noise) must not be silently discarded — the read-only
+    banner names them.
   - v4 `sculpt_offsets.npz` requires a migration path (zip.js + minimal `.npy`
     parser in `@clayfield/relief`) or a documented rejection.
-  - Preserve unknown fields when saving if read-only migration is offered.
+  - Preserve unknown fields when a v4 project migrates to v5. Projects that use
+    a dropped feature are read-only and are never re-saved.
 
 ---
 
@@ -246,17 +255,25 @@ after C8b. This ordering removes the original "API frozen too late" conflict.
 
 ---
 
-## 11. Open scope decisions
+## 11. Closed scope decisions (2026-11-11)
 
-- **Presets** — desktop ships them; **recommend dropping for v1** (JSON
-  import/export is cheap to add later). Either keep as a JSON import/export in
-  `@clayfield/relief` or explicitly drop for v1.
-- **Crop/resize** — keep if v4 `image_geometry` must round-trip; otherwise drop
-  and reject v4 projects that use it.
+Settled by [ADR-0001](../docs/adr/0001-v4-projects-read-only.md). This section
+records the answer; it is not reopened without an amending ADR.
+
+- **Presets** — **dropped for v1.** Desktop presets are a flat JSON parameter
+  snapshot (`presets.py`), so a v1 preset format is cheap to add later as a new
+  document type. A v1 loader must use a v1 allowlist and reject unknown fields.
+- **Crop/resize** — **dropped for v1.** It is a source-geometry step
+  (`apply_image_geometry`), not a PROCESS op. v4 projects using `image_geometry`
+  open read-only.
 - **Cross-section** — keep (listed as `analyze.crossSection`); it is a shipped
   desktop feature.
 - **Export preview** — keep (desktop feature; the `ExportDialog` shell exists).
-- **Terrain noise** — decide in/out; if in, deterministic RNG + fixtures.
+- **Terrain noise** — **dropped for v1.** It is an additive modifier on the
+  heightfield (`np.random.default_rng`, PCG64), not a generator, so the
+  "no procedural generators" line does not cover it. Keeping it would require a
+  PCG64 port and pinned fixtures. v4 projects with `noise_amplitude > 0` open
+  read-only.
 
 ---
 

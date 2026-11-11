@@ -26,9 +26,10 @@ different layers:
   block (`project_io.py:528–532`). It is an additive modifier, not a generator
   source, so the "no procedural generators" scope line does not cover it.
 
-The app plan's "no silent data loss" rule (README §8 and §19) rules out a lossy
-migration. CF-2 (the v4 compatibility policy) is the gate: CF-6 and CF-3 are
-downstream of it, and the presets half of CF-1 is downstream of both.
+The app plan's "no silent data loss" rule
+([`clayfield-web/README.md` §8 and §19](../../clayfield-web/README.md)) rules
+out a lossy migration. CF-2 (the v4 compatibility policy) is the gate: CF-6 and
+CF-3 are downstream of it, and the presets half of CF-1 is downstream of both.
 
 ## Decision
 

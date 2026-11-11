@@ -37,8 +37,9 @@ C0 → C1–C3 → **C8a (freeze)** → D0–D2 → C4–C7 (sequential, interle
 | STL/3MF/PNG/TIFF export | Yes |
 | Cross-section | Keep |
 | Export preview | Keep |
-| Presets | Decide (recommend drop for v1) |
-| Crop/resize | Decide (needed for v4 round-trip?) |
+| Presets | No (dropped; ADR-0001) |
+| Crop/resize | No (dropped; v4 projects using it open read-only) |
+| Terrain noise | No (dropped; v4 projects with `noise_amplitude > 0` open read-only) |
 | Recent projects | Keep |
 | Dark theme | Keep |
 | ComfyUI | No (dropped) |

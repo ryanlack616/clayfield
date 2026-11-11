@@ -13,17 +13,20 @@ Rule: design changes go in the plan; status changes go here.
 ## Decisions (blocking)
 
 ### Before D0
-- [ ] CF-1 Desktop parity scope (presets, crop/resize, cross-section, export preview, recent projects, dark theme, ComfyUI)
-- [ ] CF-2 v1–v4 project compatibility policy (migrate / reject / read-only)
-- [ ] CF-3 Terrain noise stage in/out (+ deterministic RNG if kept)
-- [ ] CF-4 Color policy (sRGB default, no ICC, 16-bit preview tone map)
-- [ ] CF-5 Units (millimetres only in v1)
-- [ ] CF-6 Crop/resize (keep if v4 `image_geometry` must round-trip)
-- [ ] CF-7 Browser support matrix + minimum versions
-- [ ] CF-8 Mobile/touch support (desktop-first; graceful degradation)
-- [ ] CF-9 Hosting provider + COOP/COEP/CSP header capability
-- [ ] CF-10 PWA update strategy (prompt; rollback path)
-- [ ] CF-11 "v5" semantics (container vs document schema)
+Decided 2026-11-11; answers in README §0. CF-1/2/3/6 are recorded in
+[ADR-0001](../docs/adr/0001-v4-projects-read-only.md); the rest are accepted as
+recommended. Reopen only by superseding §0 with a new date plus an ADR.
+- [x] CF-1 Desktop parity scope — keep recent projects, themes, cross-section, export preview; drop ComfyUI, presets, crop/resize
+- [x] CF-2 v1–v4 compatibility — v4 projects open read-only; no lossy migration
+- [x] CF-3 Terrain noise — dropped; v4 projects with `noise_amplitude > 0` read-only
+- [x] CF-4 Color policy (sRGB default, no ICC, 16-bit preview tone map)
+- [x] CF-5 Units (millimetres only in v1)
+- [x] CF-6 Crop/resize — dropped; v4 projects using `image_geometry` read-only
+- [x] CF-7 Browser support matrix + minimum versions
+- [x] CF-8 Mobile/touch support (desktop-first; graceful degradation)
+- [x] CF-9 Hosting provider + COOP/COEP/CSP header capability
+- [x] CF-10 PWA update strategy (prompt; rollback path)
+- [x] CF-11 "v5" semantics — document schema version; container version separate
 
 ---
 
@@ -106,4 +109,6 @@ Refs: README §14–§21
 
 ## Done log
 
+- 2026-11-11 — CF-1…CF-11 accepted (D0 decision gate satisfied). ADR-0001 sets
+  v4 projects to read-only and drops presets, crop/resize, and terrain noise.
 - (append completed phases with date and notable decisions)

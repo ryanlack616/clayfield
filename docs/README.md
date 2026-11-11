@@ -30,7 +30,7 @@ Do not restate contracts in the task list.
 | Doc | What it covers |
 |---|---|
 | [architecture/overview.md](architecture/overview.md) | Repo topology, core/app boundary, data flow, package graph, phase sequence |
-| [adr/README.md](adr/README.md) | Architecture decision records + template |
+| [adr/README.md](adr/README.md) | Architecture decision records + template; [ADR-0001](adr/0001-v4-projects-read-only.md) sets v4 projects read-only and drops presets, crop/resize, terrain noise |
 | [legal/license-policy.md](legal/license-policy.md) | Dependency licenses, GPL/AGPL, notices, names |
 | [quality/test-strategy.md](quality/test-strategy.md) | Test pyramid, parity fixtures, gates |
 | [security/threat-model.md](security/threat-model.md) | Threats, CSP/headers, input validation, fuzzing |
