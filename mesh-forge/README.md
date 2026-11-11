@@ -427,8 +427,9 @@ Personal-use baseline: keep ceremony low but make decisions durable.
   additive amendment plus an ADR. Never silently break a consumer.
 - **Feature flags:** large/optional features behind a flag so a bad build can be
   disabled without redeploy.
-- **Intentionally omitted (add only if public):** CODEOWNERS, CODE_OF_CONDUCT,
-  DCO/CLA, RACI, release trains.
+- **Intentionally omitted while the project is solo:** CODEOWNERS,
+  CODE_OF_CONDUCT, DCO/CLA, RACI, release trains. The repository is public, so
+  "public" is not the trigger; add these when outside contributors are expected.
 
 ## 17. Security and privacy
 
