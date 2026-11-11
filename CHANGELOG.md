@@ -38,6 +38,10 @@
 - Add a close button to the sculpt overlay and a `View → Sculpt Brush` toggle
   (`Ctrl+B`), so the brush controls can be dismissed instead of covering the
   canvas permanently. Right-drag orbits while the brush owns the left button.
+- Start the sculpt overlay hidden and make `View → Sculpt Brush` the entry
+  point: opening it arms the brush and closing it disarms. A 250 px card used to
+  cover the bottom-left corner of the canvas before any geometry existed. The
+  `Brush` combo still parks the brush while the panel stays open.
 - Anchor the sculpt overlay from the viewport's own resize event and settle its
   layout height first; it previously kept a position computed from the parent's
   stale viewport size and floated mid-canvas.

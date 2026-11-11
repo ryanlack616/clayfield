@@ -129,8 +129,13 @@ both modes. An earlier version routed only the left button to the brush and left
 right-drag unhandled, which made it impossible to rotate the model mid-stroke.
 The brush controls are a floating overlay parented to the viewport, so they
 follow the compose overlay's pattern: a `×` in the header hides them and a
-checkable `View → Sculpt Brush` action (`Ctrl+B`) shows them again. The panel's
-own height comes from its layout, which runs after the parent's `resizeEvent`, so
+checkable `View → Sculpt Brush` action (`Ctrl+B`) shows them again. The overlay
+starts hidden, because a fresh launch has no geometry to edit and a 250 px card
+in the corner is dead weight; `_set_sculpt_panel_visible` arms the brush when the
+menu opens the panel and disarms it when the panel closes, so one gesture starts
+sculpting. The panel's `Brush` combo remains a second view of the armed state and
+can disarm while the panel stays open. The panel's own height comes from its
+layout, which runs after the parent's `resizeEvent`, so
 `Viewport.resized` reports the final size and the overlay positions itself from
 that signal after calling `adjustSize()`. Positioning from the parent's resize
 event alone left the panel at a stale height and floating mid-canvas.

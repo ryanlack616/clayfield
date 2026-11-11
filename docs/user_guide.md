@@ -68,13 +68,16 @@ include an in-app external image-generation service.
 ## Sculpting
 
 The sculpt panel is a floating overlay in the bottom-left corner of the 3D
-viewport. Set its brush from `Off` to `On` to send left drags to the smoothing
-brush; middle drag still pans, right drag still orbits, and the wheel still
-zooms. A ring follows the pointer across the surface and shows the real-world
-brush radius at the point it will edit.
+viewport. It starts hidden so the canvas stays clear. Open it from
+`View → Sculpt Brush` (`Ctrl+B`): the panel appears and the brush is armed in the
+same step, so left drags immediately smooth the surface. While the brush is armed,
+middle drag still pans, right drag still orbits, and the wheel still zooms. A ring
+follows the pointer across the surface and shows the real-world brush radius at
+the point it will edit.
 
-The panel's `×` hides it; `View → Sculpt Brush` (`Ctrl+B`) shows it again. The
-brush smooths the surface and does not raise or lower it.
+The panel's `×` closes it and disarms the brush; `Ctrl+B` opens it again. Set the
+`Brush` row to `Off` to park the brush without closing the panel. The brush
+smooths the surface and does not raise or lower it.
 
 - **Radius** is in millimetres. Start near 5 % of the model width.
 - **Strength** scales how much each dab moves the surface, from 0 to 1.

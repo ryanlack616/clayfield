@@ -71,10 +71,12 @@ samples instead of stretching a square field.
 ## Sculpting
 
 The sculpt panel is a floating overlay in the bottom-left corner of the viewport.
-Its `×` hides it and `View → Sculpt Brush` (`Ctrl+B`) brings it back. The brush
-smooths the surface and does not raise or lower it. Switch the brush from `Off`
-to `On` to route left-drag to the smoothing brush instead of the camera;
-right-drag still orbits, middle-drag still pans and the wheel still zooms. The
+It starts hidden so a fresh launch leaves the canvas clear; `View → Sculpt Brush`
+(`Ctrl+B`) opens it and arms the brush in one step. Its `×` closes it again and
+disarms the brush. The brush smooths the surface and does not raise or lower it.
+While it is armed, left-drag paints instead of orbiting the camera; right-drag
+still orbits, middle-drag still pans and the wheel still zooms. Set the panel's
+`Brush` row back to `Off` to park the brush without closing the panel. The
 ring under the pointer is drawn in world space, so it shows the real brush radius
 on the surface you are about to edit.
 

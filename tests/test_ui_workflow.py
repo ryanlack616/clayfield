@@ -823,20 +823,44 @@ def test_sculpt_undo_returns_the_document_to_the_saved_state(window):
     assert "*" not in win.windowTitle()
 
 
+def test_sculpt_panel_starts_hidden_until_the_view_menu_opens_it(window):
+    """A 250 px card over the canvas before any geometry exists is just clutter."""
+    win, app = window
+    assert win.sculpt_panel.isHidden()
+    assert not win.sculpt_action.isChecked()
+    assert not win.viewport.sculpt_mode
+    win.sculpt_action.setChecked(True)
+    assert not win.sculpt_panel.isHidden()
+    assert win.sculpt_action.isChecked()
+    assert win.viewport.sculpt_mode
+    assert win.sculpt_panel.enabled
+
+
 def test_sculpt_panel_close_hides_the_controls_and_disables_the_brush(window):
     win, app = window
-    win.sculpt_panel.enable.setCurrentText("On")
+    win.sculpt_action.setChecked(True)
     assert win.viewport.sculpt_mode
     win.sculpt_panel.close_button.click()
     assert win.sculpt_panel.isHidden()
     assert not win.viewport.sculpt_mode
     assert not win.sculpt_action.isChecked()
-    # The View menu is the way back, and it restores the panel without silently
-    # re-arming the brush.
+    # The View menu is the way back; opening the panel arms the brush again so a
+    # single gesture resumes sculpting.
     win.sculpt_action.setChecked(True)
     assert not win.sculpt_panel.isHidden()
+    assert win.viewport.sculpt_mode
+    assert win.sculpt_panel.enabled
+
+
+def test_sculpt_panel_combo_can_disarm_while_the_panel_stays_open(window):
+    """The combo parks the brush without hiding the settings."""
+    win, app = window
+    win.sculpt_action.setChecked(True)
+    assert win.viewport.sculpt_mode
+    win.sculpt_panel.enable.setCurrentText("Off")
     assert not win.viewport.sculpt_mode
-    assert not win.sculpt_panel.enabled
+    assert not win.sculpt_panel.isHidden()
+    assert win.sculpt_action.isChecked()
 
 
 def test_sculpt_panel_set_enabled_does_not_reemit_the_toggle(window):

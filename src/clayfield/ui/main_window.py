@@ -208,6 +208,11 @@ class MainWindow(QMainWindow):
         self.viewport.sculpt_pressed.connect(self._sculpt_pressed)
         self.viewport.sculpt_moved.connect(self._sculpt_moved)
         self.viewport.sculpt_released.connect(self._sculpt_released)
+        # The brush controls start hidden: a fresh launch has no geometry to
+        # sculpt and a 250 px card parked over the canvas covers a fifth of the
+        # viewport before the user has done anything. The View menu is the entry
+        # point and arms the brush when it opens the panel.
+        self.sculpt_panel.hide()
         # A parent's resizeEvent runs before its children are laid out, so the
         # viewport reports its own size once that size is final. Without this the
         # bottom-anchored brush panel keeps the position it had before the resize.
@@ -225,7 +230,13 @@ class MainWindow(QMainWindow):
         self.viewport.set_sculpt_mode(enabled)
 
     def _set_sculpt_panel_visible(self, visible: bool) -> None:
-        """Show or hide the brush overlay; hiding it also disables the brush."""
+        """Show or hide the brush overlay.
+
+        Opening the panel arms the brush and hiding it disarms, so one gesture
+        from the View menu is enough to start sculpting. The panel's own combo
+        can still disarm while the panel stays open, which is how a user parks
+        the brush without losing the settings.
+        """
         visible = bool(visible)
         # isHidden() reports the explicit show/hide flag; isVisible() also goes
         # false while an ancestor is hidden, which would skip the update.
@@ -237,6 +248,8 @@ class MainWindow(QMainWindow):
             self.sculpt_action.blockSignals(False)
         if not visible:
             self._set_sculpt_enabled(False)
+        elif not self.sculpt_panel.enabled:
+            self._set_sculpt_enabled(True)
         self._position_canvas_overlays()
 
     def _set_compose_overlay(self, visible: bool) -> None:
@@ -336,9 +349,11 @@ class MainWindow(QMainWindow):
         self.gpu_preview_action.toggled.connect(self._set_gpu_preview)
         self.sculpt_action = view_menu.addAction("Sculpt Brush")
         self.sculpt_action.setCheckable(True)
-        self.sculpt_action.setChecked(True)
+        # Unchecked to match the panel, which _build_canvas_overlays leaves
+        # hidden on launch. Set before the connection so no toggle fires here.
+        self.sculpt_action.setChecked(False)
         self.sculpt_action.setShortcut("Ctrl+B")
-        self.sculpt_action.setToolTip("Show the sculpt brush controls over the viewport")
+        self.sculpt_action.setToolTip("Show the sculpt brush controls and route left-drag to the brush")
         self.sculpt_action.toggled.connect(self._set_sculpt_panel_visible)
         color = view_menu.addAction("Surface Color…")
         color.triggered.connect(self._choose_surface_color)
