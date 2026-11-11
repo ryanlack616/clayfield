@@ -65,6 +65,41 @@ result as an image, then use ClayField's **Import Secondary Heightmap** or
 deterministically before physical mapping and export. ClayField does not
 include an in-app external image-generation service.
 
+## Sculpting
+
+The sculpt panel sits in the bottom-left corner of the 3D viewport. Set its brush
+from `Off` to `On` to send left drags to the smoothing brush; middle drag still
+pans, right drag still orbits, and the wheel still zooms. A ring follows the
+pointer across the surface and shows the real-world brush radius at the point it
+will edit.
+
+- **Radius** is in millimetres. Start near 5 % of the model width.
+- **Strength** scales how much each dab moves the surface, from 0 to 1.
+- **Falloff** shapes the influence from the brush centre to its edge: linear,
+  smoothstep, gaussian, or constant. Every curve reaches zero at the radius, so a
+  dab never edits outside the ring.
+- **Algorithm** chooses the smoothing kernel:
+  - *Laplacian* averages each cell toward its four neighbours. It is the fastest
+    and removes fine noise, but repeated passes shrink peaks.
+  - *Taubin* alternates a positive and a negative Laplacian pass. It removes the
+    same noise with noticeably less shrinkage.
+  - *Bilateral* weights neighbours by both distance and height difference. It
+    preserves crests and step edges that the other kernels round off.
+
+Dabs are spaced by arc length along the pointer path, so dragging quickly applies
+the same total smoothing as dragging slowly. The spacing is 15 % of the brush
+diameter by default.
+
+Each press-drag-release sequence is one undo step. The Edit menu walks parameter
+edits and sculpt strokes in the order they happened, so undoing a sculpt stroke
+after a terrain change reverses the stroke first. The sculpt layer is saved inside
+the `.clayfield` project and survives terrain parameter changes: the procedural
+base is regenerated and the displacement layer is reapplied on top. A change that
+alters the heightfield resolution cannot be mapped onto the new grid, so the layer
+is discarded and the status bar reports it. Loading a new source image also clears
+the layer, because the surface it was painted on no longer exists. Exports always
+read the sculpted surface.
+
 For digital print QA, run `benchmarks/print_qa.py` with
 `CLAYFIELD_PRUSA_SLICER` set. It generates both mesh formats, records slicer
 dimensions/manifold status, and produces G-code. Physical printing still needs

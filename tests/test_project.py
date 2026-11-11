@@ -309,3 +309,48 @@ def test_project_round_trip_reproduces_edited_physical_heightfield(tmp_path: Pat
     restored = ProjectState()
     load_project(path, restored)
     np.testing.assert_allclose(result(restored), before)
+
+
+def test_sculpt_layer_round_trips(tmp_path: Path) -> None:
+    source = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+    source_path = tmp_path / "source.png"
+    assert cv2.imwrite(str(source_path), source)
+    state = ProjectState(source_path=source_path, source_image=source)
+    offsets = np.zeros((4, 4), dtype=np.float32)
+    offsets[1, 2] = 0.5
+    offsets[2, 1] = -0.25
+    state.sculpt_offsets = offsets
+
+    project = save_project(state, tmp_path / "sculpted.clayfield")
+    restored = ProjectState()
+    load_project(project, restored)
+
+    assert restored.sculpt_base is None
+    assert restored.sculpt_offsets is not None
+    np.testing.assert_array_equal(restored.sculpt_offsets, offsets)
+
+
+def test_project_without_a_sculpt_layer_loads_without_one(tmp_path: Path) -> None:
+    source = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+    source_path = tmp_path / "source.png"
+    assert cv2.imwrite(str(source_path), source)
+    state = ProjectState(source_path=source_path, source_image=source)
+
+    project = save_project(state, tmp_path / "plain.clayfield")
+    with zipfile.ZipFile(project) as archive:
+        assert "sculpt_offsets.npz" not in archive.namelist()
+    restored = ProjectState()
+    load_project(project, restored)
+    assert restored.sculpt_offsets is None
+
+
+def test_empty_sculpt_layer_is_not_persisted(tmp_path: Path) -> None:
+    source = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+    source_path = tmp_path / "source.png"
+    assert cv2.imwrite(str(source_path), source)
+    state = ProjectState(source_path=source_path, source_image=source)
+    state.sculpt_offsets = np.zeros((4, 4), dtype=np.float32)
+
+    project = save_project(state, tmp_path / "zeroed.clayfield")
+    with zipfile.ZipFile(project) as archive:
+        assert "sculpt_offsets.npz" not in archive.namelist()

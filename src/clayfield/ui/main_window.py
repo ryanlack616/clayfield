@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from clayfield.app.history import ParameterHistory, restore_parameters
+from clayfield.app.history import PARAMETER_EDIT, SCULPT_EDIT, EditLedger, ParameterHistory, restore_parameters
 from clayfield.app.presets import PresetError, load_preset, save_preset
 from clayfield.app.project_io import ProjectIOError, load_project, save_project
 from clayfield.app.project_state import ProjectState
@@ -45,6 +45,8 @@ from clayfield.field.persistence import PipelineSnapshot, SourceDescriptor
 from clayfield.field.processing import FieldProcessingSettings
 from clayfield.field.workflow import evaluate_serialized_pipeline
 from clayfield.geometry.container import ContainerSettings
+from clayfield.sculpt.history import SculptHistory, apply_stroke
+from clayfield.sculpt.session import SculptSession
 from clayfield.terrain.fabrication import FabricationProfile, analyze_heightfield
 from clayfield.terrain.heightfield import (
     PhysicalDimensions,
@@ -56,6 +58,7 @@ from clayfield.terrain.mapping import MappingSettings
 from clayfield.ui.cross_section import CrossSectionDialog
 from clayfield.ui.export_preview import ExportPreviewDialog
 from clayfield.ui.image_panel import ImagePanel
+from clayfield.ui.sculpt_panel import SculptPanel
 from clayfield.ui.terrain_panel import TerrainPanel
 from clayfield.ui.theme import apply_theme
 from clayfield.ui.viewport import Viewport
@@ -80,6 +83,20 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
         self.state = ProjectState()
         self.history = ParameterHistory(self.state)
+        # Sculpt strokes keep their own stack. Parameter snapshots never include the
+        # heightfield, so mixing the two in one stack would restore geometry the user
+        # never edited. The Edit menu consults this stack first.
+        self.sculpt_history = SculptHistory()
+        self.sculpt_session: SculptSession | None = None
+        # The parameter stack and the sculpt stack store different data, so the
+        # ledger records the order of their actions. Undo and redo then walk the
+        # stack that owns the most recent edit instead of guessing from depth.
+        self._ledger = EditLedger()
+        # ``state.sculpt_offsets`` compared against this copy decides whether the
+        # document is dirty when no parameter changed. It is refreshed on save and
+        # on load, so undoing a parameter change cannot mark saved sculpt work as
+        # clean or vice versa.
+        self._sculpt_clean: np.ndarray | None = None
         self.thread_pool = QThreadPool.globalInstance()
         self._heightfield_generation = 0
         self._heightfield_workers = {}
@@ -183,6 +200,13 @@ class MainWindow(QMainWindow):
         )
         self.compose_overlay.hide()
         self.image_panel.composition_requested.connect(self._set_compose_overlay)
+
+        self.sculpt_panel = SculptPanel(self.viewport)
+        self.sculpt_panel.sculpt_toggled.connect(self.viewport.set_sculpt_mode)
+        self.sculpt_panel.settings_changed.connect(self._sculpt_settings_changed)
+        self.viewport.sculpt_pressed.connect(self._sculpt_pressed)
+        self.viewport.sculpt_moved.connect(self._sculpt_moved)
+        self.viewport.sculpt_released.connect(self._sculpt_released)
         self._position_canvas_overlays()
 
     def _set_compose_overlay(self, visible: bool) -> None:
@@ -205,6 +229,10 @@ class MainWindow(QMainWindow):
             self.compose_overlay.move(
                 max(margin, self.viewport.width() - self.compose_overlay.width() - margin), margin
             )
+        if hasattr(self, "sculpt_panel"):
+            # Anchor the brush controls to the bottom-left corner so they never
+            # cover the preview or compose overlays in the top corners.
+            self.sculpt_panel.move(margin, max(margin, self.viewport.height() - self.sculpt_panel.height() - margin))
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -309,7 +337,7 @@ class MainWindow(QMainWindow):
                     self.terrain_panel.sync_from_state()
                     if self.state.source_type != "image":
                         self._rebuild_procedural_heightfield()
-                    self.history.reset(self.state, clean=True)
+                    self._reset_edit_history(clean=True)
                     self._update_history_actions()
                     self.setWindowTitle(f"ClayField — {self.state.project_path.name}")
                     event.acceptProposedAction()
@@ -327,7 +355,7 @@ class MainWindow(QMainWindow):
         self.state.__dict__.update(ProjectState().__dict__)
         self.image_panel.clear_preview()
         self.terrain_panel.sync_from_state()
-        self.history.reset(self.state, clean=True)
+        self._reset_edit_history(clean=True, discard_sculpt=True)
         self._update_history_actions()
         self.viewport.clear_heightfield()
         self.setWindowTitle("ClayField — Untitled")
@@ -352,7 +380,7 @@ class MainWindow(QMainWindow):
             self.terrain_panel.sync_from_state()
             if self.state.source_type != "image":
                 self._rebuild_procedural_heightfield()
-            self.history.reset(self.state, clean=True)
+            self._reset_edit_history(clean=True)
             self._update_history_actions()
             # Adjustment completion triggers heightfield generation in order.
             self.setWindowTitle(f"ClayField — {self.state.project_path.name}")
@@ -383,6 +411,8 @@ class MainWindow(QMainWindow):
         self._revision += 1
         self.history.record(self.state)
         self.history.mark_clean()
+        # The saved sculpt layer becomes the reference for the dirty comparison.
+        self._remember_sculpt_clean()
         self._update_history_actions()
         self._remember_project(output)
         discard_recovery_snapshot(previous_path)
@@ -685,15 +715,17 @@ class MainWindow(QMainWindow):
         self._heightfield_workers.pop(generation, None)
         if generation != self._heightfield_generation:
             return
-        physical = result.physical_heightfield
-        self.state.physical_heightfield = physical
+        base = result.physical_heightfield
+        final = self._apply_sculpt_layer(base)
+        self.state.physical_heightfield = final
         self.image_panel.set_procedural_preview(result.normalized_field.values)
+        final_min, final_max = float(final.min()), float(final.max())
         if self.state.relief_mode == "negative":
-            display = -physical
-            display_min, display_max = -result.maximum, -result.minimum
+            display = -final
+            display_min, display_max = -final_max, -final_min
         else:
-            display = physical
-            display_min, display_max = result.minimum, result.maximum
+            display = final
+            display_min, display_max = final_min, final_max
         self.viewport.set_height_range(display_min, display_max)
         self.viewport.set_heightfield(display, self.state.terrain_width_mm, self.state.terrain_depth_mm)
         self.image_panel.set_heightfield_preview(display, bounds=(display_min, display_max))
@@ -814,6 +846,7 @@ class MainWindow(QMainWindow):
             return
         heightfield, worker_min, worker_max = result
         if not provisional:
+            heightfield = self._apply_sculpt_layer(heightfield)
             self.state.physical_heightfield = heightfield
         if mode == "negative":
             display = -heightfield
@@ -823,7 +856,13 @@ class MainWindow(QMainWindow):
             display_min, display_max = worker_min, worker_max
         low, high = physical_height_bounds(dimensions, options or options_from_state(self.state))
         minimum, maximum = (-high, -low) if mode == "negative" else (low, high)
-        if maximum > minimum:
+        if not provisional:
+            # The sculpt layer can raise or lower the extremes beyond the base
+            # field's worker bounds, so the final display range is measured here.
+            display_min, display_max = float(display.min()), float(display.max())
+            if display_max > display_min:
+                self.viewport.set_height_range(display_min, display_max)
+        elif maximum > minimum:
             self.viewport.set_height_range(minimum, maximum)
         self.viewport.set_heightfield(display, dimensions.width_mm, dimensions.depth_mm)
         if not provisional:
@@ -1078,7 +1117,7 @@ class MainWindow(QMainWindow):
             self._recovery_snapshot = snapshot
             self.image_panel.refresh_from_state()
             self.terrain_panel.sync_from_state()
-            self.history.reset(self.state, clean=False)
+            self._reset_edit_history(clean=False)
             self._update_history_actions()
             # Adjustment completion triggers heightfield generation in order.
             self.setWindowTitle("ClayField — Recovered *")
@@ -1153,32 +1192,164 @@ class MainWindow(QMainWindow):
         self.viewport.clear_heightfield()
         self.terrain_panel.update_aspect_ratio()
         self._camera_view("fit")
-        self.history.reset(self.state, clean=False)
+        # A new image replaces the geometry the sculpt layer was painted on, so
+        # the layer and its strokes are discarded rather than applied to it.
+        self._reset_edit_history(clean=False, discard_sculpt=True)
         self._update_history_actions()
         self._mark_dirty()
         self.statusBar().showMessage(f"Loaded image: {path}")
 
     def _mark_dirty(self) -> None:
         self._revision += 1
+        previous_index = self.history.index
+        previous_length = len(self.history.entries)
         self.history.record(self.state)
+        if self.history.index != previous_index:
+            # A merged slider change updates the existing snapshot in place, so
+            # only a moved index is a new action for the undo ledger. A stack at
+            # its limit also dropped its oldest snapshot, which the ledger mirrors.
+            self._ledger.record(PARAMETER_EDIT)
+            if len(self.history.entries) == previous_length:
+                self._ledger.drop_oldest(PARAMETER_EDIT)
         self.state.dirty = True
         self._update_history_actions()
         self._update_title()
+
+    def _mark_sculpt_dirty(self) -> None:
+        """Flag the document dirty without recording a parameter snapshot."""
+        self._revision += 1
+        self.state.dirty = True
+        self._update_history_actions()
+        self._update_title()
+
+    def _sculpt_changed(self) -> bool:
+        """Return whether the sculpt layer differs from the last saved state."""
+        offsets = self.state.sculpt_offsets
+        if offsets is None:
+            return False
+        if self._sculpt_clean is None:
+            return True
+        return not np.array_equal(offsets, self._sculpt_clean)
+
+    def _remember_sculpt_clean(self) -> None:
+        """Snapshot the sculpt layer as the saved state."""
+        offsets = self.state.sculpt_offsets
+        self._sculpt_clean = None if offsets is None else offsets.copy()
+
+    def _reset_edit_history(self, *, clean: bool, discard_sculpt: bool = False) -> None:
+        """Reset the edit stacks after the document's source or project changes.
+
+        ``discard_sculpt`` drops the sculpt layer as well. It is used when the
+        geometry source is replaced, so a layer painted on the previous surface is
+        never applied to unrelated geometry. Otherwise the layer survives and is
+        remembered as the saved state.
+        """
+        self.history.reset(self.state, clean=clean)
+        self._ledger.clear()
+        if discard_sculpt:
+            self._clear_sculpt_layer()
+        else:
+            self.sculpt_history.clear()
+            self._remember_sculpt_clean()
 
     def _update_title(self) -> None:
         project_name = self.state.project_path.name if self.state.project_path else "Untitled"
         self.setWindowTitle(f"ClayField — {project_name}{' *' if self.state.dirty else ''}")
 
     def _update_history_actions(self) -> None:
-        self.undo_action.setEnabled(self.history.index > 0)
-        self.redo_action.setEnabled(self.history.index + 1 < len(self.history.entries))
+        self.undo_action.setEnabled(self._ledger.can_undo)
+        self.redo_action.setEnabled(self._ledger.can_redo)
+
+    def _apply_sculpt_layer(self, base: np.ndarray) -> np.ndarray:
+        """Return ``base + sculpt_offsets`` when a compatible layer exists.
+
+        The layer is preserved across regenerations only when the grid shape still
+        matches. A resolution or topology change discards it explicitly and reports
+        the decision rather than silently applying offsets to unrelated geometry.
+        """
+        offsets = self.state.sculpt_offsets
+        if offsets is None:
+            self.state.sculpt_base = base
+            return base
+        if offsets.shape != base.shape:
+            self._clear_sculpt_layer("Sculpt layer discarded: heightfield resolution changed")
+            self.state.sculpt_base = base
+            return base
+        self.state.sculpt_base = base
+        return base + offsets
+
+    def _clear_sculpt_layer(self, message: str | None = None) -> None:
+        """Drop the sculpt layer and its history."""
+        self.state.sculpt_base = None
+        self.state.sculpt_offsets = None
+        self.sculpt_session = None
+        self.sculpt_history.clear()
+        self._sculpt_clean = None
+        self._ledger.discard(SCULPT_EDIT)
+        self._update_history_actions()
+        if message:
+            self.statusBar().showMessage(message)
+
+    def _sculpt_settings_changed(self, settings) -> None:
+        """Apply a brush change to the running stroke without restarting it."""
+        self.viewport.set_brush_radius(settings.radius_mm)
+        if self.sculpt_session is not None:
+            self.sculpt_session.settings = settings
+
+    def _sculpt_pressed(self, x_mm: float, z_mm: float) -> None:
+        final = self.state.physical_heightfield
+        if final is None:
+            return
+        if self.state.sculpt_base is None or self.state.sculpt_offsets is None:
+            # The base is the evaluated field before any sculpt. The displacement
+            # layer starts at zero so ``final == base + offsets`` from the outset.
+            self.state.sculpt_base = final.copy()
+            self.state.sculpt_offsets = np.zeros_like(final)
+        settings = self.sculpt_panel.settings()
+        self.sculpt_session = SculptSession(
+            final,
+            self.state.sculpt_offsets,
+            self.state.terrain_width_mm,
+            self.state.terrain_depth_mm,
+            settings,
+            self.sculpt_history,
+        )
+        self.sculpt_session.begin_stroke(x_mm, z_mm)
+        self._refresh_sculpt_display()
+
+    def _sculpt_moved(self, x_mm: float, z_mm: float) -> None:
+        if self.sculpt_session is None:
+            return
+        if self.sculpt_session.apply_stroke(x_mm, z_mm):
+            self._refresh_sculpt_display()
+
+    def _sculpt_released(self) -> None:
+        if self.sculpt_session is None:
+            return
+        stroke = self.sculpt_session.finish()
+        self.sculpt_session = None
+        if stroke is not None:
+            self._ledger.record(SCULPT_EDIT)
+            self._mark_sculpt_dirty()
+
+    def _refresh_sculpt_display(self) -> None:
+        """Re-upload the evaluated heightfield after a brush dab."""
+        final = self.state.physical_heightfield
+        if final is None:
+            return
+        display = -final if self.state.relief_mode == "negative" else final
+        minimum, maximum = float(display.min()), float(display.max())
+        if maximum > minimum:
+            self.viewport.set_height_range(minimum, maximum)
+        self.viewport.set_heightfield(display, self.state.terrain_width_mm, self.state.terrain_depth_mm)
+        self.image_panel.set_heightfield_preview(display, bounds=(minimum, maximum))
 
     def _apply_history(self, snapshot) -> None:
         if snapshot is None:
             return
         self._revision += 1
         restore_parameters(self.state, snapshot)
-        self.state.dirty = self.history.is_dirty
+        self.state.dirty = self.history.is_dirty or self._sculpt_changed()
         self.terrain_panel.sync_from_state()
         self.image_panel.refresh_from_state()
         if self.state.source_type != "image":
@@ -1186,11 +1357,64 @@ class MainWindow(QMainWindow):
         self._update_history_actions()
         self._update_title()
 
+    def _apply_sculpt_stroke(self, stroke, *, forward: bool) -> None:
+        """Restore one stroke's before or after blocks and refresh the viewport."""
+        heightfield = self.state.physical_heightfield
+        offsets = self.state.sculpt_offsets
+        if heightfield is None or offsets is None:
+            return
+        apply_stroke(heightfield, offsets, stroke, forward=forward)
+        self._revision += 1
+        self.state.dirty = True
+        self._refresh_sculpt_display()
+        self._update_history_actions()
+        self._update_title()
+
     def _undo(self) -> None:
-        self._apply_history(self.history.undo())
+        """Undo the most recent parameter or sculpt action."""
+        while True:
+            kind = self._ledger.undo()
+            if kind is None:
+                return
+            if kind == SCULPT_EDIT:
+                if not self.sculpt_history.can_undo:
+                    # The ledger outlived its stack; drop the stale actions and
+                    # try the next one rather than doing nothing.
+                    self._ledger.discard(SCULPT_EDIT)
+                    continue
+                stroke = self.sculpt_history.undo()
+                if stroke is not None:
+                    self._apply_sculpt_stroke(stroke, forward=False)
+                return
+            if self.history.index == 0:
+                self._ledger.discard(PARAMETER_EDIT)
+                continue
+            snapshot = self.history.undo()
+            if snapshot is not None:
+                self._apply_history(snapshot)
+            return
 
     def _redo(self) -> None:
-        self._apply_history(self.history.redo())
+        """Redo the most recently undone parameter or sculpt action."""
+        while True:
+            kind = self._ledger.redo()
+            if kind is None:
+                return
+            if kind == SCULPT_EDIT:
+                if not self.sculpt_history.can_redo:
+                    self._ledger.discard(SCULPT_EDIT)
+                    continue
+                stroke = self.sculpt_history.redo()
+                if stroke is not None:
+                    self._apply_sculpt_stroke(stroke, forward=True)
+                return
+            if self.history.index + 1 >= len(self.history.entries):
+                self._ledger.discard(PARAMETER_EDIT)
+                continue
+            snapshot = self.history.redo()
+            if snapshot is not None:
+                self._apply_history(snapshot)
+            return
 
     def _save_preset(self) -> None:
         path, _ = QFileDialog.getSaveFileName(

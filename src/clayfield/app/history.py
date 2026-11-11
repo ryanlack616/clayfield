@@ -65,6 +65,93 @@ def restore_parameters(state: ProjectState, snapshot: dict) -> None:
             setattr(state, name, deepcopy(snapshot[name]))
 
 
+PARAMETER_EDIT = "parameter"
+SCULPT_EDIT = "sculpt"
+EDIT_KINDS = (PARAMETER_EDIT, SCULPT_EDIT)
+
+
+class EditLedger:
+    """Order the parameter and sculpt edits that undo and redo must walk.
+
+    Parameter snapshots and sculpt strokes live in separate stacks because they
+    store different data: a snapshot holds control values, a stroke holds vertex
+    blocks. The user still expects one chronological undo order, so the ledger
+    records only the *kind* of each new edit. Undo and redo then walk the stack
+    that owns the most recent action instead of guessing from stack depth.
+
+    Callers record an edit only when the owning stack actually gained an entry.
+    A merged slider change updates the existing snapshot, so it is not a new
+    action and must not be recorded here.
+    """
+
+    def __init__(self) -> None:
+        self._kinds: list[str] = []
+        self._index = 0
+
+    @property
+    def index(self) -> int:
+        """Number of actions currently applied."""
+        return self._index
+
+    @property
+    def can_undo(self) -> bool:
+        return self._index > 0
+
+    @property
+    def can_redo(self) -> bool:
+        return self._index < len(self._kinds)
+
+    def record(self, kind: str) -> None:
+        """Append a new action and drop any redo tail."""
+        if kind not in EDIT_KINDS:
+            raise ValueError(f"Unknown edit kind {kind!r}; expected one of {', '.join(EDIT_KINDS)}")
+        del self._kinds[self._index :]
+        self._kinds.append(kind)
+        self._index = len(self._kinds)
+
+    def undo(self) -> str | None:
+        """Step back one action and return its kind."""
+        if not self.can_undo:
+            return None
+        self._index -= 1
+        return self._kinds[self._index]
+
+    def redo(self) -> str | None:
+        """Step forward one action and return its kind."""
+        if not self.can_redo:
+            return None
+        kind = self._kinds[self._index]
+        self._index += 1
+        return kind
+
+    def discard(self, kind: str) -> None:
+        """Drop every recorded action of ``kind``, for example a cleared layer."""
+        kept: list[str] = []
+        index = 0
+        for position, entry in enumerate(self._kinds):
+            if entry == kind:
+                continue
+            if position < self._index:
+                index += 1
+            kept.append(entry)
+        self._kinds = kept
+        self._index = index
+
+    def drop_oldest(self, kind: str) -> None:
+        """Drop the earliest action of ``kind`` to mirror a trimmed stack."""
+        for position, entry in enumerate(self._kinds):
+            if entry == kind:
+                del self._kinds[position]
+                if position < self._index:
+                    self._index -= 1
+                return
+
+    def clear(self) -> None:
+        """Discard every action, for example when a project is replaced."""
+        self._kinds.clear()
+        self._index = 0
+
+
 def _changed_keys(before: dict, after: dict) -> tuple[str, ...]:
     keys = []
     for name in PARAMETERS:

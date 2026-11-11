@@ -75,6 +75,54 @@ The single completion roadmap is
 [`V2-CANONICAL-ROADMAP.md`](../V2-CANONICAL-ROADMAP.md).
 The V1 rollback procedure is in [`v1_restore.md`](v1_restore.md).
 
+## Sculpting subsystem
+
+`src/clayfield/sculpt/` holds the interactive mesh-editing foundation. ClayField
+does not keep a triangle mesh in the interactive path: `generate_solid_mesh`
+builds the closed solid on demand for STL/3MF export. The authoritative geometry
+is the CPU heightfield, so the brush paints a displacement into that grid and
+export still reads one surface.
+
+Coordinate convention, shared with the viewport and `terrain/heightfield.py`:
+
+- `heightfield[row, column]` is millimetres above the base plane.
+- `row` increases with `+z`; `column` increases with `+x`.
+- `x` spans `[-width_mm / 2, +width_mm / 2]`, `z` spans `[-depth_mm / 2, +depth_mm / 2]`.
+- The viewport renders in `mm / 20` units, so a ray produced in viewport units
+  must have its origin scaled by 20 before intersecting a heightfield in mm.
+
+Module responsibilities:
+
+| Module | Responsibility |
+| --- | --- |
+| `brush.py` | Validated brush settings and falloff/algorithm names |
+| `falloff.py` | Linear, smoothstep, gaussian, constant influence curves |
+| `brush_query.py` | Rectangular footprint with zero-weight stencil margin |
+| `stroke.py` | Arc-length dab spacing between pointer samples |
+| `surface_picking.py` | Screen ray, heightfield intersection, bilinear sampling |
+| `smooth_laplacian.py` | Four-neighbour Laplacian kernel |
+| `smooth_taubin.py` | Alternating lambda/mu passes |
+| `smooth_bilateral.py` | Distance and height-difference weighted average |
+| `session.py` | One press-drag-release stroke over the heightfield and layer |
+| `history.py` | Bounded stroke stack and in-place before/after restore |
+
+Two design points are worth keeping in mind when extending this.
+
+*The smoothing kernels are grid specializations, not mesh operators.* The handoff
+specification describes cotangent-weighted Laplacian smoothing for irregular
+triangle meshes. ClayField's interactive surface is a regular grid, where the
+cotangent weights collapse to a constant four-neighbour stencil. The kernels are
+written against that stencil; the interfaces take a block plus per-cell weights,
+so a triangle-mesh backend can replace them without changing `session.py`.
+
+*The sculpt layer is a displacement, not a replacement.* `state.sculpt_base` holds
+the evaluated procedural field and `state.sculpt_offsets` holds the per-cell
+displacement, with `state.physical_heightfield == sculpt_base + sculpt_offsets`
+whenever a layer exists. `_apply_sculpt_layer` reapplies the layer when the base is
+regenerated and discards it when the grid shape changes. `EditLedger` in
+`app/history.py` orders parameter snapshots and sculpt strokes so mixed undo and
+redo follow the order the user made them.
+
 ## Numerical compatibility policy
 
 Same-stack deterministic generators should match reference fixtures within

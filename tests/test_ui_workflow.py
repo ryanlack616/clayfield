@@ -639,3 +639,115 @@ def test_viewport_decimates_large_heightfield_for_display(window):
     display, rows, columns = win.viewport._decimate_for_display(heightfield)
     assert max(rows, columns) <= 4096
     assert display.shape == (rows, columns)
+
+
+def _bump_heightfield(size: int = 41, height: float = 2.0) -> np.ndarray:
+    heightfield = np.zeros((size, size), dtype=np.float32)
+    centre = size // 2
+    heightfield[centre - 2 : centre + 2, centre - 2 : centre + 2] = height
+    return heightfield
+
+
+def _install_sculpt_field(win) -> np.ndarray:
+    heightfield = _bump_heightfield()
+    win.state.physical_heightfield = heightfield
+    win.state.sculpt_base = None
+    win.state.sculpt_offsets = None
+    win.state.terrain_width_mm = 100.0
+    win.state.terrain_depth_mm = 100.0
+    return heightfield
+
+
+def test_sculpt_stroke_updates_the_heightfield_and_keeps_the_layer_identity(window):
+    win, app = window
+    heightfield = _install_sculpt_field(win)
+    original = heightfield.copy()
+    win.sculpt_panel.radius.setValue(15.0)
+    win.sculpt_panel.strength.setValue(0.8)
+    win.sculpt_panel.enable.setCurrentText("On")
+    assert win.viewport.sculpt_mode
+    win.viewport.sculpt_pressed.emit(0.0, 0.0)
+    win.viewport.sculpt_moved.emit(20.0, 0.0)
+    win.viewport.sculpt_released.emit()
+    assert not np.array_equal(win.state.physical_heightfield, original)
+    assert win.state.sculpt_base is not None
+    assert win.state.sculpt_offsets is not None
+    np.testing.assert_allclose(
+        win.state.physical_heightfield, win.state.sculpt_base + win.state.sculpt_offsets, atol=1e-6
+    )
+    assert np.any(win.state.sculpt_offsets != 0.0)
+    assert win.state.dirty
+    assert win.undo_action.isEnabled()
+
+
+def test_sculpt_stroke_undo_and_redo_restore_the_surface(window):
+    win, app = window
+    heightfield = _install_sculpt_field(win)
+    original = heightfield.copy()
+    win.sculpt_panel.radius.setValue(15.0)
+    win.sculpt_panel.enable.setCurrentText("On")
+    win.viewport.sculpt_pressed.emit(0.0, 0.0)
+    win.viewport.sculpt_moved.emit(20.0, 0.0)
+    win.viewport.sculpt_released.emit()
+    sculpted = win.state.physical_heightfield.copy()
+    win._undo()
+    np.testing.assert_allclose(win.state.physical_heightfield, original, atol=1e-6)
+    np.testing.assert_allclose(win.state.sculpt_offsets, 0.0, atol=1e-6)
+    assert win.redo_action.isEnabled()
+    win._redo()
+    np.testing.assert_allclose(win.state.physical_heightfield, sculpted, atol=1e-6)
+
+
+def test_sculpt_stroke_undo_after_a_parameter_change_walks_both_stacks(window):
+    win, app = window
+    heightfield = _install_sculpt_field(win)
+    original = heightfield.copy()
+    win.sculpt_panel.radius.setValue(15.0)
+    win.sculpt_panel.enable.setCurrentText("On")
+    win.viewport.sculpt_pressed.emit(0.0, 0.0)
+    win.viewport.sculpt_moved.emit(20.0, 0.0)
+    win.viewport.sculpt_released.emit()
+    sculpted = win.state.physical_heightfield.copy()
+    # A terrain parameter edit lands on top of the sculpt stroke in the ledger.
+    win.terrain_panel.width.setValue(110.0)
+    assert win.undo_action.isEnabled()
+    win._undo()
+    # The parameter change is undone first, so the sculpt stroke stays applied.
+    np.testing.assert_allclose(win.state.physical_heightfield, sculpted, atol=1e-6)
+    win._undo()
+    np.testing.assert_allclose(win.state.physical_heightfield, original, atol=1e-6)
+    win._redo()
+    np.testing.assert_allclose(win.state.physical_heightfield, sculpted, atol=1e-6)
+
+
+def test_new_project_discards_the_sculpt_layer(window):
+    win, app = window
+    _install_sculpt_field(win)
+    win.sculpt_panel.enable.setCurrentText("On")
+    win.viewport.sculpt_pressed.emit(0.0, 0.0)
+    win.viewport.sculpt_released.emit()
+    assert win.state.sculpt_offsets is not None
+    win.state.dirty = False
+    win._new_project()
+    assert win.state.sculpt_base is None
+    assert win.state.sculpt_offsets is None
+    assert not win.sculpt_history.can_undo
+
+
+def test_viewport_brush_radius_is_validated_and_tracks_the_panel(window):
+    win, app = window
+    with pytest.raises(ValueError, match="radius"):
+        win.viewport.set_brush_radius(0.0)
+    win.sculpt_panel.radius.setValue(12.5)
+    assert win.viewport.brush_radius_mm == pytest.approx(12.5)
+
+
+def test_viewport_picks_the_surface_under_the_pointer(window):
+    win, app = window
+    win.viewport.resize(800, 600)
+    heightfield = np.zeros((41, 41), dtype=np.float32)
+    win.viewport.set_heightfield(heightfield, 100.0, 100.0)
+    hit = win.viewport._pick(400, 300)
+    assert hit is not None
+    assert hit.x_mm == pytest.approx(0.0, abs=1.0)
+    assert hit.z_mm == pytest.approx(0.0, abs=1.0)

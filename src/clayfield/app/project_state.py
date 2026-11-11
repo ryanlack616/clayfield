@@ -48,6 +48,11 @@ class ProjectState:
     heightfield_resolution: tuple[int, int] | None = (2048, 2048)
     export_resolution: tuple[int, int] = (2048, 2048)
     physical_heightfield: np.ndarray | None = None
+    # Sculpting keeps the procedural base and the displacement layer separate so a
+    # regeneration can reapply or discard the sculpt explicitly. ``physical_heightfield``
+    # is always ``sculpt_base + sculpt_offsets`` while a sculpt layer exists.
+    sculpt_base: np.ndarray | None = None
+    sculpt_offsets: np.ndarray | None = None
     base_thickness_mm: float = 5.0
     fabrication_profile: dict = field(
         default_factory=lambda: {
@@ -109,6 +114,8 @@ class ProjectState:
         self.image_height = 0
         self.image_bit_depth = 0
         self.physical_heightfield = None
+        self.sculpt_base = None
+        self.sculpt_offsets = None
         self.dirty = False
 
     def set_source(self, path: Path, pixels: np.ndarray) -> None:
@@ -131,6 +138,8 @@ class ProjectState:
         self.grayscale_image = None
         self.adjusted_image = None
         self.physical_heightfield = None
+        self.sculpt_base = None
+        self.sculpt_offsets = None
         self.inverted = False
         self.image_height, self.image_width = pixels.shape[:2]
         self.image_bit_depth = pixels.dtype.itemsize * 8
@@ -150,4 +159,6 @@ class ProjectState:
         self.image_height = 0
         self.image_bit_depth = 0
         self.physical_heightfield = None
+        self.sculpt_base = None
+        self.sculpt_offsets = None
         self.dirty = True

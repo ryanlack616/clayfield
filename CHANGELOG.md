@@ -19,6 +19,20 @@
 - Cache external-field wrappers until the field changes, avoid redundant
   full-resolution copies in field and mesh pipelines, and move the shared
   cancellation primitive into `clayfield.core` so leaf modules stay Qt-free.
+- Add a surface-aware sculpt brush with adjustable radius, strength, falloff, and
+  Laplacian, Taubin, and bilateral smoothing modes. Dabs are spaced by arc length
+  along the pointer path, so stroke strength is independent of pointer speed.
+- Pick the brush centre by ray casting the visible heightfield, and draw the brush
+  cursor as a world-space ring sampled from the same surface.
+- Store sculpt work as a displacement layer over the procedural base so terrain
+  parameter changes keep the sculpt, and persist the layer inside `.clayfield`
+  projects as a sparse compressed member. Discard the layer explicitly when the
+  heightfield resolution changes.
+- Undo and redo sculpt strokes at stroke granularity through an edit ledger that
+  orders parameter snapshots and sculpt strokes chronologically, so mixed edits
+  undo and redo in the order they were made.
+- Track sculpt changes against the last saved layer so a parameter undo cannot
+  mark saved sculpt work clean.
 
 ## V2 development status
 

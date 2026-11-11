@@ -15,6 +15,7 @@ from PySide6.QtGui import QMatrix4x4
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from clayfield.image.curves import curve_lut
+from clayfield.sculpt.surface_picking import Ray, height_at_mm, intersect_heightfield, ray_from_screen
 from clayfield.ui.axis_gizmo import AxisGizmo
 from clayfield.ui.camera import OrbitCamera
 from clayfield.ui.gpu_pipeline import GpuImagePipeline, supports_gpu_adjustments
@@ -41,16 +42,39 @@ def _block_mean(values: np.ndarray, target_rows: int, target_columns: int) -> np
     return np.ascontiguousarray(means, dtype=np.float32)
 
 
+# 48 segments keep the ring smooth at typical viewport sizes without a visible
+# polygon edge on a 200 mm brush. The ring is one line loop, so the cost is trivial.
+BRUSH_RING_SEGMENTS = 48
+
+
 class Viewport(QOpenGLWidget):
     """Render a reference grid and provide basic camera interaction."""
 
     gpu_adjustments_ready = Signal(int, object)
     gpu_error = Signal(str)
     initialization_failed = Signal(str)
+    # Sculpt strokes are emitted in heightfield millimetres, already resolved
+    # against the visible surface, so the window does not need camera state.
+    sculpt_pressed = Signal(float, float)
+    sculpt_moved = Signal(float, float)
+    sculpt_released = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.camera = OrbitCamera()
+        self.sculpt_mode = False
+        self._sculpting = False
+        self._last_heightfield: np.ndarray | None = None
+        self._last_width_mm = 100.0
+        self._last_depth_mm = 100.0
+        # The brush cursor is a world-space ring on the visible surface. Its radius
+        # is the brush radius in millimetres, converted to viewport units on upload.
+        self.brush_radius_mm = 5.0
+        self._brush_hit = None
+        self._brush_pending = False
+        self._brush_vao = 0
+        self._brush_vbo = 0
+        self._brush_vertex_count = 0
         self.program = 0
         self._gl_ready = False
         self.vao = 0
@@ -120,6 +144,17 @@ class Viewport(QOpenGLWidget):
         glEnableVertexAttribArray(0)
         glVertexAttrib3f(1, 0.0, 1.0, 0.0)
         glBindVertexArray(0)
+        # The brush ring is a small dynamic line loop. It gets its own buffer so a
+        # cursor update never touches the static grid, and the ring is uploaded
+        # with glBufferSubData only when the hit position or radius changes.
+        self._brush_vao, self._brush_vbo = glGenVertexArrays(1), glGenBuffers(1)
+        glBindVertexArray(self._brush_vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self._brush_vbo)
+        glBufferData(GL_ARRAY_BUFFER, BRUSH_RING_SEGMENTS * 3 * 4, None, GL_DYNAMIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        glBindVertexArray(0)
+        self._brush_pending = True
 
     def paintGL(self) -> None:
         if not self._gl_ready:
@@ -145,15 +180,7 @@ class Viewport(QOpenGLWidget):
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE if self.wireframe else GL_FILL)
         if not self.program:
             return
-        projection = QMatrix4x4()
-        near = max(0.001, self.camera.distance / 10000.0)
-        far = max(100.0, self.camera.distance + self._surface_extent * 4.0)
-        aspect = self.width() / max(1, self.height())
-        if self.orthographic:
-            half_height = self.camera.distance * math.tan(math.radians(22.5))
-            projection.ortho(-half_height * aspect, half_height * aspect, -half_height, half_height, near, far)
-        else:
-            projection.perspective(45, aspect, near, far)
+        projection = self._projection_matrix()
         model = QMatrix4x4()
         glUseProgram(self.program)
         for name, matrix in (("projection", projection), ("view", self.camera.view_matrix()), ("model", model)):
@@ -199,6 +226,47 @@ class Viewport(QOpenGLWidget):
             glBindVertexArray(self.surface_vao)
             glDrawArrays(GL_TRIANGLES, 0, self.surface_vertex_count)
             glBindVertexArray(0)
+        if self._brush_pending:
+            self._upload_brush_ring()
+            self._brush_pending = False
+        if self._brush_vertex_count and self._brush_hit is not None:
+            # The ring is unlit and uncolored by height so it reads as an overlay
+            # against any terrain color.
+            glUniform1i(glGetUniformLocation(self.program, "gpu_displacement"), 0)
+            glUniform1i(glGetUniformLocation(self.program, "lit_surface"), 0)
+            glUniform1i(glGetUniformLocation(self.program, "height_coloring"), 0)
+            glUniform3f(glGetUniformLocation(self.program, "color"), 1.0, 0.82, 0.25)
+            glBindVertexArray(self._brush_vao)
+            glDrawArrays(GL_LINE_LOOP, 0, self._brush_vertex_count)
+            glBindVertexArray(0)
+
+    def _upload_brush_ring(self) -> None:
+        """Upload the brush cursor ring in viewport units.
+
+        Each vertex is sampled from the visible heightfield so the ring hugs the
+        surface instead of cutting through it. Points outside the grid fall back to
+        the hit height. The viewport renders in ``mm / 20`` units, so both the
+        centre and the radius are converted here.
+        """
+        heightfield = self._last_heightfield
+        if not self._brush_vao or self._brush_hit is None or heightfield is None:
+            self._brush_vertex_count = 0
+            return
+        hit = self._brush_hit
+        angles = np.linspace(0.0, 2.0 * math.pi, BRUSH_RING_SEGMENTS, endpoint=False)
+        radius_mm = float(self.brush_radius_mm)
+        xs = hit.x_mm + radius_mm * np.cos(angles)
+        zs = hit.z_mm + radius_mm * np.sin(angles)
+        vertices = np.empty((BRUSH_RING_SEGMENTS, 3), dtype=np.float32)
+        for index, (x_mm, z_mm) in enumerate(zip(xs, zs, strict=True)):
+            height_mm = height_at_mm(x_mm, z_mm, heightfield, self._last_width_mm, self._last_depth_mm)
+            vertices[index, 0] = x_mm / 20.0
+            vertices[index, 1] = (hit.height_mm if height_mm is None else height_mm) / 20.0 + 0.01
+            vertices[index, 2] = z_mm / 20.0
+        glBindBuffer(GL_ARRAY_BUFFER, self._brush_vbo)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.nbytes, vertices)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self._brush_vertex_count = BRUSH_RING_SEGMENTS
 
     def set_height_range(self, minimum_mm: float, maximum_mm: float) -> None:
         """Set physical height bounds used by the height-coloring ramp."""
@@ -265,13 +333,102 @@ class Viewport(QOpenGLWidget):
             raise ValueError(f"Unknown camera view: {view}")
         self.update()
 
+    def set_sculpt_mode(self, enabled: bool) -> None:
+        """Route left-button drags to the sculpt brush instead of orbiting."""
+        self.sculpt_mode = bool(enabled)
+        # Hover tracking is only needed for the brush cursor, so it stays off while
+        # the user is orbiting or panning the camera.
+        self.setMouseTracking(self.sculpt_mode)
+        if not self.sculpt_mode:
+            if self._sculpting:
+                self._sculpting = False
+                self.sculpt_released.emit()
+            self._set_brush_hit(None)
+        self.setCursor(Qt.CursorShape.CrossCursor if self.sculpt_mode else Qt.CursorShape.ArrowCursor)
+        self.update()
+
+    def set_brush_radius(self, radius_mm: float) -> None:
+        """Set the world-space brush radius shown by the cursor ring."""
+        radius = float(radius_mm)
+        if not math.isfinite(radius) or radius <= 0.0:
+            raise ValueError("Brush radius must be finite and greater than zero")
+        if radius == self.brush_radius_mm:
+            return
+        self.brush_radius_mm = radius
+        self._brush_pending = True
+        self.update()
+
+    def _set_brush_hit(self, hit) -> None:
+        """Record the surface position under the pointer for the cursor ring."""
+        self._brush_hit = hit
+        self._brush_pending = True
+        self.update()
+
+    def _projection_matrix(self) -> QMatrix4x4:
+        """Return the projection matrix used by paintGL and surface picking."""
+        projection = QMatrix4x4()
+        near = max(0.001, self.camera.distance / 10000.0)
+        far = max(100.0, self.camera.distance + self._surface_extent * 4.0)
+        aspect = self.width() / max(1, self.height())
+        if self.orthographic:
+            half_height = self.camera.distance * math.tan(math.radians(22.5))
+            projection.ortho(-half_height * aspect, half_height * aspect, -half_height, half_height, near, far)
+        else:
+            projection.perspective(45, aspect, near, far)
+        return projection
+
+    def _pick(self, x: float, y: float):
+        """Return the heightfield hit under a widget pixel, or ``None``.
+
+        The viewport renders in ``mm / 20`` units, so the ray origin is scaled into
+        millimetres before intersecting the CPU heightfield.
+        """
+        heightfield = self._last_heightfield
+        if heightfield is None:
+            return None
+        projection = np.asarray(self._projection_matrix().data(), dtype=np.float64).reshape(4, 4).T
+        view = np.asarray(self.camera.view_matrix().data(), dtype=np.float64).reshape(4, 4).T
+        try:
+            ray = ray_from_screen(projection, view, x, y, self.width(), self.height())
+        except (ValueError, np.linalg.LinAlgError):
+            return None
+        scaled = Ray(origin=ray.origin * 20.0, direction=ray.direction)
+        return intersect_heightfield(scaled, heightfield, self._last_width_mm, self._last_depth_mm)
+
     def mousePressEvent(self, event) -> None:
+        if self.sculpt_mode and event.button() == Qt.MouseButton.LeftButton:
+            hit = self._pick(event.position().x(), event.position().y())
+            self._set_brush_hit(hit)
+            if hit is not None:
+                self._sculpting = True
+                self.sculpt_pressed.emit(hit.x_mm, hit.z_mm)
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                return
         if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
             self.last_position = event.position()
             self._drag_button = event.button()
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
 
     def mouseMoveEvent(self, event) -> None:
+        if self.sculpt_mode:
+            if self._sculpting:
+                hit = self._pick(event.position().x(), event.position().y())
+                self._set_brush_hit(hit)
+                if hit is not None:
+                    self.sculpt_moved.emit(hit.x_mm, hit.z_mm)
+                return
+            if self.last_position is not None and self._drag_button == Qt.MouseButton.MiddleButton:
+                # The left button belongs to the brush in sculpt mode, so panning
+                # stays available on the middle button while the layer is edited.
+                delta = event.position() - self.last_position
+                self.camera.pan(delta.x(), delta.y(), self.height())
+                self.last_position = event.position()
+                self.update()
+                return
+            # Pick on hover so the cursor ring tracks the surface before the press.
+            hit = self._pick(event.position().x(), event.position().y())
+            self._set_brush_hit(hit)
+            return
         if self.last_position is not None:
             delta = event.position() - self.last_position
             if self._drag_button == Qt.MouseButton.MiddleButton:
@@ -282,6 +439,11 @@ class Viewport(QOpenGLWidget):
             self.update()
 
     def mouseReleaseEvent(self, event) -> None:
+        if self.sculpt_mode and self._sculpting and event.button() == Qt.MouseButton.LeftButton:
+            self._sculpting = False
+            self.sculpt_released.emit()
+            self.setCursor(Qt.CursorShape.CrossCursor)
+            return
         if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
             self.last_position = None
             self._drag_button = None
@@ -290,6 +452,12 @@ class Viewport(QOpenGLWidget):
     def wheelEvent(self, event) -> None:
         self.camera.zoom(event.angleDelta().y() / 120)
         self.update()
+
+    def leaveEvent(self, event) -> None:
+        """Clear the brush cursor when the pointer leaves the viewport."""
+        if self.sculpt_mode:
+            self._set_brush_hit(None)
+        super().leaveEvent(event)
 
     def set_heightfield(self, heightfield: np.ndarray, width_mm: float = 100.0, depth_mm: float = 100.0) -> None:
         """Display a CPU-generated wire surface in physical millimeter coordinates."""
@@ -308,7 +476,15 @@ class Viewport(QOpenGLWidget):
         # the peak for a large heightfield and is unnecessary because the array
         # is treated as read-only by the viewport.
         self._pending_heightfield = (heightfield, width, depth)
+        # Picking needs the same surface and dimensions the renderer uses. The
+        # array is held read-only by the viewport, so storing the reference costs
+        # nothing and keeps the brush cursor on the geometry the user sees.
+        self._last_heightfield = heightfield
+        self._last_width_mm = width
+        self._last_depth_mm = depth
         self._surface_extent = max(width, depth, float(np.ptp(heightfield))) / 20.0
+        # The ring hugs the surface, so a new heightfield invalidates its vertices.
+        self._brush_pending = True
         self.update()
 
     def _display_texture_limit(self) -> int:
@@ -429,6 +605,9 @@ class Viewport(QOpenGLWidget):
         self._pending_heightfield = None
         self._pending_gpu = None
         self._gpu_surface = None
+        self._last_heightfield = None
+        self._brush_hit = None
+        self._brush_pending = True
         self.surface_vertex_count = 0
         self._surface_grid_key = None
         self.update()
@@ -454,16 +633,19 @@ class Viewport(QOpenGLWidget):
                 glDeleteTextures([self._mapping_texture])
                 self._mapping_texture = 0
             self._gpu_surface = None
-            buffers = [buffer for buffer in (self.vbo, self.surface_vbo) if buffer]
+            buffers = [buffer for buffer in (self.vbo, self.surface_vbo, self._brush_vbo) if buffer]
             if buffers:
                 glDeleteBuffers(buffers)
             self.vbo = 0
             self.surface_vbo = 0
-            arrays = [vao for vao in (self.vao, self.surface_vao) if vao]
+            self._brush_vbo = 0
+            arrays = [vao for vao in (self.vao, self.surface_vao, self._brush_vao) if vao]
             if arrays:
                 glDeleteVertexArrays(arrays)
             self.vao = 0
             self.surface_vao = 0
+            self._brush_vao = 0
+            self._brush_vertex_count = 0
             if self.program:
                 glDeleteProgram(self.program)
                 self.program = 0

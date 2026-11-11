@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 import os
@@ -81,12 +82,15 @@ class ArchiveLimits:
 
 DEFAULT_ARCHIVE_LIMITS = ArchiveLimits()
 
+SCULPT_MEMBER_NAME = "sculpt_offsets.npz"
+
 _ALLOWED_MEMBERS = {
     "project.json",
     "secondary_field.png",
     "mask_field.png",
     "secondary_original.bin",
     "mask_original.bin",
+    SCULPT_MEMBER_NAME,
 }
 _ALLOWED_SOURCE_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
 
@@ -98,6 +102,65 @@ def _max_resolution_dimension() -> int:
     untrusted input and must not be able to raise its own validation bound.
     """
     return MAX_ABSOLUTE_RESOLUTION_DIMENSION
+
+
+def _encode_sculpt_offsets(offsets: np.ndarray) -> tuple[bytes, dict]:
+    """Return a sparse, compressed encoding of a sculpt displacement layer.
+
+    A brush only writes its footprint, so the layer is mostly zeros. Storing only
+    the non-zero cells keeps the archive small and its compression ratio well under
+    the anti-zip-bomb limit that a dense all-zero array would sit right against.
+    The resolution travels in the project metadata so a loader can reject a layer
+    that no longer matches the regenerated heightfield.
+    """
+    values = np.asarray(offsets)
+    if values.ndim != 2 or min(values.shape) < 2:
+        raise ProjectIOError("Sculpt layer must be a 2D grid of at least 2x2")
+    if not np.isfinite(values).all():
+        raise ProjectIOError("Sculpt layer must be finite")
+    rows, columns = np.nonzero(values)
+    if rows.size == 0:
+        raise ProjectIOError("Sculpt layer is empty")
+    payload = {
+        "rows": rows.astype(np.int32),
+        "columns": columns.astype(np.int32),
+        "values": values[rows, columns].astype(np.float32),
+    }
+    buffer = io.BytesIO()
+    np.savez_compressed(buffer, **payload)
+    metadata = {"resolution": [int(values.shape[0]), int(values.shape[1])], "count": int(rows.size)}
+    return buffer.getvalue(), metadata
+
+
+def _decode_sculpt_offsets(data: bytes | bytearray, resolution: list[int]) -> np.ndarray:
+    """Rebuild a dense sculpt layer from its sparse archive member."""
+    try:
+        rows_count, columns_count = (int(value) for value in resolution)
+    except (TypeError, ValueError) as error:
+        raise ProjectIOError(f"Invalid sculpt layer resolution: {error}") from error
+    maximum = _max_resolution_dimension()
+    if rows_count < 2 or columns_count < 2 or rows_count > maximum or columns_count > maximum:
+        raise ProjectIOError("Sculpt layer resolution is outside the supported range")
+    try:
+        with np.load(io.BytesIO(bytes(data)), allow_pickle=False) as payload:
+            rows = np.asarray(payload["rows"])
+            columns = np.asarray(payload["columns"])
+            values = np.asarray(payload["values"])
+    except (KeyError, ValueError, OSError) as error:
+        raise ProjectIOError(f"Invalid sculpt layer: {error}") from error
+    if rows.ndim != 1 or columns.ndim != 1 or values.ndim != 1:
+        raise ProjectIOError("Sculpt layer arrays must be one-dimensional")
+    if not (rows.size == columns.size == values.size):
+        raise ProjectIOError("Sculpt layer arrays must have matching lengths")
+    if rows.size == 0:
+        raise ProjectIOError("Sculpt layer is empty")
+    if rows.min() < 0 or columns.min() < 0 or rows.max() >= rows_count or columns.max() >= columns_count:
+        raise ProjectIOError("Sculpt layer indices are outside the heightfield")
+    if not np.isfinite(values).all():
+        raise ProjectIOError("Sculpt layer values must be finite")
+    offsets = np.zeros((rows_count, columns_count), dtype=np.float32)
+    offsets[rows.astype(np.int64), columns.astype(np.int64)] = values.astype(np.float32)
+    return offsets
 
 
 def _is_allowed_member(name: str) -> bool:
@@ -408,6 +471,10 @@ def save_project(state: ProjectState, path: str | Path, *, update_state: bool = 
         ):
             raise ProjectIOError("Mask field must be finite normalized 2D data")
         mask_encoded = np.rint(values * 65535.0).astype(np.uint16)
+    sculpt_bytes = None
+    sculpt_metadata = None
+    if state.sculpt_offsets is not None and np.any(state.sculpt_offsets != 0.0):
+        sculpt_bytes, sculpt_metadata = _encode_sculpt_offsets(state.sculpt_offsets)
     output = Path(path).expanduser()
     if output.suffix.lower() != ".clayfield":
         output = output.with_suffix(".clayfield")
@@ -479,6 +546,8 @@ def save_project(state: ProjectState, path: str | Path, *, update_state: bool = 
         "curve_points": state.curve_points,
         "mapping_curve_points": state.mapping_curve_points,
     }
+    if sculpt_metadata is not None:
+        metadata["sculpt"] = sculpt_metadata
     temporary = None
     try:
         fd, name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".tmp", dir=output.parent)
@@ -502,6 +571,8 @@ def save_project(state: ProjectState, path: str | Path, *, update_state: bool = 
                 archive.writestr("secondary_original.bin", state.secondary_original_bytes)
             if state.mask_original_bytes is not None:
                 archive.writestr("mask_original.bin", state.mask_original_bytes)
+            if sculpt_bytes is not None:
+                archive.writestr(SCULPT_MEMBER_NAME, sculpt_bytes)
         temporary.replace(output)
     except OSError as error:
         if temporary is not None:
@@ -588,6 +659,21 @@ def _load_project(path: str | Path, state: ProjectState) -> Path:
                     raise ProjectIOError("Embedded mask field could not be decoded as 2D data")
                 mask_maximum = 65535.0 if mask_field.dtype == np.uint16 else 255.0
                 mask_field = np.asarray(mask_field, dtype=np.float32) / mask_maximum
+            sculpt_offsets = None
+            sculpt_metadata = metadata.get("sculpt")
+            if sculpt_metadata is not None:
+                if not isinstance(sculpt_metadata, dict):
+                    raise ProjectIOError("Project contains invalid sculpt layer metadata")
+                if SCULPT_MEMBER_NAME not in members:
+                    raise ProjectIOError("Project declares a sculpt layer but does not contain it")
+                sculpt_bytes = _read_member(
+                    archive, members[SCULPT_MEMBER_NAME], limits.max_member_bytes, "sculpt layer"
+                )
+                try:
+                    resolution = [int(value) for value in sculpt_metadata["resolution"]]
+                except (KeyError, TypeError, ValueError) as error:
+                    raise ProjectIOError(f"Invalid sculpt layer metadata: {error}") from error
+                sculpt_offsets = _decode_sculpt_offsets(sculpt_bytes, resolution)
     except (OSError, zipfile.BadZipFile, KeyError, json.JSONDecodeError) as error:
         raise ProjectIOError(f"Invalid ClayField project: {error}") from error
 
@@ -634,6 +720,11 @@ def _load_project(path: str | Path, state: ProjectState) -> Path:
     state.grayscale_image = None
     state.adjusted_image = None
     state.physical_heightfield = None
+    # The heightfield is regenerated from the parameters, so the saved displacement
+    # layer is reapplied when the base arrives. A shape mismatch is discarded by the
+    # window rather than applied to unrelated topology.
+    state.sculpt_base = None
+    state.sculpt_offsets = sculpt_offsets
     state.terrain_width_mm = float(terrain.get("width_mm", 100.0))
     state.terrain_depth_mm = float(terrain.get("depth_mm", 100.0))
     state.minimum_height_mm = float(terrain.get("minimum_height_mm", 0.0))
