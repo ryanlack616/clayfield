@@ -15,7 +15,7 @@ from clayfield.app.project_state import ProjectState
 from clayfield.app.worker import FunctionWorker
 from clayfield.image.grayscale import to_grayscale
 from clayfield.image.pipeline import AdjustmentCache
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.ui.curve_editor import CurveEditor
 from clayfield.ui.histogram import HistogramWidget
 from clayfield.ui.parameter_row import parameter_row
@@ -23,6 +23,24 @@ from clayfield.image.loader import load_image
 from clayfield.image.geometry import apply_image_geometry
 from clayfield.field.generators import MandelbrotParameters, NoiseParameters, WaveParameters
 from clayfield.field.persistence import SourceDescriptor
+
+
+def _downscale_preview(image: np.ndarray, max_edge: int) -> np.ndarray:
+    """Downscale an array so its longest edge is at most ``max_edge``.
+
+    Returns the input unchanged when it already fits. Area interpolation is
+    used because these are dense heightfields, where point sampling would alias
+    high-frequency detail into false ridges.
+    """
+    height, width = image.shape[:2]
+    scale = min(1.0, max_edge / max(height, width))
+    if scale >= 1.0:
+        return image
+    return cv2.resize(
+        image,
+        (max(1, round(width * scale)), max(1, round(height * scale))),
+        interpolation=cv2.INTER_AREA,
+    )
 
 
 def _load_and_convert(path: str, linear_light: bool):
@@ -84,6 +102,7 @@ class ImagePanel(QWidget):
         self.preview_mode.addItems(["Adjusted image", "Original image", "Final heightmap"])
         self.preview_mode.currentIndexChanged.connect(self._refresh_preview)
         self._heightfield_preview = None
+        self._heightfield_bounds = None
         self._procedural_preview = None
         self.info = QLabel("Load a PNG, JPEG, TIFF, or BMP image.")
         self.histogram = HistogramWidget(self)
@@ -1219,7 +1238,11 @@ class ImagePanel(QWidget):
         else:
             rgb = cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)
             image = QImage(rgb.data, rgb.shape[1], rgb.shape[0], rgb.strides[0], QImage.Format.Format_RGB888)
-        self.preview.setPixmap(QPixmap.fromImage(image.copy()).scaled(self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        # ``pixels`` stays alive for the duration of this call, so QImage can
+        # wrap its buffer directly; QPixmap.fromImage converts immediately. The
+        # extra full-size copy here was only defensive and doubled preview
+        # memory for large images.
+        self.preview.setPixmap(QPixmap.fromImage(image).scaled(self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
     def _show_normalized(self, image: np.ndarray) -> None:
         height, width = image.shape
@@ -1229,8 +1252,19 @@ class ImagePanel(QWidget):
         pixels = np.clip(image * 255.0, 0, 255).astype(np.uint8)
         self._show_pixels(pixels)
 
-    def set_heightfield_preview(self, image) -> None:
+    def clear_adjustment_cache(self) -> None:
+        """Release cached full-resolution adjustment stages."""
+        self._adjustment_cache.clear()
+
+    def set_heightfield_preview(self, image, bounds: tuple[float, float] | None = None) -> None:
+        """Store the heightfield preview and optional precomputed min/max.
+
+        ``bounds`` is computed by the heightfield worker in production. When it
+        is supplied, the UI thread does not rescan a full-resolution heightfield
+        just to normalize the preview.
+        """
         self._heightfield_preview = image
+        self._heightfield_bounds = bounds if image is not None else None
         if image is not None:
             self.preview_availability_changed.emit(True)
         if self.preview_mode.currentIndex() == 2:
@@ -1252,8 +1286,16 @@ class ImagePanel(QWidget):
         elif mode == 0 and self.state.adjusted_image is not None:
             self._show_normalized(self.state.adjusted_image)
         elif mode == 2 and self._heightfield_preview is not None:
-            image = self._heightfield_preview
-            lo, hi = float(image.min()), float(image.max())
+            # Downscale the heightfield *before* normalizing. The old order
+            # allocated two full-resolution float32 temporaries on the GUI
+            # thread (a 16384-square field means ~2 GiB per refresh) even though
+            # only a 1024-wide preview is ever displayed. _show_normalized
+            # resizes again, but on an already-1024 array that is a no-op.
+            image = _downscale_preview(self._heightfield_preview, 1024)
+            if self._heightfield_bounds is not None:
+                lo, hi = self._heightfield_bounds
+            else:
+                lo, hi = float(image.min()), float(image.max())
             normalized = (image - lo) / (hi - lo) if hi > lo else np.zeros_like(image)
             self._show_normalized(normalized)
         else:

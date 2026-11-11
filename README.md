@@ -69,7 +69,11 @@ samples instead of stretching a square field.
 ## Tests
 
 ```sh
-PYTHONPATH=.:src .venv/bin/pytest -q
+# Either form works; pyproject.toml already sets pythonpath = ["src"], so the
+# PYTHONPATH prefix is only needed when invoking a pytest outside the project.
+.venv/bin/pytest -q
+# or, with uv and the test extra installed in the project environment:
+uv run --extra test python -m pytest -q
 ```
 
 Optional checks:
@@ -97,6 +101,7 @@ git archive --format=tar.gz --prefix=clayfield-2.0.0/ HEAD \
 
 ## Project Layout
 
+- `src/clayfield/core`: shared leaf primitives with no Qt/image/mesh dependencies
 - `src/clayfield/app`: application lifecycle, state, persistence, and workers
 - `src/clayfield/field`: normalized fields, procedural sources, composition
 - `src/clayfield/image`: loading, grayscale conversion, curves, and processing

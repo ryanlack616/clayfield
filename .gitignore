@@ -7,6 +7,10 @@ __pycache__/
 dist/
 build/
 
+# uv resolves from pyproject.toml and regenerates this lock locally; the
+# documented install path is pip, so the lock is not part of the release.
+uv.lock
+
 # Local editor and OS files
 .vscode/
 .idea/

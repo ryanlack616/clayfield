@@ -18,6 +18,37 @@ from clayfield.terrain.mapping import MappingSettings
 import trimesh
 
 
+def _raise_value_error():
+    raise ValueError("worker boom")
+
+
+def test_worker_reports_traceback_on_failure() -> None:
+    from clayfield.app.worker import FunctionWorker
+
+    failures: list[str] = []
+    worker = FunctionWorker(_raise_value_error)
+    worker.signals.failed.connect(failures.append)
+    worker.run()
+
+    assert len(failures) == 1
+    assert "ValueError: worker boom" in failures[0]
+    assert "Traceback (most recent call last)" in failures[0]
+
+
+def test_worker_reports_cancellation_without_a_traceback() -> None:
+    from clayfield.app.worker import FunctionWorker
+
+    failures: list[str] = []
+    cancellations: list[bool] = []
+    worker = FunctionWorker(lambda: (_ for _ in ()).throw(WorkerCancelled()))
+    worker.signals.failed.connect(failures.append)
+    worker.signals.cancelled.connect(lambda: cancellations.append(True))
+    worker.run()
+
+    assert cancellations == [True]
+    assert not failures
+
+
 def test_pipeline_applies_persisted_inversion() -> None:
     image = np.array([[0.0, 1.0]], dtype=np.float32)
     result = apply_adjustments(image, {"inverted": True}, [(0.0, 0.0), (1.0, 1.0)])

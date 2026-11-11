@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.field.model import FieldMetadata, NormalizedField
 
 

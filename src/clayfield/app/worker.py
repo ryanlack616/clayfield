@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import traceback
 from collections.abc import Callable
 from threading import Event
 from typing import Any
@@ -58,6 +59,9 @@ class FunctionWorker(QRunnable):
             self.signals.cancelled.emit()
             return
         except Exception as error:  # noqa: BLE001 - forwarded through the signal boundary
-            self.signals.failed.emit(str(error))
+            # A worker bug used to reach the UI as a one-line string with no
+            # stack. Emit the formatted traceback so the failure can be
+            # diagnosed from the error dialog without reproducing it.
+            self.signals.failed.emit(f"{error}\n\n{traceback.format_exc()}")
             return
         self.signals.finished.emit(result)

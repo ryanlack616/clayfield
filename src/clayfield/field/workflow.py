@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.field.generators import (
     MandelbrotParameters,
     NoiseParameters,

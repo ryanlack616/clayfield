@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 
 
 @dataclass(frozen=True)

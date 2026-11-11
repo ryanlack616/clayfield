@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
 import cv2
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.field.model import FieldMetadata, NormalizedField
+from clayfield.resource_budget import DEFAULT_BUDGET, ResourceBudget, WorkloadEstimate
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,12 @@ class VoronoiParameters:
     def validate(self) -> None:
         if not np.isfinite([self.cell_density, self.jitter, self.edge_width]).all() or self.cell_density <= 0 or not 0 <= self.jitter <= 1 or self.edge_width <= 0:
             raise ValueError("Voronoi parameters are invalid")
+        if self.cell_density > 4096:
+            # Each cell is one lattice point; 4096^2 already means 16.7 million
+            # cells, which is far beyond any legitimate interactive field. The
+            # element-work bound in _generator_workload is the real rejection
+            # point; this bound keeps the parameter itself plausible.
+            raise ValueError("Voronoi cell density must be at most 4096")
         if self.mode not in {"distance", "boundary", "cells"} or self.normalization not in {"auto", "fixed"}:
             raise ValueError("Voronoi mode or normalization is invalid")
 
@@ -416,6 +424,141 @@ class GaborParameters:
             raise ValueError("Gabor parameters are invalid")
 
 
+def _generator_workload(
+    shape: tuple[int, int],
+    parameters,
+    *,
+    budget: ResourceBudget = DEFAULT_BUDGET,
+) -> WorkloadEstimate | None:
+    """Estimate memory and element-work for one procedural generator.
+
+    This is a *work* budget, not a fabrication-resolution cap. It rejects
+    allocations that cannot fit the configured CPU budget, warns when the
+    element-operation count is large enough to be felt interactively
+    (``work_soft_units``), and rejects element-operation counts that cannot
+    finish in any plausible interactive session (``work_hard_units``). Every
+    built-in generator has a cost model, so the estimate is normally not
+    ``None``; the optional return keeps third-party parameter classes from
+    failing the call.
+    """
+    if len(shape) != 2:
+        raise ValueError("Generator shape must contain two dimensions")
+    rows, columns = shape
+    if isinstance(rows, bool) or isinstance(columns, bool) or not isinstance(rows, int) or not isinstance(columns, int):
+        raise ValueError("Generator dimensions must be integers")
+    if rows < 2 or columns < 2:
+        raise ValueError("Generator requires at least 2x2 samples")
+    if max(rows, columns) > budget.max_dimension:
+        raise ValueError(
+            f"Generator resolution {rows} x {columns} exceeds the absolute "
+            f"allocation limit of {budget.max_dimension} per axis"
+        )
+    pixels = rows * columns
+    kind = type(parameters).__name__
+    work = 0
+    memory = 0
+    if isinstance(parameters, VoronoiParameters):
+        cells = max(1, int(round(parameters.cell_density)))
+        point_bytes = cells * cells * 2 * 4
+        work = cells * cells * pixels * 4
+        memory = pixels * 4 * 4 + point_bytes
+    elif isinstance(parameters, ReactionDiffusionParameters):
+        work = parameters.iterations * pixels * 4
+        memory = pixels * 4 * 4
+    elif isinstance(parameters, PhyllotaxisParameters):
+        work = parameters.count * pixels * 2
+        memory = pixels * 4 * 3
+    elif isinstance(parameters, CellularAutomataParameters):
+        work = parameters.iterations * pixels * 2
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, ErosionParameters):
+        work = parameters.iterations * pixels * 4
+        memory = pixels * 4 * 4
+    elif isinstance(parameters, MandelbrotParameters):
+        work = parameters.iterations * pixels * 4
+        memory = pixels * 4 * 6
+    elif isinstance(parameters, JuliaParameters):
+        work = parameters.iterations * pixels * 4
+        memory = pixels * 4 * 6
+    elif isinstance(parameters, GaborParameters):
+        work = parameters.components * pixels * 2
+        memory = pixels * 4 * 3
+    elif isinstance(parameters, GaussianPeakParameters):
+        work = parameters.count * pixels * 2
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, SpectralParameters):
+        work = parameters.components * pixels * 2
+        memory = pixels * 4 * 3
+    elif isinstance(parameters, NoiseParameters):
+        work = parameters.octaves * pixels * 2
+        memory = pixels * 4 * 3
+    elif isinstance(parameters, (RidgedNoiseParameters, WarpedNoiseParameters)):
+        work = parameters.octaves * pixels * 2
+        memory = pixels * 4 * 3
+    elif isinstance(parameters, CrackParameters):
+        work = parameters.cracks * parameters.steps * 2
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, WaveParameters):
+        work = pixels * 6
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, SdfParameters):
+        # Two distance evaluations per sample when a boolean shape is active,
+        # one otherwise. Meshgrid coordinates add two more full planes.
+        work = pixels * (12 if parameters.boolean_shape != "none" else 8)
+        memory = pixels * 4 * 4
+    elif isinstance(parameters, ChladniParameters):
+        work = pixels * 4
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, FlowFieldParameters):
+        work = pixels * 6
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, LSystemParameters):
+        # The frontier doubles at most once per depth level. Rasterization cost
+        # is dominated by the per-pixel canvas conversion, not the segment count.
+        segments = min(2 ** parameters.iterations, 256)
+        work = segments * 4 + pixels * 2
+        memory = pixels * 2
+    elif isinstance(parameters, TilingParameters):
+        # Penrose and Truchet are both per-pixel interference/tile evaluations.
+        work = pixels * 6
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, SuperformulaParameters):
+        work = pixels * 8
+        memory = pixels * 4 * 2
+    elif isinstance(parameters, MoireParameters):
+        work = pixels * 6
+        memory = pixels * 4 * 2
+    else:
+        return None
+    estimate = WorkloadEstimate(
+        persistent_bytes=memory,
+        temporary_cpu_bytes=0,
+        work_units=work,
+        confidence="formula",
+        breakdown={"pixels": pixels, "generator_bytes": memory},
+    )
+    if estimate.total_cpu_bytes > budget.cpu_limit_bytes:
+        raise ValueError(
+            f"{kind} at {rows} x {columns} requires approximately "
+            f"{estimate.total_cpu_mebibytes:.0f} MiB; the configured CPU budget is "
+            f"{budget.cpu_limit_bytes / (1024 * 1024):.0f} MiB"
+        )
+    if work > budget.work_hard_units:
+        raise ValueError(
+            f"{kind} at {rows} x {columns} performs about {work:,} element "
+            f"operations; the hard work limit is {budget.work_hard_units:,}. "
+            f"Reduce the resolution or the generator's iteration/density settings."
+        )
+    if work > budget.work_soft_units:
+        warnings.warn(
+            f"{kind} at {rows} x {columns} performs about {work:,} element "
+            f"operations; this may be slow interactively",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return estimate
+
+
 def _seed_for_octave(seed: int, octave: int) -> np.random.SeedSequence:
     """Create an octave-specific seed without depending on RNG call order."""
     return np.random.SeedSequence([seed % (1 << 64), octave])
@@ -463,6 +606,7 @@ def generate_fractal_noise(
     """
     parameters = parameters or NoiseParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     if len(shape) != 2 or any(isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in shape):
         raise ValueError("Noise field shape must contain two dimensions of at least 2")
     rows, columns = shape
@@ -508,6 +652,7 @@ def generate_wave_field(shape: tuple[int, int], parameters: WaveParameters | Non
     """Generate deterministic planar or radial wave interference."""
     parameters = parameters or WaveParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     check_cancelled(cancel_check)
     if len(shape) != 2 or any(isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in shape):
         raise ValueError("Wave field shape must contain two dimensions of at least 2")
@@ -532,6 +677,7 @@ def generate_mandelbrot_field(shape: tuple[int, int], parameters: MandelbrotPara
     """Generate a smooth Mandelbrot escape-time field."""
     parameters = parameters or MandelbrotParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     if len(shape) != 2 or any(isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in shape):
         raise ValueError("Mandelbrot field shape must contain two dimensions of at least 2")
     rows, columns = shape
@@ -569,6 +715,7 @@ def generate_voronoi_field(shape: tuple[int, int], parameters: VoronoiParameters
     """Generate a deterministic cellular Voronoi/Worley field."""
     parameters = parameters or VoronoiParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     if min(shape) < 2:
         raise ValueError("Voronoi field requires at least 2x2 samples")
@@ -604,6 +751,7 @@ def generate_ridged_noise(shape: tuple[int, int], parameters: RidgedNoiseParamet
     """Generate sharp mountain-like ridges from deterministic fBm noise."""
     parameters = parameters or RidgedNoiseParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     source = generate_fractal_noise(shape, NoiseParameters(parameters.seed, parameters.base_frequency, parameters.octaves, parameters.persistence, parameters.lacunarity), cancel_check=cancel_check)
     signed = np.abs(source.values * 2.0 - 1.0)
     values = np.power(1.0 - signed, parameters.sharpness, dtype=np.float32)
@@ -614,6 +762,7 @@ def generate_warped_noise(shape: tuple[int, int], parameters: WarpedNoiseParamet
     """Generate noise with deterministic coordinate warping."""
     parameters = parameters or WarpedNoiseParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     base = generate_fractal_noise(shape, NoiseParameters(parameters.seed, parameters.base_frequency, parameters.octaves, parameters.persistence, parameters.lacunarity), cancel_check=cancel_check)
     warp_x = generate_fractal_noise(shape, NoiseParameters(parameters.seed + 1, parameters.warp_frequency, 2, 0.5, 2.0), cancel_check=cancel_check).values * 2.0 - 1.0
@@ -628,6 +777,7 @@ def generate_sdf_field(shape: tuple[int, int], parameters: SdfParameters | None 
     """Generate a repeated signed-distance geometric relief field."""
     parameters = parameters or SdfParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     if min(shape) < 2:
         raise ValueError("SDF field requires at least 2x2 samples")
@@ -661,6 +811,7 @@ def generate_sdf_field(shape: tuple[int, int], parameters: SdfParameters | None 
 def generate_chladni_field(shape: tuple[int, int], parameters: ChladniParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or ChladniParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     x = np.linspace(0.0, 1.0, columns, dtype=np.float32)
     y = np.linspace(0.0, 1.0, rows, dtype=np.float32)
@@ -674,6 +825,7 @@ def generate_chladni_field(shape: tuple[int, int], parameters: ChladniParameters
 def generate_spectral_field(shape: tuple[int, int], parameters: SpectralParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or SpectralParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     x = np.linspace(0.0, 1.0, columns, dtype=np.float32)[None, :]
     y = np.linspace(0.0, 1.0, rows, dtype=np.float32)[:, None]
@@ -694,6 +846,7 @@ def generate_spectral_field(shape: tuple[int, int], parameters: SpectralParamete
 def generate_reaction_diffusion_field(shape: tuple[int, int], parameters: ReactionDiffusionParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or ReactionDiffusionParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     rng = np.random.default_rng(parameters.seed % (1 << 64))
     a = np.ones((rows, columns), dtype=np.float32)
@@ -712,6 +865,7 @@ def generate_reaction_diffusion_field(shape: tuple[int, int], parameters: Reacti
 def generate_phyllotaxis_field(shape: tuple[int, int], parameters: PhyllotaxisParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or PhyllotaxisParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = (x / max(1, columns - 1) - 0.5) * 2.0
@@ -732,6 +886,7 @@ def generate_phyllotaxis_field(shape: tuple[int, int], parameters: PhyllotaxisPa
 def generate_cellular_automata_field(shape: tuple[int, int], parameters: CellularAutomataParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or CellularAutomataParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rng = np.random.default_rng(parameters.seed % (1 << 64))
     field = (rng.random(shape) < parameters.initial_density).astype(np.float32)
     for _ in range(parameters.iterations):
@@ -745,6 +900,7 @@ def generate_flow_field(shape: tuple[int, int], parameters: FlowFieldParameters 
     """Generate deterministic flowing bands from a scalar vector-like field."""
     parameters = parameters or FlowFieldParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = x / max(1, columns - 1) - 0.5
@@ -763,6 +919,7 @@ def generate_eroded_field(shape: tuple[int, int], parameters: ErosionParameters 
     """Generate a bounded erosion-style field from deterministic terrain noise."""
     parameters = parameters or ErosionParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     field = generate_fractal_noise(shape, NoiseParameters(parameters.seed, 3.0, 5, 0.55, 2.0), cancel_check=cancel_check).values.copy()
     for _ in range(parameters.iterations):
         check_cancelled(cancel_check)
@@ -779,6 +936,7 @@ def generate_lsystem_field(shape: tuple[int, int], parameters: LSystemParameters
     """Rasterize deterministic branching growth into a normalized field."""
     parameters = parameters or LSystemParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     rng = np.random.default_rng(parameters.seed % (1 << 64))
     canvas = np.zeros((rows, columns), dtype=np.uint8)
@@ -801,6 +959,7 @@ def generate_crack_field(shape: tuple[int, int], parameters: CrackParameters | N
     """Generate deterministic crack-like random walks as a field."""
     parameters = parameters or CrackParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     rng = np.random.default_rng(parameters.seed % (1 << 64))
     canvas = np.zeros((rows, columns), dtype=np.uint8)
@@ -826,6 +985,7 @@ def generate_penrose_field(shape: tuple[int, int], parameters: TilingParameters 
     """Generate a Penrose-style aperiodic interference field."""
     parameters = parameters or TilingParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = x / max(1, columns - 1) - 0.5
@@ -846,6 +1006,7 @@ def generate_truchet_field(shape: tuple[int, int], parameters: TilingParameters 
     """Generate a deterministic Truchet-style diagonal tile field."""
     parameters = parameters or TilingParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     tx = (x / max(1, columns - 1) * parameters.scale) % 1.0
@@ -862,6 +1023,7 @@ def generate_truchet_field(shape: tuple[int, int], parameters: TilingParameters 
 def generate_superformula_field(shape: tuple[int, int], parameters: SuperformulaParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or SuperformulaParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = x / max(1, columns - 1) - 0.5
@@ -877,6 +1039,7 @@ def generate_superformula_field(shape: tuple[int, int], parameters: Superformula
 def generate_gaussian_peaks_field(shape: tuple[int, int], parameters: GaussianPeakParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or GaussianPeakParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = x / max(1, columns - 1)
@@ -896,6 +1059,7 @@ def generate_gaussian_peaks_field(shape: tuple[int, int], parameters: GaussianPe
 def generate_julia_field(shape: tuple[int, int], parameters: JuliaParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or JuliaParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     span_x = 3.0 / parameters.zoom
     span_y = span_x * rows / columns
@@ -924,6 +1088,7 @@ def generate_julia_field(shape: tuple[int, int], parameters: JuliaParameters | N
 def generate_moire_field(shape: tuple[int, int], parameters: MoireParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or MoireParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = x / max(1, columns - 1) - 0.5
@@ -942,6 +1107,7 @@ def generate_moire_field(shape: tuple[int, int], parameters: MoireParameters | N
 def generate_gabor_field(shape: tuple[int, int], parameters: GaborParameters | None = None, *, cancel_check=None) -> NormalizedField:
     parameters = parameters or GaborParameters()
     parameters.validate()
+    _generator_workload(shape, parameters)
     rows, columns = shape
     y, x = np.mgrid[0:rows, 0:columns].astype(np.float32)
     x = x / max(1, columns - 1) - 0.5

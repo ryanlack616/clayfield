@@ -26,8 +26,10 @@ class ProjectState:
     secondary_field_name: str | None = None
     mask_field: np.ndarray | None = None
     mask_field_name: str | None = None
-    secondary_original_bytes: bytes | None = None
-    mask_original_bytes: bytes | None = None
+    # bytes-like: project_io reads archive members into a bytearray so large
+    # members are held once, not once per chunk plus the join copy.
+    secondary_original_bytes: bytes | bytearray | None = None
+    mask_original_bytes: bytes | bytearray | None = None
     grayscale_image: np.ndarray | None = None
     adjusted_image: np.ndarray | None = None
     inverted: bool = False

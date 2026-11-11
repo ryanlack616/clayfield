@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.field.model import NormalizedField
 from clayfield.image.curves import apply_curve
 from clayfield.image.filters import adjust_brightness_contrast, gaussian_blur, sharpen, threshold

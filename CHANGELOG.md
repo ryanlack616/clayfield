@@ -7,6 +7,18 @@
 - Add floating viewport previews, compose controls, and a camera-aware XYZ gizmo.
 - Add validated 3MF/STL export workflows, fabrication controls, aspect-aware procedural resolution, and 2048-sample defaults.
 - Refresh the Qt layout, source workflow, numeric controls, and fabrication panel.
+- Validate image dimensions, modes, and precision from the Pillow header before
+  decoding, and enforce a shared, configurable allocation budget for image
+  loading, archive members, heightfields, and mesh export.
+- Read archive members into one bounded buffer and decode embedded images
+  through the same validated loader instead of an unchecked `cv2.imdecode`.
+- Warn or fail on generator workloads that exceed the soft and hard work limits,
+  and suggest a resolution that fits the CPU budget when an export is refused.
+- Decimate the viewport display texture with an area-averaged box filter and
+  sample the histogram after downsampling so large images stay interactive.
+- Cache external-field wrappers until the field changes, avoid redundant
+  full-resolution copies in field and mesh pipelines, and move the shared
+  cancellation primitive into `clayfield.core` so leaf modules stay Qt-free.
 
 ## V2 development status
 
@@ -19,7 +31,7 @@
 - Add schema version 4 projects, procedural sources, recovery, worker
   cancellation, provenance, source summaries, deterministic sample artifacts,
   and calibration artifact generation.
-- Current local validation passes 181 tests with 7 optional tests skipped.
+- Current local validation passes 250 tests with 7 optional tests skipped.
 
 ## 0.3.0
 

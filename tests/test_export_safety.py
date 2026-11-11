@@ -12,11 +12,14 @@ from clayfield.terrain.heightfield import PhysicalDimensions
 def test_mesh_export_rejects_oversized_resolution_before_processing(tmp_path) -> None:
     image = np.zeros((2, 2), dtype=np.float32)
 
+    # 8192 square exceeds the configured CPU budget, so it must be refused
+    # before any heightfield or mesh allocation. 4096 square is legitimate for
+    # this hardware and is covered by tests/test_resource_budget.py.
     with pytest.raises(ValueError, match="reduce export resolution"):
         export_mesh_task(
             image,
             PhysicalDimensions(),
-            (4096, 4096),
+            (8192, 8192),
             5.0,
             "positive",
             tmp_path / "oversized.stl",

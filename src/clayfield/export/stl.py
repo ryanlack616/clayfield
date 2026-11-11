@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.geometry.mesh_generator import SolidMesh
 from clayfield.geometry.validation import validate_mesh
 

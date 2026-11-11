@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from clayfield.geometry.estimates import estimate_solid_mesh, recommended_resolution
+from clayfield.geometry.estimates import (
+    MESH_WORKING_FACTOR,
+    estimate_solid_mesh,
+    recommended_resolution,
+)
 
 
 def test_estimate_matches_small_solid_topology() -> None:
@@ -14,7 +18,7 @@ def test_estimate_matches_small_solid_topology() -> None:
     assert estimate.triangle_count == 4 * 2 * 3 + 2 * (2 * 3 + 2 * 4 - 4)
     assert estimate.vertex_bytes == 24 * 3 * 4
     assert estimate.face_bytes == estimate.triangle_count * 3 * 8
-    assert estimate.working_bytes == estimate.total_bytes * 20
+    assert estimate.working_bytes == estimate.total_bytes * MESH_WORKING_FACTOR
 
 
 @pytest.mark.parametrize("rows, columns", [(0, 4), (1, 4), (4, 1), (-2, 3)])
@@ -27,7 +31,9 @@ def test_estimate_reports_mebibytes() -> None:
     estimate = estimate_solid_mesh(2048, 2048)
 
     assert estimate.total_mebibytes > 0
-    assert estimate.working_mebibytes == pytest.approx(estimate.total_mebibytes * 20)
+    assert estimate.working_mebibytes == pytest.approx(
+        estimate.total_mebibytes * MESH_WORKING_FACTOR
+    )
     assert estimate.triangle_count > 8_000_000
 
 

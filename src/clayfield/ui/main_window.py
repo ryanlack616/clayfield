@@ -34,6 +34,17 @@ from clayfield.ui.cross_section import CrossSectionDialog
 from clayfield.terrain.heightfield import PhysicalDimensions, generate_physical_heightfield, options_from_state, physical_height_bounds
 
 
+def _generate_heightfield_with_bounds(*args, **kwargs):
+    """Generate a heightfield and compute preview bounds in the worker.
+
+    The GUI thread only needs the min/max for normalization and the terrain
+    readout; computing them here keeps the full-resolution scan off the UI
+    thread for large fabrication resolutions.
+    """
+    heightfield = generate_physical_heightfield(*args, **kwargs)
+    return heightfield, float(heightfield.min()), float(heightfield.max())
+
+
 class MainWindow(QMainWindow):
     """Compose the image, terrain, and OpenGL viewport panels."""
 
@@ -48,6 +59,7 @@ class MainWindow(QMainWindow):
         self._heightfield_key = None
         self._heightfield_image = None
         self._procedural_key = None
+        self._external_field_cache = None
         self._export_active = False
         self._active_worker = None
         self._recovery_snapshot = None
@@ -408,7 +420,9 @@ class MainWindow(QMainWindow):
             return
         try:
             snapshot = self._procedural_snapshot(source_already_processed=True)
-            primary = NormalizedField(np.asarray(image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"))
+            # The adjusted image is already float32 and dedicated to this
+            # heightfield pass; wrap it without a second full-image copy.
+            primary = NormalizedField(np.asarray(image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"), copy=False)
         except (TypeError, ValueError) as error:
             self._show_error(f"Image composition is invalid: {error}")
             return
@@ -433,13 +447,45 @@ class MainWindow(QMainWindow):
         self.thread_pool.start(worker)
 
     def _external_fields(self) -> dict[str, NormalizedField]:
+        """Return cached normalized wrappers for the external fields.
+
+        ``NormalizedField`` copies its input by default, so rebuilding the
+        wrappers on every heightfield/export call would copy each external field
+        repeatedly. Both external arrays are already read-only when they reach
+        the state, so the wrappers use ``copy=False`` and share the array rather
+        than allocating a second full-size copy. The cache key uses object
+        identity plus the stored content hash: replacing either field or its
+        descriptor invalidates the entry.
+        """
+        secondary = self.state.secondary_field
+        mask = self.state.mask_field
+        secondary_descriptor = self.state.secondary_source_descriptor
+        mask_descriptor = self.state.mask_source_descriptor
+        key = (
+            id(secondary),
+            id(mask),
+            secondary_descriptor.get("content_hash") if secondary_descriptor else None,
+            mask_descriptor.get("content_hash") if mask_descriptor else None,
+        )
+        cached = self._external_field_cache
+        if cached is not None and cached[0] == key:
+            return cached[1]
         fields: dict[str, NormalizedField] = {}
-        for values, descriptor_data in ((self.state.secondary_field, self.state.secondary_source_descriptor), (self.state.mask_field, self.state.mask_source_descriptor)):
+        for values, descriptor_data in ((secondary, secondary_descriptor), (mask, mask_descriptor)):
             if values is None or descriptor_data is None:
                 continue
             descriptor = SourceDescriptor.from_dict(descriptor_data)
             if descriptor.content_hash is not None:
-                fields[descriptor.content_hash] = NormalizedField(np.asarray(values, dtype=np.float32), FieldMetadata("external", "embedded_field", "1"))
+                fields[descriptor.content_hash] = NormalizedField(
+                    np.asarray(values, dtype=np.float32),
+                    FieldMetadata("external", "embedded_field", "1"),
+                    copy=False,
+                )
+        # Keep strong references to the source arrays alongside the cache entry.
+        # The key uses id(), and without a reference the array can be collected
+        # and its address reused by a different array that happens to carry the
+        # same descriptor hash, which would return a stale field.
+        self._external_field_cache = (key, fields, secondary, mask)
         return fields
 
     def _container_settings(self) -> ContainerSettings:
@@ -457,7 +503,7 @@ class MainWindow(QMainWindow):
             dimensions = PhysicalDimensions(self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.minimum_height_mm, self.state.maximum_height_mm)
             return (
                 analyze_image_export_task,
-                (self.state.adjusted_image.copy(), dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode),
+                (self.state.adjusted_image, dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode),
                 {"height_options": options_from_state(self.state), "profile": FabricationProfile(**self.state.fabrication_profile)},
             )
         try:
@@ -469,7 +515,9 @@ class MainWindow(QMainWindow):
         if self.state.source_type == "image":
             if self.state.adjusted_image is None:
                 return None
-            primary = NormalizedField(np.asarray(self.state.adjusted_image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"))
+            # Wrap the adjusted image without a second full-image copy. The
+            # field contract still marks the array read-only.
+            primary = NormalizedField(np.asarray(self.state.adjusted_image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"), copy=False)
         return (
             analyze_procedural_export_task,
             (snapshot, self.state.export_resolution, self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.base_thickness_mm, self.state.relief_mode),
@@ -513,11 +561,16 @@ class MainWindow(QMainWindow):
         physical = result.physical_heightfield
         self.state.physical_heightfield = physical
         self.image_panel.set_procedural_preview(result.normalized_field.values)
-        display = -physical if self.state.relief_mode == "negative" else physical
-        self.viewport.set_height_range(float(display.min()), float(display.max()))
+        if self.state.relief_mode == "negative":
+            display = -physical
+            display_min, display_max = -result.maximum, -result.minimum
+        else:
+            display = physical
+            display_min, display_max = result.minimum, result.maximum
+        self.viewport.set_height_range(display_min, display_max)
         self.viewport.set_heightfield(display, self.state.terrain_width_mm, self.state.terrain_depth_mm)
-        self.image_panel.set_heightfield_preview(display)
-        self.terrain_panel.set_actual_height_range(float(display.min()), float(display.max()))
+        self.image_panel.set_heightfield_preview(display, bounds=(display_min, display_max))
+        self.terrain_panel.set_actual_height_range(display_min, display_max)
         self.terrain_panel.set_fabrication_metrics(
             analyze_heightfield(display, self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.base_thickness_mm, "positive", profile=FabricationProfile(**self.state.fabrication_profile))
         )
@@ -557,7 +610,7 @@ class MainWindow(QMainWindow):
         resolution = self.state.heightfield_resolution
         if resolution is None and min(image.shape[:2]) < 2:
             resolution = (max(2, image.shape[1]), max(2, image.shape[0]))
-        worker = FunctionWorker(generate_physical_heightfield, image.copy(), dimensions, resolution, self.state.height_invert, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, options=options)
+        worker = FunctionWorker(_generate_heightfield_with_bounds, image, dimensions, resolution, self.state.height_invert, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, options=options)
         self._heightfield_workers[token] = worker
         worker.signals.finished.connect(lambda result, generation=token, dims=dimensions, mode=self.state.relief_mode, preview=provisional, opts=options: self._heightfield_finished(generation, dims, result, mode, preview, opts))
         worker.signals.failed.connect(lambda message, generation=token: self._heightfield_failed(generation, message))
@@ -569,23 +622,30 @@ class MainWindow(QMainWindow):
         self._heightfield_image = None
         self._procedural_key = None
         self.state.physical_heightfield = None
+        self.image_panel.clear_adjustment_cache()
         self.image_panel.set_heightfield_preview(None)
 
-    def _heightfield_finished(self, generation: int, dimensions: PhysicalDimensions, heightfield, mode: str = "positive", provisional: bool = False, options=None) -> None:
+    def _heightfield_finished(self, generation: int, dimensions: PhysicalDimensions, result, mode: str = "positive", provisional: bool = False, options=None) -> None:
         self._heightfield_workers.pop(generation, None)
         if generation != self._heightfield_generation:
             return
+        heightfield, worker_min, worker_max = result
         if not provisional:
             self.state.physical_heightfield = heightfield
-        display = -heightfield if mode == "negative" else heightfield
+        if mode == "negative":
+            display = -heightfield
+            display_min, display_max = -worker_max, -worker_min
+        else:
+            display = heightfield
+            display_min, display_max = worker_min, worker_max
         low, high = physical_height_bounds(dimensions, options or options_from_state(self.state))
         minimum, maximum = (-high, -low) if mode == "negative" else (low, high)
         if maximum > minimum:
             self.viewport.set_height_range(minimum, maximum)
         self.viewport.set_heightfield(display, dimensions.width_mm, dimensions.depth_mm)
         if not provisional:
-            self.image_panel.set_heightfield_preview(display)
-            self.terrain_panel.set_actual_height_range(float(display.min()), float(display.max()))
+            self.image_panel.set_heightfield_preview(display, bounds=(display_min, display_max))
+            self.terrain_panel.set_actual_height_range(display_min, display_max)
             self.terrain_panel.set_fabrication_metrics(
                 analyze_heightfield(display, dimensions.width_mm, dimensions.depth_mm, self.state.base_thickness_mm, "positive", profile=FabricationProfile(**self.state.fabrication_profile))
             )
@@ -626,7 +686,7 @@ class MainWindow(QMainWindow):
         if procedural:
             worker = FunctionWorker(export_procedural_mesh_task, self._procedural_snapshot(), dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, path, file_type, external_fields=self._external_fields(), container_settings=self._container_settings(), inject_control=True)
         else:
-            worker = FunctionWorker(export_mesh_task, image.copy(), dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, path, file_type, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, height_options=options_from_state(self.state), container_settings=self._container_settings(), inject_control=True)
+            worker = FunctionWorker(export_mesh_task, image, dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, path, file_type, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, height_options=options_from_state(self.state), container_settings=self._container_settings(), inject_control=True)
         self._active_worker = worker
         worker.signals.progress.connect(lambda percent, message: self._export_progress(label, percent, message))
         worker.signals.finished.connect(lambda output: self._export_finished(label, output))
@@ -658,7 +718,7 @@ class MainWindow(QMainWindow):
         if procedural:
             worker = FunctionWorker(export_procedural_heightmap_task, self._procedural_snapshot(), self.state.export_resolution, path, bit_depth, external_fields=self._external_fields(), relief_mode=self.state.relief_mode, inject_control=True)
         else:
-            worker = FunctionWorker(export_heightmap_task, image.copy(), dimensions, self.state.export_resolution, path, bit_depth, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, relief_mode=self.state.relief_mode, height_options=options_from_state(self.state), inject_control=True)
+            worker = FunctionWorker(export_heightmap_task, image, dimensions, self.state.export_resolution, path, bit_depth, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, relief_mode=self.state.relief_mode, height_options=options_from_state(self.state), inject_control=True)
         self._active_worker = worker
         worker.signals.progress.connect(lambda percent, message: self._export_progress("Heightmap", percent, message))
         worker.signals.finished.connect(lambda output: self._export_finished("Heightmap", output))

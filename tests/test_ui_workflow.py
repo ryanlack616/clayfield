@@ -544,3 +544,41 @@ def test_preset_ui_load_is_undoable(window, tmp_path: Path, monkeypatch):
     assert win.state.height_offset_mm == 3
     win._undo()
     assert win.state.height_offset_mm == 1
+
+
+def test_external_field_wrappers_are_cached_until_field_changes(window):
+    win, app = window
+    win.state.secondary_field = np.zeros((4, 4), dtype=np.float32)
+    win.state.secondary_source_descriptor = {
+        "type": "image",
+        "schema_version": 1,
+        "parameters": {},
+        "algorithm": None,
+        "algorithm_version": None,
+        "seed": None,
+        "content_hash": "secondary-hash",
+    }
+    first = win._external_fields()
+    second = win._external_fields()
+    assert first is second
+    assert first["secondary-hash"] is second["secondary-hash"]
+    win.state.secondary_field = np.ones((4, 4), dtype=np.float32)
+    third = win._external_fields()
+    assert third is not first
+    assert third["secondary-hash"] is not first["secondary-hash"]
+
+
+def test_histogram_samples_large_image(window):
+    win, app = window
+    image = np.zeros((2000, 2000), dtype=np.float32)
+    win.image_panel.histogram.set_image(image, max_samples=1000)
+    assert win.image_panel.histogram.values.shape == (256,)
+    assert float(win.image_panel.histogram.values.max()) == 1.0
+
+
+def test_viewport_decimates_large_heightfield_for_display(window):
+    win, app = window
+    heightfield = np.zeros((5000, 5000), dtype=np.float32)
+    display, rows, columns = win.viewport._decimate_for_display(heightfield)
+    assert max(rows, columns) <= 4096
+    assert display.shape == (rows, columns)

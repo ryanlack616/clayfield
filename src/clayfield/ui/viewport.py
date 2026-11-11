@@ -20,6 +20,27 @@ from clayfield.ui.gpu_pipeline import GpuImagePipeline, supports_gpu_adjustments
 from clayfield.image.curves import curve_lut
 
 
+def _block_mean(values: np.ndarray, target_rows: int, target_columns: int) -> np.ndarray:
+    """Downscale a 2D array by averaging non-overlapping blocks (box filter).
+
+    ``np.add.reduceat`` is used instead of reshape-and-mean so odd row/column
+    counts and non-integer bin widths still average every source sample exactly
+    once. The result is float32 and C-contiguous, which is what the texture
+    upload expects.
+    """
+    rows, columns = values.shape
+    if target_rows == rows and target_columns == columns:
+        return values
+    row_starts = np.linspace(0, rows, target_rows + 1, dtype=np.int64)[:-1]
+    column_starts = np.linspace(0, columns, target_columns + 1, dtype=np.int64)[:-1]
+    row_counts = np.diff(np.append(row_starts, rows))
+    column_counts = np.diff(np.append(column_starts, columns))
+    row_sums = np.add.reduceat(values, row_starts, axis=0)
+    block_sums = np.add.reduceat(row_sums, column_starts, axis=1)
+    means = block_sums / (row_counts[:, None] * column_counts[None, :])
+    return np.ascontiguousarray(means, dtype=np.float32)
+
+
 class Viewport(QOpenGLWidget):
     """Render a reference grid and provide basic camera interaction."""
 
@@ -273,21 +294,58 @@ class Viewport(QOpenGLWidget):
             raise ValueError("Heightfield must contain at least a 2x2 grid")
         if not np.isfinite(heightfield).all():
             raise ValueError("Heightfield values must be finite")
-        self._pending_heightfield = (heightfield.copy(), width, depth)
+        # Keep the CPU heightfield authoritative; the viewport only needs a
+        # display-resolution texture. Copying the full array here would double
+        # the peak for a large heightfield and is unnecessary because the array
+        # is treated as read-only by the viewport.
+        self._pending_heightfield = (heightfield, width, depth)
         self._surface_extent = max(width, depth, float(np.ptp(heightfield))) / 20.0
         self.update()
 
+    def _display_texture_limit(self) -> int:
+        """Return the largest 2D texture edge the driver can accept.
+
+        A preview texture does not need fabrication resolution. 4096 is the
+        practical display ceiling on this class of GPU; the driver limit is
+        checked so a smaller limit cannot fail the upload.
+        """
+        try:
+            driver_limit = int(glGetIntegerv(GL_MAX_TEXTURE_SIZE))
+        except Exception:
+            driver_limit = 4096
+        return max(1, min(4096, driver_limit))
+
+    def _decimate_for_display(self, heightfield: np.ndarray) -> tuple[np.ndarray, int, int]:
+        """Return an area-averaged display texture and its row/column counts.
+
+        Stride sampling keeps only one sample per block, so a heightfield with
+        detail near the stride frequency aliases into false low-frequency
+        ridges in the viewport. Averaging each block (box filter) removes that
+        aliasing and is the standard choice for downscaling. The CPU
+        heightfield and every export path remain untouched; only the display
+        texture is reduced.
+        """
+        limit = self._display_texture_limit()
+        rows, columns = heightfield.shape
+        if max(rows, columns) <= limit:
+            return heightfield, rows, columns
+        step = max(1, int(math.ceil(max(rows, columns) / limit)))
+        target_rows = max(2, min(rows, int(round(rows / step))))
+        target_columns = max(2, min(columns, int(round(columns / step))))
+        display = _block_mean(heightfield, target_rows, target_columns)
+        return display, display.shape[0], display.shape[1]
+
     def _upload_heightfield(self, heightfield: np.ndarray, width_mm: float, depth_mm: float) -> None:
         """Upload a pending surface while Qt's render context is current."""
-        texture_rows, texture_columns = heightfield.shape
-        self._sample_spacing = (width_mm / (20.0 * (texture_columns - 1)), depth_mm / (20.0 * (texture_rows - 1)))
+        display, texture_rows, texture_columns = self._decimate_for_display(heightfield)
+        self._sample_spacing = (width_mm / (20.0 * max(1, texture_columns - 1)), depth_mm / (20.0 * max(1, texture_rows - 1)))
         self._gpu_surface = None
         self._ensure_surface_grid(texture_rows, texture_columns, width_mm, depth_mm)
         if not self.height_texture:
             self.height_texture = glGenTextures(1)
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, self.height_texture)
-        texture_data = np.ascontiguousarray(heightfield.astype(np.float32) / 20.0)
+        texture_data = np.ascontiguousarray(display.astype(np.float32) / 20.0)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, texture_columns, texture_rows, 0, GL_RED, GL_FLOAT, texture_data)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)

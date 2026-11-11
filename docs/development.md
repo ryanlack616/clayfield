@@ -5,8 +5,13 @@ Install Python 3.12 or newer and run:
 ```sh
 python -m venv .venv
 .venv/bin/pip install -e '.[test,bundle]'
-PYTHONPATH=.:src .venv/bin/pytest -q
+.venv/bin/pytest -q
 ```
+
+`pyproject.toml` sets `pythonpath = ["src"]`, so a separate `PYTHONPATH` prefix
+is only needed when invoking a pytest outside the project. With uv, use
+`uv run --extra test python -m pytest -q` so the project environment (and its
+test extra) is used.
 
 The normal tests use Qt's offscreen platform and skip integration tests that
 need external programs or a real OpenGL context. To run the additional checks:
@@ -66,13 +71,13 @@ compatibility decision.
 
 Current local hardening observations:
 
-- The current suite passes `181 passed, 7 skipped`.
+- The current suite passes `250 passed, 7 skipped`.
 - `clayfield --self-test` passes.
 - A wheel builds successfully and installs/imports in a clean temporary Python
   environment.
 - Full 1024 x 1024 mesh validation can peak around 3.5 GiB on this host. The
-  exporter now uses a conservative 20x working-set estimate and may reject
-  1024² exports; prefer 512² or lower until the target machine is profiled.
+  exporter uses a measured 7x working-set factor; 1024² and 4096² exports fit
+  the default budget, and 8192² is rejected.
 - No live ComfyUI endpoint, PrusaSlicer executable, 7-Zip-compatible command,
   additional GPU/OS target, or physical printer is configured in this
   environment.

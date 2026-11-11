@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -18,14 +18,25 @@ class FieldPipelineResult:
     normalized_field: NormalizedField
     physical_heightfield: np.ndarray
     stage_order: tuple[str, ...]
+    # Computed in the worker that constructs the result so UI previews do not
+    # rescan a full-resolution heightfield on the GUI thread.
+    minimum: float = field(init=False)
+    maximum: float = field(init=False)
 
     def __post_init__(self) -> None:
         values = np.asarray(self.physical_heightfield, dtype=np.float32)
         if values.shape != self.normalized_field.shape or not np.isfinite(values).all():
             raise ValueError("Physical heightfield must match the normalized field and be finite")
-        values = np.array(values, dtype=np.float32, copy=True)
+        # ``map_field_to_physical`` already returns a new, owned float32 array.
+        # Copying it again doubles the full-resolution peak for no ownership
+        # benefit. Mark the existing array read-only instead so consumers cannot
+        # mutate the published result.
+        if not values.flags.writeable:
+            values = values.copy()
         values.setflags(write=False)
         object.__setattr__(self, "physical_heightfield", values)
+        object.__setattr__(self, "minimum", float(values.min()))
+        object.__setattr__(self, "maximum", float(values.max()))
 
 
 def evaluate_field_pipeline(
