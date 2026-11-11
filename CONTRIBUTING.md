@@ -68,8 +68,17 @@ It runs without a project config because no `tsconfig.json` sits beside
 `mesh-forge/contracts/types.ts`; if one is added there, pass the project config
 instead.
 
-CI runs the same set (`.github/workflows/ci.yml`). A change that passes locally and
-fails CI is a change that has not been verified.
+CI runs the same set (`.github/workflows/ci.yml`), which calls `scripts/check.sh`
+rather than restating the steps. A change that passes locally and fails CI is a
+change that has not been verified.
+
+GitHub Actions cannot start jobs on this account while it is billing-locked. To
+run the workflow itself without GitHub, install `act` and run it from the repo
+root:
+
+```bash
+act push --rm        # executes .github/workflows/ci.yml in Docker
+```
 
 ## Definition of done
 

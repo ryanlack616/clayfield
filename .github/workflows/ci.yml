@@ -29,11 +29,12 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 12
+      # No setup-node cache: the pnpm store lives in mesh-forge/, while the
+      # action resolves the store path from the repo root. The mismatch makes
+      # the cache-save post step fail the job. A warm install costs seconds.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: mesh-forge/pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
