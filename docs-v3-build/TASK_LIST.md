@@ -5,6 +5,8 @@ Use this as the live execution checklist. Check an item only when its acceptance
 - Anchors verified against `src/` on 2026-11-11 (`361 passed, 7 skipped`, exit 0).
 - Anchor format: `→ file:line` for an edit to existing code; `→ new: file` for a file that does not exist yet.
 - The line numbers are the pre-build positions. Re-grep before editing; the tree moves.
+- Phase numbers match the roadmap's 8-phase scheme. Gates live in the roadmap only; this list tracks the work and points at them.
+- Metric definitions, mask semantics, and the calibrated fixture live in `docs-v3-build/MEASUREMENT_SPEC.md`; the metric tasks below implement that document.
 
 ## Shell decision — adapt, do not retrofit
 
@@ -17,7 +19,7 @@ Concretely: `MainWindow` (`src/clayfield/ui/main_window.py:79`) is edited in pla
 
 Roadmap authority: `docs-v3-build/IMPLEMENTATION_ROADMAP.md:67` ("Define main-window composition using the existing Qt patterns"), `:68` ("Implement or adapt dockable source and settings panels"), `:74` ("Preserve existing viewport interactions while integrating the new chrome"). Audit authority: `docs-v3-build/REPOSITORY_AUDIT.md:216` ("Do not attempt to retrofit the v3 layout onto the current splitter").
 
-## Phase 0 — Repository audit
+## Phase 0 — Repository audit and baseline
 
 - [x] Record repository root, branch, working-tree status, and recent commit context.
 - [x] Record Python version and dependency/install workflow.
@@ -37,11 +39,12 @@ Roadmap authority: `docs-v3-build/IMPLEMENTATION_ROADMAP.md:67` ("Define main-wi
 - [x] Run existing tests and record baseline results.
 - [x] Create `REPOSITORY_AUDIT.md` with exact paths, verified facts, gaps, and risks.
 
-**Phase 0 acceptance:** Audit report is complete; current launch/test state is known; no source code has been changed merely to begin the audit.
+**Phase 0 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 0 — Repository audit and baseline" → Exit gate.
 
 **Audit completed 2026-11-11** — report at `docs-v3-build/REPOSITORY_AUDIT.md`.
-Baseline: 361 tests pass; window constructs headless at 1280×820; GUI launch
-blocked by X authorization on this session; GL viewport not exercised.
+Baseline: 361 tests pass; window constructs and shows at 1309×820 with a valid
+GL 4.6 context; `--gl-self-test` passes on `DISPLAY=:0` with
+`XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.J78QY3`.
 
 ### Anchors established by the audit
 
@@ -65,7 +68,7 @@ blocked by X authorization on this session; GL viewport not exercised.
 | Undo ledger | `src/clayfield/app/history.py:73` `EditLedger`, `:166` `ParameterHistory` |
 | Export | `src/clayfield/export/stl.py:21`, `src/clayfield/export/three_mf.py:18`, `src/clayfield/export/verification.py:20,58` |
 
-## Phase 1 — Application shell
+## Phase 1 — Architecture decisions and UI shell
 
 - [ ] Create/adapt main window without replacing working processing/rendering components. → `src/clayfield/ui/main_window.py:79`; adapt in place per the shell decision above.
 - [ ] Add compact geometric mark and CLAYFIELD wordmark. → `src/clayfield/ui/main_window.py:119` sets the title text; no icon asset exists (`QIcon` → 0 hits in `src/clayfield/ui/`); `src/clayfield/resources/` holds shaders only. New asset plus `setWindowIcon`.
@@ -81,12 +84,14 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Apply shared visual tokens and common widget styling. → `src/clayfield/ui/theme.py:7` `apply_theme(dark)`; called at `src/clayfield/ui/main_window.py:114`. Tokens do not exist yet — `theme.py` has one function and no token constants.
 - [ ] Add workspace-state preservation (scroll position, selections, values). → new; scroll areas are created inline at `src/clayfield/ui/main_window.py:151,154` and have no persistence.
 - [ ] Add subtle tab transition without blocking interaction. → new.
-- [ ] Verify default 1600 × 1000 logical-pixel layout. → `src/clayfield/ui/main_window.py:120` `resize(1280, 820)` must become 1600 × 1000; spec at `docs-v3-build/GUI_LAYOUT.md:30`.
+- [ ] Verify default 1600 × 1000 logical-pixel layout. → `src/clayfield/ui/main_window.py:120` `resize(1280, 820)` must become 1600 × 1000; spec at `docs-v3-build/GUI_LAYOUT.md:30`. Measured floor is 1309 × 440, so 1600 × 1000 is reachable on this 3440 × 1440 display.
 - [ ] Verify smaller-window behavior and high-DPI scaling. → `src/clayfield/ui/main_window.py:292` `resizeEvent`; overlay repositioning at `:275` `_position_canvas_overlays`.
 
-**Phase 1 acceptance:** Docking, tabs, persistent viewport, styling, and state persistence work without breaking the existing viewport or geometry pipeline.
+**Phase 1 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 1 — Architecture decisions and UI shell" → Exit gate.
 
-## Phase 2 — SOURCE workspace
+## Phase 2 — SOURCE and MODEL vertical slice
+
+### SOURCE workspace
 
 - [ ] Design no-image empty state with Open/Drop affordance. → `src/clayfield/ui/image_panel.py:86`; drop handling already exists at `src/clayfield/ui/main_window.py:390` `dragEnterEvent`, `:400` `dropEvent`.
 - [ ] Implement one active source image at a time. → `src/clayfield/ui/image_panel.py:86` plus `src/clayfield/app/project_state.py`.
@@ -102,9 +107,8 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Decide crop support based on existing pipeline; do not expose a dead control. → **already implemented**: `src/clayfield/image/geometry.py:32` `crop_bounds`, `:52` `apply_image_geometry`. Expose it; the "decide" wording is stale.
 - [ ] Mark relief stale when source changes. → `src/clayfield/ui/main_window.py:904` `_invalidate_heightfield`.
 
-**Phase 2 acceptance:** One image can be loaded, inspected, adjusted, and replaced; source state and relief-stale state are clear.
 
-## Phase 3 — MODEL workspace
+### MODEL workspace
 
 - [ ] Add physical width numeric input with visible mm unit. → `src/clayfield/ui/terrain_panel.py:37` `self.width = self._dimension(100.0)`.
 - [ ] Add physical height numeric input with visible mm unit. → `src/clayfield/ui/terrain_panel.py:39` `self.depth = self._dimension(100.0)`.
@@ -118,14 +122,14 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Frame model after successful generation. → `src/clayfield/ui/viewport.py:63`; camera at `src/clayfield/ui/camera.py:12` `OrbitCamera`.
 - [ ] Mark geometry stale when generation parameters change. → `src/clayfield/ui/main_window.py:148` `parameters_changed.connect(self._rebuild_heightfield)`.
 
-**Phase 3 acceptance:** Image-to-relief workflow produces correct physical bounds and the UI reports truthful dimensions and mesh statistics.
+**Phase 2 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 2 — SOURCE and MODEL vertical slice" → Exit gate.
 
-## Phase 4 — Geometry and mask contract
+## Phase 3 — Geometry and mask contract
 
-- [ ] Document authoritative editable geometry representation. → `src/clayfield/geometry/mesh_generator.py` `generate_solid_mesh`; validated by `src/clayfield/geometry/validation.py`.
-- [ ] Document physical coordinate mapping. → `src/clayfield/terrain/mapping.py`.
-- [ ] Document mask sample domain and mapping to geometry. → `src/clayfield/app/project_state.py:29` `mask_field`; shape check at `src/clayfield/field/composition.py:30`.
-- [ ] Define mask behavior on geometry regeneration/resampling. → new; nothing in `src/` defines it.
+- [ ] Record the geometry representation per `MEASUREMENT_SPEC.md` §1. → `src/clayfield/geometry/mesh_generator.py` `generate_solid_mesh`; validated by `src/clayfield/geometry/validation.py`.
+- [ ] Record the physical coordinate mapping per `MEASUREMENT_SPEC.md` §1.1. → `src/clayfield/terrain/mapping.py`.
+- [ ] Record the mask sample domain and mapping per `MEASUREMENT_SPEC.md` §2.2. → `src/clayfield/app/project_state.py:29` `mask_field`; shape check at `src/clayfield/field/composition.py:30`.
+- [ ] Implement mask validity, stale detection, and remap per `MEASUREMENT_SPEC.md` §2.2. → new; nothing in `src/` defines it.
 - [ ] Implement weighted mask storage independent of geometry. → `src/clayfield/app/project_state.py:29`; serialized at `src/clayfield/app/project_io.py:473,569`. The storage exists; independence from geometry does not.
 - [ ] Implement mask show/hide overlay. → new: `src/clayfield/ui/viewport.py:63` renders no mask (`grep -ci mask` → 0).
 - [ ] Implement cyan eligible / dark-gray protected visualization. → new; no mask colour constants exist.
@@ -139,16 +143,16 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Add alignment tests for sample-to-geometry mapping. → new: `tests/`.
 - [ ] Add tests that protected regions remain protected after mapping/resampling. → new: `tests/`.
 
-**Phase 4 acceptance:** Mask remains spatially aligned, independent from geometry, and cannot silently apply after its mapping becomes invalid.
+**Phase 3 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 3 — Geometry and mask contract" → Exit gate.
 
-## Phase 5 — SURFACE analysis
+## Phase 4 — First analysis and mask workflow (SURFACE workspace)
 
-- [ ] Define and document Detail Size metric. → new; only `analyze_heightfield` (`src/clayfield/terrain/fabrication.py:71`) exists and it measures fabrication limits.
-- [ ] Define and document Surface Roughness metric. → new.
-- [ ] Define and document Surface Irregularity metric. → new.
-- [ ] Define and document Isolated Peaks metric. → new.
-- [ ] Define and document Depressions metric. → new.
-- [ ] Define and document Edge Protection metric. → new.
+- [ ] Implement Detail Size per `MEASUREMENT_SPEC.md` §3.2. → new; only `analyze_heightfield` (`src/clayfield/terrain/fabrication.py:71`) exists and it measures fabrication limits.
+- [ ] Implement Surface Roughness per `MEASUREMENT_SPEC.md` §3.3. → new.
+- [ ] Implement Surface Irregularity per `MEASUREMENT_SPEC.md` §3.4. → new.
+- [ ] Implement Isolated Peaks per `MEASUREMENT_SPEC.md` §3.6. → new.
+- [ ] Implement Depressions per `MEASUREMENT_SPEC.md` §3.7. → new.
+- [ ] Implement Edge Protection per `MEASUREMENT_SPEC.md` §3.8. → new.
 - [ ] Verify physical scale limits against effective sampling resolution. → `src/clayfield/terrain/fabrication.py:46` `FabricationMetrics` already reports resolved feature width; extend rather than duplicate.
 - [ ] Implement analysis preview without changing geometry or mask. → new module, e.g. `src/clayfield/terrain/surface_analysis.py`.
 - [ ] Implement heatmap-replacement display mode. → new; `src/clayfield/ui/height_colors.py:110` `HeightColorDialog` is the existing colour path to copy.
@@ -157,11 +161,11 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Add detected-area summary only where meaningful. → new.
 - [ ] Convert analysis output into weighted mask. → writes `state.mask_field` (`src/clayfield/app/project_state.py:29`).
 - [ ] Add ANY/ALL combined detection after individual methods are validated. → new.
-- [ ] Add Curvature only after its metric and interpretation are documented. → new.
+- [ ] Implement Curvature per `MEASUREMENT_SPEC.md` §3.5. → new.
 
-**Phase 5 acceptance:** At least one method detects a known physical test feature, produces a readable preview, and generates a correctly aligned weighted mask.
+**Phase 4 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 4 — First analysis and mask workflow" → Exit gate.
 
-## Phase 6 — CLEANUP and brush workflow
+## Phase 5 — Mask editing and selective cleanup (CLEANUP workspace)
 
 - [ ] Add cleanup tool selection. → `src/clayfield/ui/sculpt_panel.py:35` `SculptPanel`; brush settings at `src/clayfield/sculpt/brush.py:25` `BrushSettings`.
 - [ ] Add brush radius in mm. → `src/clayfield/sculpt/brush.py:25`; cursor ring upload at `src/clayfield/ui/viewport.py:268`.
@@ -185,16 +189,16 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Implement noise removal if supported. → new.
 - [ ] Add Preview / Apply / Cancel lifecycle. → new; no preview lifecycle exists for mask ops.
 - [ ] Ensure Cancel restores pre-preview state. → `src/clayfield/sculpt/session.py:22` `SculptSession`, `src/clayfield/sculpt/history.py:80` `SculptHistory`.
-- [ ] Ensure protected regions are unchanged within defined tolerance. → new; depends on Phase 4's mapping.
+- [ ] Ensure protected regions are unchanged within defined tolerance. → new; depends on Phase 3's mask mapping.
 - [ ] Add explicit temporary mask-bypass control. → new.
 - [ ] Add before/after toggle. → new.
 - [ ] Add operation history with meaningful names. → `src/clayfield/app/history.py:73` `EditLedger.record(kind)`.
 - [ ] Integrate geometry and mask changes into undo/redo. → `src/clayfield/app/history.py:73`; mask edits need a new ledger kind per `docs-v3-build/REPOSITORY_AUDIT.md:208-209`.
 - [ ] Define and test Restore Original Surface behavior before exposing the brush. → `src/clayfield/app/project_state.py:34` `mask_original_bytes` and `src/clayfield/app/project_io.py:573` are the retained-original path; geometry original retention is new.
 
-**Phase 6 acceptance:** A known local defect can be detected, masked, refined, compared, and undone without altering protected regions beyond a documented tolerance.
+**Phase 5 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 5 — Mask editing and selective cleanup" → Exit gate.
 
-## Phase 7 — OUTPUT and validation
+## Phase 6 — OUTPUT and fabrication validation
 
 - [ ] Add STL export option. → `src/clayfield/export/stl.py:21` `export_stl`; UI at `src/clayfield/ui/main_window.py:966` `_export_stl`.
 - [ ] Add 3MF export option. → `src/clayfield/export/three_mf.py:18` `export_3mf`; UI at `src/clayfield/ui/main_window.py:969` `_export_3mf`.
@@ -211,9 +215,9 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Ensure export does not mutate working geometry. → `src/clayfield/export/tasks.py` worker wrappers; verify against `geometry/container.py`.
 - [ ] Re-import representative exports and verify bounds/topology. → new: `tests/` using `src/clayfield/export/verification.py:20,58`.
 
-**Phase 7 acceptance:** STL and 3MF export correctly; displayed validation state is truthful; exported dimensions match the model.
+**Phase 6 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 6 — OUTPUT and fabrication validation" → Exit gate.
 
-## Phase 8 — Polish and release hardening
+## Phase 7 — Polish, performance, and release hardening
 
 - [ ] Verify all controls have consistent hover, focus, active, disabled, and error states. → `src/clayfield/ui/theme.py:7` `apply_theme`; token set is new.
 - [ ] Verify units are visible and values are directly editable. → `src/clayfield/ui/terrain_panel.py:37-46`; `_dimension` helper already appends the unit.
@@ -231,7 +235,7 @@ blocked by X authorization on this session; GL viewport not exercised.
 - [ ] Verify clean-environment installation and launch. → `pyproject.toml`, `uv.lock`, `.venv`; `python -m clayfield --self-test`.
 - [ ] Update user-facing documentation and shortcuts reference. → `docs-v3-build/` plus the root `README.md`.
 
-**Phase 8 acceptance:** Core workflow is stable, responsive, visually consistent, and reproducible from a clean install.
+**Phase 7 gate:** owned by `docs-v3-build/IMPLEMENTATION_ROADMAP.md` § "Phase 7 — Polish, performance, and release hardening" → Exit gate.
 
 ---
 

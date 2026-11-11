@@ -18,7 +18,7 @@ python -m pytest -q            # 361 tests
 
 The desktop code is `src/`, launched by `main.py` → `clayfield.app.application:run`.
 The v3 handoff package asks for a read-only audit first; that audit is done. The
-current window is a 1280×820 `QSplitter` shell; v3 specifies a docked three-column
+current window is a 1309×820 `QSplitter` shell; v3 specifies a docked three-column
 shell with five workspace tabs and a painted weighted mask. Phase 1 is a shell
 rebuild, not a restyle.
 

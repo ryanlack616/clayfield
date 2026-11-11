@@ -13,6 +13,7 @@
 | `IMPLEMENTATION_ROADMAP.md` | Ordered engineering phases, dependencies, risks, and acceptance gates |
 | `TASK_LIST.md` | Actionable implementation checklist with completion criteria |
 | `REPOSITORY_AUDIT.md` | Phase 0 read-only audit: verified paths, facts, gaps, risks |
+| `MEASUREMENT_SPEC.md` | Proposed measurement layer: metric definitions, mask contract, calibrated fixture. Adopt or amend before Phase 3 starts. |
 
 ## Product definition
 
@@ -49,8 +50,9 @@ The first implementation does not include a generator library, multiple simultan
 1. Existing code and tests establish what is currently implemented.
 2. `GUI_LAYOUT.md` establishes intended user-visible behavior.
 3. `VISUAL_DESIGN.md` establishes visual tokens and component appearance.
-4. `IMPLEMENTATION_ROADMAP.md` establishes implementation order and architecture constraints.
-5. `TASK_LIST.md` tracks actual completion. A checkbox is checked only after its acceptance criteria are verified.
+4. `MEASUREMENT_SPEC.md` establishes the measurement math: metric definitions, mask contract, fixture. Status is *proposed* until adopted.
+5. `IMPLEMENTATION_ROADMAP.md` establishes implementation order and architecture constraints. Phase gates live there only.
+6. `TASK_LIST.md` tracks actual completion. A checkbox is checked only after its acceptance criteria are verified.
 
 If an implementation constraint conflicts with this specification, document the conflict and propose the smallest safe adjustment. Do not silently invent a new architecture.
 

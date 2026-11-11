@@ -73,27 +73,41 @@ The 7 skips are GPU/display-dependent; no failures.
 
 ### Baseline launch behavior
 
-The GUI could not connect to the running X server: `DISPLAY=:0` returns
-"Authorization required, but no authorization protocol specified" and the Qt xcb
-plugin aborts with exit 134. That is an X authorization restriction on this
-session, not an application defect.
+The GUI launches. The first attempt failed only because `DISPLAY` was unset and
+`~/.Xauthority` does not exist; this session's X server is Xwayland on `:0`,
+authenticated by `/run/user/1000/.mutter-Xwaylandauth.J78QY3`. The recipe:
 
-Constructing the window on the offscreen platform works and gives the real
-baseline without a display:
+```bash
+DISPLAY=:0 XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.J78QY3 \
+  env -u PYTHONPATH PYTHONPATH=src .venv/bin/python main.py --gl-self-test
+```
+
+`--gl-self-test` prints `OpenGL 3.3.0 NVIDIA 595.99.02; terrain vertices: 6;
+changed pixel channels: 427798; GPU error: 0.000000` and exits 0. The GL path is
+exercised, not merely documented — the earlier "authorization required" abort was
+a missing `XAUTHORITY`, not an application defect.
+
+Constructing and showing the window gives the real baseline:
 
 | Fact | Value |
 |---|---|
 | Window title | `ClayField — Untitled` |
-| Window size | 1280 × 820 |
+| Window size | 1309 × 820 |
+| Size requested | `resize(1280, 820)` — line 120; minimum size hint is 1309 × 440, so 1280 is not honoured |
 | Central widget | `QSplitter` |
 | Menu bar | File, Edit, View, Operations |
 | Status bar | present |
 | Bottom overlay width | 390 |
+| GL context | valid, 4.6, compatibility profile, 0 samples |
+| Screen | 3440 × 1440, dpr 1.0, 96 dpi |
 | Result | constructed OK, exit 0 |
 
-Limitation: the `QOpenGLWidget` viewport does not initialize offscreen, so the
-GL path remains unexercised. The `--gl-self-test` mode exists and is the correct
-way to verify it once an authorized display is available.
+The 1600 × 1000 default the v3 spec asks for clears the 1309 × 440 floor, so the
+resize target is not the constraint — the dock layout is.
+
+The offscreen platform cannot create a `QOpenGLWidget` context, so the viewport
+has to be exercised on a real display; `--gl-self-test` is the bounded way to do
+it.
 
 ### Main window
 
@@ -162,7 +176,7 @@ root holds only `test_grid.*`.
 
 | v3 requirement | Current state | Gap |
 |---|---|---|
-| Main window 1600×1000 | 1280×820 | resize constant |
+| Main window 1600×1000 | 1309×820 actual (`resize(1280, 820)` is not honoured; min hint 1309×440) | resize constant |
 | Left source dock 260px | no dock | **architectural** |
 | Right settings dock 360px | no dock; compose overlay 390px fixed | **architectural** |
 | Five workspace tabs in right dock | no `QTabWidget` | **architectural** |

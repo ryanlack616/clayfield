@@ -10,7 +10,8 @@ The repo carried two plans. The root README called the web builds active and the
 desktop app "legacy", while the desktop app is in fact the shipping product and
 the `docs-v3-build/` package redesigns it. The Phase 0 audit confirmed the
 desktop app is healthy (361 tests pass, 75 modules import clean) and that the v3
-UI is a different architecture from the current 1280×820 splitter shell.
+UI is a different architecture from the current splitter shell, which opens at
+1309×820 (the `resize(1280, 820)` request is below its 1309×440 minimum).
 
 Ryan holds a backup of the full repo, so committing to one direction carries no
 data-loss risk.
