@@ -238,7 +238,10 @@ project.zip
 - Separate versions: container, `DocumentEnvelope.schemaVersion`, per-op version.
 - `MigrationRunner` chains app migrations; unknown future version opens
   read-only.
-- Never mutate old files in place; write a new archive.
+- Never mutate old files in place; write a new archive. There is no portable
+  atomic rename in FSA/OPFS: use write-to-temp + rename where the host supports
+  it, and a download/IndexedDB fallback where it does not. State the per-browser
+  strategy in the persistence contract before C6.
 - Golden fixtures per schema version.
 
 ---

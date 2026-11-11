@@ -63,6 +63,9 @@ field. Sculpt offsets live in the app payload, not in a core `Layer`.
 | `Pipeline` | ordered transforms only, cancellable/budgeted |
 | `Command` | undo unit; patches or blob refs; interactive edits such as a sculpt stroke |
 
+`Command` is the undo contract, not a capability contract. The six capability
+contracts are the six rows above it.
+
 `OperationSpec` is a linear stack of `OperationInstance`. `Query`, `Exporter`,
 `Analyzer`, and interactive `Command`s are invoked explicitly, never placed in
 the pipeline stack.

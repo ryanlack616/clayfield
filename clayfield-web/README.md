@@ -116,6 +116,11 @@ operates on `Heightfield`. Core `Field2D` stays unitless.
 Invariant: `evaluated = base + sculptOffsets` in millimetres; export reads the
 evaluated heightfield.
 
+16-bit sources: `createImageBitmap`/`ImageDecoder` decode 16-bit PNG to 8-bit, so
+16-bit PNG needs a custom decoder or an 8-bit-only acceptance. 16-bit TIFF uses
+the dedicated decoder in `@clayfield/relief`. Decide which 16-bit formats v1
+accepts; do not claim 16-bit PNG without a decoder.
+
 ---
 
 ## 5. Document payload
