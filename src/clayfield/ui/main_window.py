@@ -1333,7 +1333,13 @@ class MainWindow(QMainWindow):
             self._mark_sculpt_dirty()
 
     def _refresh_sculpt_display(self) -> None:
-        """Re-upload the evaluated heightfield after a brush dab."""
+        """Re-upload the evaluated heightfield after a brush dab.
+
+        The viewport derives normals in its vertex shader from the height texture,
+        so moving cells needs no separate normal buffer update. The upload is a
+        decimated display texture rather than the full fabrication grid, which keeps
+        a dab well inside interactive latency without a partial-texture path.
+        """
         final = self.state.physical_heightfield
         if final is None:
             return
