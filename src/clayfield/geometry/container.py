@@ -26,7 +26,9 @@ class ContainerSettings:
             raise ValueError("Container wall thickness must be positive and clearance non-negative")
 
 
-def container_footprint(width_mm: float, depth_mm: float, settings: ContainerSettings | None = None) -> tuple[float, float]:
+def container_footprint(
+    width_mm: float, depth_mm: float, settings: ContainerSettings | None = None
+) -> tuple[float, float]:
     """Return the outside footprint represented by container settings."""
     settings = settings or ContainerSettings()
     settings.validate()
@@ -89,5 +91,5 @@ def prepare_container_heightfield(
     inner = values
     wall_top = float(values.max()) + settings.clearance_above_model_mm
     framed = np.full((framed_rows, framed_columns), wall_top, dtype=np.float32)
-    framed[border_y:border_y + inner_rows, border_x:border_x + inner_columns] = inner
+    framed[border_y : border_y + inner_rows, border_x : border_x + inner_columns] = inner
     return framed, float(target_width), float(target_depth)

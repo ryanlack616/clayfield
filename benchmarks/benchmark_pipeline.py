@@ -36,7 +36,9 @@ def main():
     print(f"Host: {platform.system()} {platform.machine()}, Python {platform.python_version()}")
     print(f"Image {image.shape}: cold {cold:.3f}s; blur-only edit {warm:.3f}s")
     print(f"Mesh {source.shape}: {len(mesh.faces):,} triangles in {mesh_time:.3f}s")
-    print(f"Mesh working-set estimate: {estimate.working_mebibytes:.1f} MiB; process peak RSS: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.1f} MiB")
+    print(
+        f"Mesh working-set estimate: {estimate.working_mebibytes:.1f} MiB; process peak RSS: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.1f} MiB"
+    )
 
 
 if __name__ == "__main__":

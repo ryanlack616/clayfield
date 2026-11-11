@@ -184,7 +184,11 @@ class Viewport(QOpenGLWidget):
                 glActiveTexture(GL_TEXTURE1)
                 glBindTexture(GL_TEXTURE_2D, self._mapping_texture)
                 glUniform1i(glGetUniformLocation(self.program, "mapping_curve"), 1)
-                glUniform2f(glGetUniformLocation(self.program, "physical_height_bounds"), gpu_surface["minimum"], gpu_surface["maximum"])
+                glUniform2f(
+                    glGetUniformLocation(self.program, "physical_height_bounds"),
+                    gpu_surface["minimum"],
+                    gpu_surface["maximum"],
+                )
                 glUniform1f(glGetUniformLocation(self.program, "mapping_gamma"), gpu_surface["gamma"])
                 glUniform1f(glGetUniformLocation(self.program, "relief_sign"), gpu_surface["sign"])
             glUniform1i(glGetUniformLocation(self.program, "lit_surface"), 1)
@@ -213,7 +217,12 @@ class Viewport(QOpenGLWidget):
         blur = float(settings.get("Blur", 0))
         radius = (max(3, int(round(blur * 6)) | 1) // 2) if blur else 0
         fetches = 1 + (2 * (2 * radius + 1) if blur else 0) + (18 if settings.get("Sharpen", 0) else 0)
-        if self.gpu_adjustments_enabled and image.size <= 4_194_304 and image.size * fetches <= 80_000_000 and supports_gpu_adjustments(settings):
+        if (
+            self.gpu_adjustments_enabled
+            and image.size <= 4_194_304
+            and image.size * fetches <= 80_000_000
+            and supports_gpu_adjustments(settings)
+        ):
             self._pending_gpu = (generation, image, dict(settings), list(points), terrain)
             self.update()
 
@@ -338,7 +347,10 @@ class Viewport(QOpenGLWidget):
     def _upload_heightfield(self, heightfield: np.ndarray, width_mm: float, depth_mm: float) -> None:
         """Upload a pending surface while Qt's render context is current."""
         display, texture_rows, texture_columns = self._decimate_for_display(heightfield)
-        self._sample_spacing = (width_mm / (20.0 * max(1, texture_columns - 1)), depth_mm / (20.0 * max(1, texture_rows - 1)))
+        self._sample_spacing = (
+            width_mm / (20.0 * max(1, texture_columns - 1)),
+            depth_mm / (20.0 * max(1, texture_rows - 1)),
+        )
         self._gpu_surface = None
         self._ensure_surface_grid(texture_rows, texture_columns, width_mm, depth_mm)
         if not self.height_texture:
@@ -384,6 +396,7 @@ class Viewport(QOpenGLWidget):
             glBindVertexArray(0)
             self.surface_vertex_count = len(surface_vertices)
             self._surface_grid_key = grid_key
+
     def _prepare_gpu_surface(self, texture, image_shape, terrain) -> None:
         rows, columns = image_shape
         width, depth = terrain["width"], terrain["depth"]
@@ -469,6 +482,7 @@ class Viewport(QOpenGLWidget):
             if not glGetShaderiv(shader, GL_COMPILE_STATUS):
                 raise RuntimeError(glGetShaderInfoLog(shader).decode())
             return shader
+
         program = glCreateProgram()
         vertex = compile_shader(GL_VERTEX_SHADER, self.shader_dir / "test_grid.vert")
         fragment = compile_shader(GL_FRAGMENT_SHADER, self.shader_dir / "test_grid.frag")

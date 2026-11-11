@@ -23,9 +23,13 @@ window.image_panel.refresh_from_state()
 window.show()
 events = []
 gpu_process = GpuImagePipeline.process
+
+
 def assert_no_readback(self, *args, **kwargs):
     assert kwargs.get("readback") is False
     return gpu_process(self, *args, **kwargs)
+
+
 GpuImagePipeline.process = assert_no_readback
 window.viewport.gpu_adjustments_ready.connect(lambda generation, result: events.append(generation))
 stage = 0

@@ -521,17 +521,13 @@ Display a histogram.
 Basic transformation:
 
 ```python
-normalized = (image - black_point) / (
-    white_point - black_point
-)
+normalized = (image - black_point) / (white_point - black_point)
 
 normalized = np.clip(normalized, 0.0, 1.0)
 
 adjusted = normalized ** (1.0 / gamma)
 
-adjusted = output_black + adjusted * (
-    output_white - output_black
-)
+adjusted = output_black + adjusted * (output_white - output_black)
 ```
 
 Validate the black and white point relationship.

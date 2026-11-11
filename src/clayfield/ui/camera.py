@@ -56,8 +56,10 @@ class OrbitCamera:
         scale = self.distance / max(1.0, viewport_height)
         azimuth, elevation = math.radians(self.azimuth), math.radians(self.elevation)
         right = QVector3D(math.cos(azimuth), 0.0, -math.sin(azimuth))
-        up = QVector3D(math.sin(azimuth) * math.sin(elevation), math.cos(elevation), math.cos(azimuth) * math.sin(elevation))
+        up = QVector3D(
+            math.sin(azimuth) * math.sin(elevation), math.cos(elevation), math.cos(azimuth) * math.sin(elevation)
+        )
         self.target += right * (-dx * scale) + up * (dy * scale)
 
     def zoom(self, steps: float) -> None:
-        self.distance = max(0.1, min(10000.0, self.distance * (0.85 ** steps)))
+        self.distance = max(0.1, min(10000.0, self.distance * (0.85**steps)))

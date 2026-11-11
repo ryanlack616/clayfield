@@ -123,7 +123,9 @@ class MainWindow(QMainWindow):
         self.image_panel.gpu_adjustment_requested.connect(self._request_gpu_adjustments)
         self.viewport.gpu_adjustments_ready.connect(self._gpu_preview_ready)
         self.viewport.gpu_error.connect(self._gpu_preview_failed)
-        self.viewport.initialization_failed.connect(lambda message: QTimer.singleShot(0, lambda: self._show_error(message)))
+        self.viewport.initialization_failed.connect(
+            lambda message: QTimer.singleShot(0, lambda: self._show_error(message))
+        )
         self.terrain_panel.parameters_changed.connect(self._mark_dirty)
         self.terrain_panel.parameters_changed.connect(self._rebuild_heightfield)
         self.terrain_panel.parameters_changed.connect(self.image_panel._update_provenance)
@@ -200,7 +202,9 @@ class MainWindow(QMainWindow):
         margin = 12
         self.preview_overlay.move(margin, margin)
         if self.compose_overlay.isVisible():
-            self.compose_overlay.move(max(margin, self.viewport.width() - self.compose_overlay.width() - margin), margin)
+            self.compose_overlay.move(
+                max(margin, self.viewport.width() - self.compose_overlay.width() - margin), margin
+            )
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -208,7 +212,16 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu("File")
-        for label, callback in (("New Project", self._new_project), ("Open Project", self._open_project), ("Save Project", self._save_project), ("Save Project As…", self._save_project_as), ("Export STL", self._export_stl), ("Export 3MF", self._export_3mf), ("Export Heightmap", self._export_heightmap), ("Exit", self.close)):
+        for label, callback in (
+            ("New Project", self._new_project),
+            ("Open Project", self._open_project),
+            ("Save Project", self._save_project),
+            ("Save Project As…", self._save_project_as),
+            ("Export STL", self._export_stl),
+            ("Export 3MF", self._export_3mf),
+            ("Export Heightmap", self._export_heightmap),
+            ("Exit", self.close),
+        ):
             action = file_menu.addAction(label)
             action.triggered.connect(callback)
         self.recent_menu = file_menu.addMenu("Recent Projects")
@@ -227,7 +240,14 @@ class MainWindow(QMainWindow):
         load_preset_action.triggered.connect(self._load_preset)
         self._update_history_actions()
         view_menu = self.menuBar().addMenu("View")
-        for label, view in (("Reset Camera", "reset"), ("Fit Terrain", "fit"), ("Top View", "top"), ("Front View", "front"), ("Side View", "side"), ("Isometric View", "isometric")):
+        for label, view in (
+            ("Reset Camera", "reset"),
+            ("Fit Terrain", "fit"),
+            ("Top View", "top"),
+            ("Front View", "front"),
+            ("Side View", "side"),
+            ("Isometric View", "isometric"),
+        ):
             action = view_menu.addAction(label)
             action.triggered.connect(lambda checked=False, selected=view: self._camera_view(selected))
         wireframe = view_menu.addAction("Wireframe")
@@ -349,7 +369,9 @@ class MainWindow(QMainWindow):
         previous_path = self.state.project_path
         path = str(current_path) if current_path else ""
         if not path:
-            path, _ = QFileDialog.getSaveFileName(self, "Save ClayField Project", "project.clayfield", "ClayField projects (*.clayfield)")
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Save ClayField Project", "project.clayfield", "ClayField projects (*.clayfield)"
+            )
         if not path:
             return
         try:
@@ -371,7 +393,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Saved project: {output}")
 
     def _rebuild_heightfield(self) -> None:
-        if self.state.source_type == "image" and self.state.composition_settings.get("enabled") and self.state.secondary_source_descriptor is not None:
+        if (
+            self.state.source_type == "image"
+            and self.state.composition_settings.get("enabled")
+            and self.state.secondary_source_descriptor is not None
+        ):
             self._rebuild_composed_image_heightfield()
             return
         if self.state.source_type != "image":
@@ -381,10 +407,24 @@ class MainWindow(QMainWindow):
         if image is None:
             return
         state = self.state
-        key = (state.terrain_width_mm, state.terrain_depth_mm, state.minimum_height_mm, state.maximum_height_mm,
-               state.heightfield_resolution, state.height_invert, state.smoothing_sigma, state.edge_falloff,
-               state.height_mapping_gamma, state.noise_amplitude, state.noise_frequency, state.noise_seed,
-               tuple(state.mapping_curve_points), state.edge_falloff_mode, state.relief_mode, options_from_state(state))
+        key = (
+            state.terrain_width_mm,
+            state.terrain_depth_mm,
+            state.minimum_height_mm,
+            state.maximum_height_mm,
+            state.heightfield_resolution,
+            state.height_invert,
+            state.smoothing_sigma,
+            state.edge_falloff,
+            state.height_mapping_gamma,
+            state.noise_amplitude,
+            state.noise_frequency,
+            state.noise_seed,
+            tuple(state.mapping_curve_points),
+            state.edge_falloff_mode,
+            state.relief_mode,
+            options_from_state(state),
+        )
         if image is self._heightfield_image and key == self._heightfield_key:
             return
         self._heightfield_key, self._heightfield_image = key, image
@@ -427,12 +467,22 @@ class MainWindow(QMainWindow):
             scale=self.state.height_scale,
             mapping_curve_points=tuple(tuple(point) for point in self.state.mapping_curve_points),
         )
-        secondary = SourceDescriptor.from_dict(self.state.secondary_source_descriptor) if self.state.secondary_source_descriptor is not None else None
-        mask = SourceDescriptor.from_dict(self.state.mask_source_descriptor) if self.state.mask_source_descriptor is not None else None
+        secondary = (
+            SourceDescriptor.from_dict(self.state.secondary_source_descriptor)
+            if self.state.secondary_source_descriptor is not None
+            else None
+        )
+        mask = (
+            SourceDescriptor.from_dict(self.state.mask_source_descriptor)
+            if self.state.mask_source_descriptor is not None
+            else None
+        )
         snapshot = PipelineSnapshot.from_settings(
             descriptor,
             processing,
-            secondary_processing=FieldProcessingSettings(**self.state.secondary_processing_settings) if self.state.secondary_processing_settings else None,
+            secondary_processing=FieldProcessingSettings(**self.state.secondary_processing_settings)
+            if self.state.secondary_processing_settings
+            else None,
             mapping=mapping,
             secondary_source=secondary,
             mask_source=mask,
@@ -449,7 +499,9 @@ class MainWindow(QMainWindow):
             snapshot = self._procedural_snapshot(source_already_processed=True)
             # The adjusted image is already float32 and dedicated to this
             # heightfield pass; wrap it without a second full-image copy.
-            primary = NormalizedField(np.asarray(image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"), copy=False)
+            primary = NormalizedField(
+                np.asarray(image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"), copy=False
+            )
         except (TypeError, ValueError) as error:
             self._show_error(f"Image composition is invalid: {error}")
             return
@@ -467,7 +519,9 @@ class MainWindow(QMainWindow):
             inject_control=True,
         )
         self._heightfield_workers[token] = worker
-        worker.signals.progress.connect(lambda percent, message: self.statusBar().showMessage(f"Image composition: {percent}% — {message}"))
+        worker.signals.progress.connect(
+            lambda percent, message: self.statusBar().showMessage(f"Image composition: {percent}% — {message}")
+        )
         worker.signals.finished.connect(lambda result, generation=token: self._procedural_finished(generation, result))
         worker.signals.failed.connect(lambda message, generation=token: self._procedural_failed(generation, message))
         worker.signals.cancelled.connect(lambda generation=token: self._heightfield_workers.pop(generation, None))
@@ -527,11 +581,34 @@ class MainWindow(QMainWindow):
         if self.state.source_type == "image" and not self.state.composition_settings.get("enabled"):
             if self.state.adjusted_image is None:
                 return None
-            dimensions = PhysicalDimensions(self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.minimum_height_mm, self.state.maximum_height_mm)
+            dimensions = PhysicalDimensions(
+                self.state.terrain_width_mm,
+                self.state.terrain_depth_mm,
+                self.state.minimum_height_mm,
+                self.state.maximum_height_mm,
+            )
             return (
                 analyze_image_export_task,
-                (self.state.adjusted_image, dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode),
-                {"height_options": options_from_state(self.state), "profile": FabricationProfile(**self.state.fabrication_profile)},
+                (
+                    self.state.adjusted_image,
+                    dimensions,
+                    self.state.export_resolution,
+                    self.state.base_thickness_mm,
+                    self.state.relief_mode,
+                    self.state.smoothing_sigma,
+                    self.state.edge_falloff,
+                    self.state.height_invert,
+                    self.state.height_mapping_gamma,
+                    self.state.noise_amplitude,
+                    self.state.noise_frequency,
+                    self.state.noise_seed,
+                    list(self.state.mapping_curve_points),
+                    self.state.edge_falloff_mode,
+                ),
+                {
+                    "height_options": options_from_state(self.state),
+                    "profile": FabricationProfile(**self.state.fabrication_profile),
+                },
             )
         try:
             snapshot = self._procedural_snapshot(source_already_processed=self.state.source_type == "image")
@@ -544,11 +621,26 @@ class MainWindow(QMainWindow):
                 return None
             # Wrap the adjusted image without a second full-image copy. The
             # field contract still marks the array read-only.
-            primary = NormalizedField(np.asarray(self.state.adjusted_image, dtype=np.float32), FieldMetadata("image", "adjusted_image", "1"), copy=False)
+            primary = NormalizedField(
+                np.asarray(self.state.adjusted_image, dtype=np.float32),
+                FieldMetadata("image", "adjusted_image", "1"),
+                copy=False,
+            )
         return (
             analyze_procedural_export_task,
-            (snapshot, self.state.export_resolution, self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.base_thickness_mm, self.state.relief_mode),
-            {"external_fields": self._external_fields(), "primary_field": primary, "profile": FabricationProfile(**self.state.fabrication_profile)},
+            (
+                snapshot,
+                self.state.export_resolution,
+                self.state.terrain_width_mm,
+                self.state.terrain_depth_mm,
+                self.state.base_thickness_mm,
+                self.state.relief_mode,
+            ),
+            {
+                "external_fields": self._external_fields(),
+                "primary_field": primary,
+                "profile": FabricationProfile(**self.state.fabrication_profile),
+            },
         )
 
     def _rebuild_procedural_heightfield(self) -> None:
@@ -573,9 +665,17 @@ class MainWindow(QMainWindow):
         token = self._heightfield_generation
         self.state.physical_heightfield = None
         self.image_panel.set_heightfield_preview(None)
-        worker = FunctionWorker(evaluate_serialized_pipeline, snapshot, (resolution[1], resolution[0]), external_fields=self._external_fields(), inject_control=True)
+        worker = FunctionWorker(
+            evaluate_serialized_pipeline,
+            snapshot,
+            (resolution[1], resolution[0]),
+            external_fields=self._external_fields(),
+            inject_control=True,
+        )
         self._heightfield_workers[token] = worker
-        worker.signals.progress.connect(lambda percent, message: self.statusBar().showMessage(f"Procedural field: {percent}% — {message}"))
+        worker.signals.progress.connect(
+            lambda percent, message: self.statusBar().showMessage(f"Procedural field: {percent}% — {message}")
+        )
         worker.signals.finished.connect(lambda result, generation=token: self._procedural_finished(generation, result))
         worker.signals.failed.connect(lambda message, generation=token: self._procedural_failed(generation, message))
         worker.signals.cancelled.connect(lambda generation=token: self._heightfield_workers.pop(generation, None))
@@ -599,7 +699,14 @@ class MainWindow(QMainWindow):
         self.image_panel.set_heightfield_preview(display, bounds=(display_min, display_max))
         self.terrain_panel.set_actual_height_range(display_min, display_max)
         self.terrain_panel.set_fabrication_metrics(
-            analyze_heightfield(display, self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.base_thickness_mm, "positive", profile=FabricationProfile(**self.state.fabrication_profile))
+            analyze_heightfield(
+                display,
+                self.state.terrain_width_mm,
+                self.state.terrain_depth_mm,
+                self.state.base_thickness_mm,
+                "positive",
+                profile=FabricationProfile(**self.state.fabrication_profile),
+            )
         )
         self.statusBar().showMessage("Procedural field ready")
 
@@ -609,37 +716,78 @@ class MainWindow(QMainWindow):
             self._show_error(f"Procedural field failed: {message}")
 
     def _gpu_preview_ready(self, generation: int, image) -> None:
-        if image is None or generation != self.image_panel._adjustment_generation or self.state.adjusted_image is not None:
+        if (
+            image is None
+            or generation != self.image_panel._adjustment_generation
+            or self.state.adjusted_image is not None
+        ):
             return
         self._heightfield_generation += 1
         self._start_heightfield_worker(image, self._heightfield_generation, provisional=True)
 
     def _request_gpu_adjustments(self, generation, image, settings, points) -> None:
         state = self.state
-        if state.smoothing_sigma or state.noise_amplitude or state.edge_falloff or state.height_invert or state.height_normalize or state.height_clamp_min != 0 or state.height_clamp_max != 1:
+        if (
+            state.smoothing_sigma
+            or state.noise_amplitude
+            or state.edge_falloff
+            or state.height_invert
+            or state.height_normalize
+            or state.height_clamp_min != 0
+            or state.height_clamp_max != 1
+        ):
             return
         if state.maximum_height_mm < state.minimum_height_mm:
             return
-        dimensions = PhysicalDimensions(state.terrain_width_mm, state.terrain_depth_mm, state.minimum_height_mm, state.maximum_height_mm)
+        dimensions = PhysicalDimensions(
+            state.terrain_width_mm, state.terrain_depth_mm, state.minimum_height_mm, state.maximum_height_mm
+        )
         minimum, maximum = physical_height_bounds(dimensions, options_from_state(state))
         terrain = {
-            "width": state.terrain_width_mm, "depth": state.terrain_depth_mm,
-            "minimum": minimum, "maximum": maximum,
+            "width": state.terrain_width_mm,
+            "depth": state.terrain_depth_mm,
+            "minimum": minimum,
+            "maximum": maximum,
             "resolution": state.heightfield_resolution,
-            "gamma": state.height_mapping_gamma, "curve": list(state.mapping_curve_points),
+            "gamma": state.height_mapping_gamma,
+            "curve": list(state.mapping_curve_points),
             "sign": -1.0 if state.relief_mode == "negative" else 1.0,
         }
         self.viewport.request_gpu_adjustments(generation, image, settings, points, terrain)
 
     def _start_heightfield_worker(self, image, token: int, provisional: bool) -> None:
-        dimensions = PhysicalDimensions(self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.minimum_height_mm, self.state.maximum_height_mm)
+        dimensions = PhysicalDimensions(
+            self.state.terrain_width_mm,
+            self.state.terrain_depth_mm,
+            self.state.minimum_height_mm,
+            self.state.maximum_height_mm,
+        )
         options = options_from_state(self.state)
         resolution = self.state.heightfield_resolution
         if resolution is None and min(image.shape[:2]) < 2:
             resolution = (max(2, image.shape[1]), max(2, image.shape[0]))
-        worker = FunctionWorker(_generate_heightfield_with_bounds, image, dimensions, resolution, self.state.height_invert, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, options=options)
+        worker = FunctionWorker(
+            _generate_heightfield_with_bounds,
+            image,
+            dimensions,
+            resolution,
+            self.state.height_invert,
+            self.state.smoothing_sigma,
+            self.state.edge_falloff,
+            self.state.height_mapping_gamma,
+            self.state.noise_amplitude,
+            self.state.noise_frequency,
+            self.state.noise_seed,
+            list(self.state.mapping_curve_points),
+            self.state.edge_falloff_mode,
+            options=options,
+        )
         self._heightfield_workers[token] = worker
-        worker.signals.finished.connect(lambda result, generation=token, dims=dimensions, mode=self.state.relief_mode, preview=provisional, opts=options: self._heightfield_finished(generation, dims, result, mode, preview, opts))
+        worker.signals.finished.connect(
+            lambda result, generation=token, dims=dimensions, mode=self.state.relief_mode, preview=provisional, opts=options: (
+                self._heightfield_finished(generation, dims, result, mode, preview, opts)
+            )
+        )
         worker.signals.failed.connect(lambda message, generation=token: self._heightfield_failed(generation, message))
         self.thread_pool.start(worker)
 
@@ -652,7 +800,15 @@ class MainWindow(QMainWindow):
         self.image_panel.clear_adjustment_cache()
         self.image_panel.set_heightfield_preview(None)
 
-    def _heightfield_finished(self, generation: int, dimensions: PhysicalDimensions, result, mode: str = "positive", provisional: bool = False, options=None) -> None:
+    def _heightfield_finished(
+        self,
+        generation: int,
+        dimensions: PhysicalDimensions,
+        result,
+        mode: str = "positive",
+        provisional: bool = False,
+        options=None,
+    ) -> None:
         self._heightfield_workers.pop(generation, None)
         if generation != self._heightfield_generation:
             return
@@ -674,7 +830,14 @@ class MainWindow(QMainWindow):
             self.image_panel.set_heightfield_preview(display, bounds=(display_min, display_max))
             self.terrain_panel.set_actual_height_range(display_min, display_max)
             self.terrain_panel.set_fabrication_metrics(
-                analyze_heightfield(display, dimensions.width_mm, dimensions.depth_mm, self.state.base_thickness_mm, "positive", profile=FabricationProfile(**self.state.fabrication_profile))
+                analyze_heightfield(
+                    display,
+                    dimensions.width_mm,
+                    dimensions.depth_mm,
+                    self.state.base_thickness_mm,
+                    "positive",
+                    profile=FabricationProfile(**self.state.fabrication_profile),
+                )
             )
 
     def _heightfield_failed(self, generation: int, message: str) -> None:
@@ -698,7 +861,10 @@ class MainWindow(QMainWindow):
         if self.state.physical_heightfield is None:
             self.statusBar().showMessage("Wait for the terrain preview to finish")
             return
-        if ExportPreviewDialog(self.state, label, self, final_analysis=self._final_export_analysis()).exec() != QDialog.DialogCode.Accepted:
+        if (
+            ExportPreviewDialog(self.state, label, self, final_analysis=self._final_export_analysis()).exec()
+            != QDialog.DialogCode.Accepted
+        ):
             return
         path, _ = QFileDialog.getSaveFileName(self, f"Export {label}", default_name, file_filter)
         if not path:
@@ -706,14 +872,52 @@ class MainWindow(QMainWindow):
         extension = ".stl" if file_type == "stl" else ".3mf"
         if Path(path).suffix.lower() != extension:
             path += extension
-        dimensions = PhysicalDimensions(self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.minimum_height_mm, self.state.maximum_height_mm)
+        dimensions = PhysicalDimensions(
+            self.state.terrain_width_mm,
+            self.state.terrain_depth_mm,
+            self.state.minimum_height_mm,
+            self.state.maximum_height_mm,
+        )
         self._export_active = True
         self.export_progress.setValue(0)
         self.export_progress.show()
         if procedural:
-            worker = FunctionWorker(export_procedural_mesh_task, self._procedural_snapshot(), dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, path, file_type, external_fields=self._external_fields(), container_settings=self._container_settings(), inject_control=True)
+            worker = FunctionWorker(
+                export_procedural_mesh_task,
+                self._procedural_snapshot(),
+                dimensions,
+                self.state.export_resolution,
+                self.state.base_thickness_mm,
+                self.state.relief_mode,
+                path,
+                file_type,
+                external_fields=self._external_fields(),
+                container_settings=self._container_settings(),
+                inject_control=True,
+            )
         else:
-            worker = FunctionWorker(export_mesh_task, image, dimensions, self.state.export_resolution, self.state.base_thickness_mm, self.state.relief_mode, path, file_type, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, height_options=options_from_state(self.state), container_settings=self._container_settings(), inject_control=True)
+            worker = FunctionWorker(
+                export_mesh_task,
+                image,
+                dimensions,
+                self.state.export_resolution,
+                self.state.base_thickness_mm,
+                self.state.relief_mode,
+                path,
+                file_type,
+                self.state.smoothing_sigma,
+                self.state.edge_falloff,
+                self.state.height_invert,
+                self.state.height_mapping_gamma,
+                self.state.noise_amplitude,
+                self.state.noise_frequency,
+                self.state.noise_seed,
+                list(self.state.mapping_curve_points),
+                self.state.edge_falloff_mode,
+                height_options=options_from_state(self.state),
+                container_settings=self._container_settings(),
+                inject_control=True,
+            )
         self._active_worker = worker
         worker.signals.progress.connect(lambda percent, message: self._export_progress(label, percent, message))
         worker.signals.finished.connect(lambda output: self._export_finished(label, output))
@@ -730,22 +934,65 @@ class MainWindow(QMainWindow):
         if self.state.physical_heightfield is None:
             self.statusBar().showMessage("Wait for the terrain preview to finish")
             return
-        if ExportPreviewDialog(self.state, "Heightmap", self, mesh=False, final_analysis=self._final_export_analysis()).exec() != QDialog.DialogCode.Accepted:
+        if (
+            ExportPreviewDialog(
+                self.state, "Heightmap", self, mesh=False, final_analysis=self._final_export_analysis()
+            ).exec()
+            != QDialog.DialogCode.Accepted
+        ):
             return
-        path, selected = QFileDialog.getSaveFileName(self, "Export Heightmap", "heightmap.png", "PNG 16-bit (*.png);;PNG 8-bit (*.png);;TIFF 16-bit (*.tif *.tiff);;TIFF 8-bit (*.tif *.tiff)")
+        path, selected = QFileDialog.getSaveFileName(
+            self,
+            "Export Heightmap",
+            "heightmap.png",
+            "PNG 16-bit (*.png);;PNG 8-bit (*.png);;TIFF 16-bit (*.tif *.tiff);;TIFF 8-bit (*.tif *.tiff)",
+        )
         if not path:
             return
         if not Path(path).suffix:
             path += ".tif" if selected.startswith("TIFF") else ".png"
-        dimensions = PhysicalDimensions(self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.minimum_height_mm, self.state.maximum_height_mm)
+        dimensions = PhysicalDimensions(
+            self.state.terrain_width_mm,
+            self.state.terrain_depth_mm,
+            self.state.minimum_height_mm,
+            self.state.maximum_height_mm,
+        )
         self._export_active = True
         self.export_progress.setValue(0)
         self.export_progress.show()
         bit_depth = 8 if "8-bit" in selected else 16
         if procedural:
-            worker = FunctionWorker(export_procedural_heightmap_task, self._procedural_snapshot(), self.state.export_resolution, path, bit_depth, external_fields=self._external_fields(), relief_mode=self.state.relief_mode, inject_control=True)
+            worker = FunctionWorker(
+                export_procedural_heightmap_task,
+                self._procedural_snapshot(),
+                self.state.export_resolution,
+                path,
+                bit_depth,
+                external_fields=self._external_fields(),
+                relief_mode=self.state.relief_mode,
+                inject_control=True,
+            )
         else:
-            worker = FunctionWorker(export_heightmap_task, image, dimensions, self.state.export_resolution, path, bit_depth, self.state.smoothing_sigma, self.state.edge_falloff, self.state.height_invert, self.state.height_mapping_gamma, self.state.noise_amplitude, self.state.noise_frequency, self.state.noise_seed, list(self.state.mapping_curve_points), self.state.edge_falloff_mode, relief_mode=self.state.relief_mode, height_options=options_from_state(self.state), inject_control=True)
+            worker = FunctionWorker(
+                export_heightmap_task,
+                image,
+                dimensions,
+                self.state.export_resolution,
+                path,
+                bit_depth,
+                self.state.smoothing_sigma,
+                self.state.edge_falloff,
+                self.state.height_invert,
+                self.state.height_mapping_gamma,
+                self.state.noise_amplitude,
+                self.state.noise_frequency,
+                self.state.noise_seed,
+                list(self.state.mapping_curve_points),
+                self.state.edge_falloff_mode,
+                relief_mode=self.state.relief_mode,
+                height_options=options_from_state(self.state),
+                inject_control=True,
+            )
         self._active_worker = worker
         worker.signals.progress.connect(lambda percent, message: self._export_progress("Heightmap", percent, message))
         worker.signals.finished.connect(lambda output: self._export_finished("Heightmap", output))
@@ -874,7 +1121,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(message, 10_000)
 
     def _choose_light_direction(self) -> None:
-        angle, accepted = QInputDialog.getDouble(self, "Lighting Direction", "Azimuth (degrees)", self.viewport.light_azimuth, -180.0, 180.0, 1)
+        angle, accepted = QInputDialog.getDouble(
+            self, "Lighting Direction", "Azimuth (degrees)", self.viewport.light_azimuth, -180.0, 180.0, 1
+        )
         if accepted:
             self.viewport.light_azimuth = angle
             self.viewport.update()
@@ -883,7 +1132,9 @@ class MainWindow(QMainWindow):
         if self.state.physical_heightfield is None:
             self.statusBar().showMessage("Wait for the terrain preview to finish")
             return
-        CrossSectionDialog(self.state.physical_heightfield, self.state.terrain_width_mm, self.state.terrain_depth_mm, self).exec()
+        CrossSectionDialog(
+            self.state.physical_heightfield, self.state.terrain_width_mm, self.state.terrain_depth_mm, self
+        ).exec()
 
     def _cancel_current_operation(self) -> None:
         if self._active_worker is not None:
@@ -893,7 +1144,9 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("No cancellable operation is running")
 
     def _camera_view(self, view: str) -> None:
-        self.viewport.set_camera_view(view, self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.maximum_height_mm)
+        self.viewport.set_camera_view(
+            view, self.state.terrain_width_mm, self.state.terrain_depth_mm, self.state.maximum_height_mm
+        )
 
     def _image_loaded(self, path: str) -> None:
         self._invalidate_heightfield()
@@ -940,7 +1193,9 @@ class MainWindow(QMainWindow):
         self._apply_history(self.history.redo())
 
     def _save_preset(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Save Preset", "clayfield-preset.json", "ClayField presets (*.json)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Preset", "clayfield-preset.json", "ClayField presets (*.json)"
+        )
         if not path:
             return
         try:

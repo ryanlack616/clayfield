@@ -6,16 +6,52 @@ from time import monotonic
 from clayfield.app.project_state import ProjectState
 
 PARAMETERS = (
-    "source_type", "source_descriptor", "pipeline_snapshot", "secondary_source_descriptor", "mask_source_descriptor", "composition_settings", "secondary_processing_settings", "secondary_field_name", "mask_field_name",
-    "inverted", "terrain_width_mm", "terrain_depth_mm", "minimum_height_mm",
-    "maximum_height_mm", "heightfield_resolution", "export_resolution", "fabrication_profile", "container_mode", "container_wall_thickness_mm", "container_clearance_mm", "container_outside_dimensions",
-    "base_thickness_mm", "relief_mode", "smoothing_sigma", "edge_falloff",
-    "edge_falloff_mode", "height_mapping_gamma", "lock_aspect_ratio",
-    "noise_amplitude", "noise_frequency", "noise_seed", "adjustment_settings",
-    "curve_points", "mapping_curve_points",
-    "crop_margins", "image_resize", "height_invert", "height_normalize",
-    "height_offset_mm", "height_scale", "height_clamp_min", "height_clamp_max",
-    "smoothing_strength", "edge_falloff_strength", "noise_octaves", "noise_persistence",
+    "source_type",
+    "source_descriptor",
+    "pipeline_snapshot",
+    "secondary_source_descriptor",
+    "mask_source_descriptor",
+    "composition_settings",
+    "secondary_processing_settings",
+    "secondary_field_name",
+    "mask_field_name",
+    "inverted",
+    "terrain_width_mm",
+    "terrain_depth_mm",
+    "minimum_height_mm",
+    "maximum_height_mm",
+    "heightfield_resolution",
+    "export_resolution",
+    "fabrication_profile",
+    "container_mode",
+    "container_wall_thickness_mm",
+    "container_clearance_mm",
+    "container_outside_dimensions",
+    "base_thickness_mm",
+    "relief_mode",
+    "smoothing_sigma",
+    "edge_falloff",
+    "edge_falloff_mode",
+    "height_mapping_gamma",
+    "lock_aspect_ratio",
+    "noise_amplitude",
+    "noise_frequency",
+    "noise_seed",
+    "adjustment_settings",
+    "curve_points",
+    "mapping_curve_points",
+    "crop_margins",
+    "image_resize",
+    "height_invert",
+    "height_normalize",
+    "height_offset_mm",
+    "height_scale",
+    "height_clamp_min",
+    "height_clamp_max",
+    "smoothing_strength",
+    "edge_falloff_strength",
+    "noise_octaves",
+    "noise_persistence",
 )
 
 
@@ -74,11 +110,16 @@ class ParameterHistory:
         if not key:
             return False
         now = monotonic()
-        merge = bool(self._last_key == key and now - self._last_time < 0.6 and self.index == len(self.entries) - 1 and previous != self.clean)
+        merge = bool(
+            self._last_key == key
+            and now - self._last_time < 0.6
+            and self.index == len(self.entries) - 1
+            and previous != self.clean
+        )
         if merge:
             self.entries[self.index] = snapshot
         else:
-            del self.entries[self.index + 1:]
+            del self.entries[self.index + 1 :]
             self.entries.append(snapshot)
             if len(self.entries) > self.limit:
                 self.entries.pop(0)

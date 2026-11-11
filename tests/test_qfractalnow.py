@@ -45,12 +45,12 @@ def test_chatty_renderer_does_not_deadlock(tmp_path: Path, monkeypatch: pytest.M
         "done\n"
         "out=''\n"
         "prev=''\n"
-        "for arg in \"$@\"; do\n"
-        "  if [ \"$prev\" = '-o' ]; then out=\"$arg\"; fi\n"
-        "  prev=\"$arg\"\n"
+        'for arg in "$@"; do\n'
+        '  if [ "$prev" = \'-o\' ]; then out="$arg"; fi\n'
+        '  prev="$arg"\n'
         "done\n"
         "printf 'P6\\n24 16\\n255\\n' > \"$out\"\n"
-        "head -c 1152 /dev/zero >> \"$out\"\n",
+        'head -c 1152 /dev/zero >> "$out"\n',
         encoding="utf-8",
     )
     script.chmod(0o755)

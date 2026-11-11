@@ -9,7 +9,9 @@ from clayfield.geometry.estimates import estimate_solid_mesh
 from clayfield.geometry.mesh_generator import generate_solid_mesh
 from clayfield.image.pipeline import apply_adjustments
 
-pytestmark = pytest.mark.skipif(os.environ.get("CLAYFIELD_STRESS") != "1", reason="Set CLAYFIELD_STRESS=1 for larger workloads")
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CLAYFIELD_STRESS") != "1", reason="Set CLAYFIELD_STRESS=1 for larger workloads"
+)
 
 
 def test_large_image_adjustment_is_finite_and_deterministic():

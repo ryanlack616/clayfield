@@ -19,9 +19,18 @@ class FabricationProfile:
     high_frequency_limit: float = 0.15
 
     def validate(self) -> None:
-        if not self.name or not np.isfinite([self.minimum_feature_width_mm, self.maximum_slope_degrees, self.high_frequency_limit]).all():
+        if (
+            not self.name
+            or not np.isfinite(
+                [self.minimum_feature_width_mm, self.maximum_slope_degrees, self.high_frequency_limit]
+            ).all()
+        ):
             raise ValueError("Fabrication profile is invalid")
-        if self.minimum_feature_width_mm <= 0 or not 0 < self.maximum_slope_degrees < 90 or self.high_frequency_limit < 0:
+        if (
+            self.minimum_feature_width_mm <= 0
+            or not 0 < self.maximum_slope_degrees < 90
+            or self.high_frequency_limit < 0
+        ):
             raise ValueError("Fabrication profile limits are invalid")
 
 
@@ -50,7 +59,9 @@ class FabricationMetrics:
     @property
     def blocking_warnings(self) -> tuple[str, ...]:
         """Return warnings that make the current solid unsafe to export."""
-        return tuple(warning for warning in self.warnings if warning in {"insufficient_base_thickness", "invalid_heightfield"})
+        return tuple(
+            warning for warning in self.warnings if warning in {"insufficient_base_thickness", "invalid_heightfield"}
+        )
 
     @property
     def exportable(self) -> bool:
@@ -85,7 +96,9 @@ def analyze_heightfield(
     check_cancelled(cancel_check)
     if values.ndim != 2 or min(values.shape, default=0) < 2 or not np.isfinite(values).all():
         return FabricationMetrics(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, float("inf"), float("inf"), ("invalid_heightfield",))
-    if not np.isfinite([width_mm, depth_mm, base_thickness_mm, minimum_feature_width_mm, maximum_slope_degrees, high_frequency_limit]).all():
+    if not np.isfinite(
+        [width_mm, depth_mm, base_thickness_mm, minimum_feature_width_mm, maximum_slope_degrees, high_frequency_limit]
+    ).all():
         raise ValueError("Fabrication dimensions and thresholds must be finite")
     if width_mm <= 0 or depth_mm <= 0 or base_thickness_mm <= 0:
         raise ValueError("Fabrication dimensions and base thickness must be positive")

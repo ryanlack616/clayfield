@@ -49,7 +49,9 @@ class FieldProcessingSettings:
 
     def validate(self) -> None:
         if self.resize is not None:
-            if len(self.resize) != 2 or any(isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in self.resize):
+            if len(self.resize) != 2 or any(
+                isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in self.resize
+            ):
                 raise ValueError("Field resize must contain two dimensions of at least 2")
         if self.stage_order != FIELD_PROCESSING_STAGE_ORDER:
             raise ValueError("V2 field processing stage order cannot be changed")
@@ -59,7 +61,9 @@ class FieldProcessingSettings:
 
 def resize_field(field: NormalizedField, resolution: tuple[int, int]) -> NormalizedField:
     """Resample a field as ``(width, height)`` using area filtering when shrinking."""
-    if len(resolution) != 2 or any(isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in resolution):
+    if len(resolution) != 2 or any(
+        isinstance(size, bool) or not isinstance(size, int) or size < 2 for size in resolution
+    ):
         raise ValueError("Field resolution must contain two dimensions of at least 2")
     width, height = resolution
     values = field.values
@@ -75,7 +79,9 @@ def _apply_range_policy(values: np.ndarray, policy: str) -> np.ndarray:
     return ((values - minimum) / (maximum - minimum) if maximum > minimum else np.zeros_like(values)).astype(np.float32)
 
 
-def process_field(field: NormalizedField, settings: FieldProcessingSettings | None = None, *, cancel_check=None) -> NormalizedField:
+def process_field(
+    field: NormalizedField, settings: FieldProcessingSettings | None = None, *, cancel_check=None
+) -> NormalizedField:
     """Apply the V2 processing stages in their fixed, documented order."""
     settings = settings or FieldProcessingSettings()
     settings.validate()

@@ -91,11 +91,15 @@ def _generate_source(source, shape, external_fields=None, cancel_check=None):
     if source.source_type == "spectral":
         return generate_spectral_field(shape, SpectralParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "reaction_diffusion":
-        return generate_reaction_diffusion_field(shape, ReactionDiffusionParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_reaction_diffusion_field(
+            shape, ReactionDiffusionParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "phyllotaxis":
         return generate_phyllotaxis_field(shape, PhyllotaxisParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "cellular_automata":
-        return generate_cellular_automata_field(shape, CellularAutomataParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_cellular_automata_field(
+            shape, CellularAutomataParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "flow_field":
         return generate_flow_field(shape, FlowFieldParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "erosion":
@@ -109,9 +113,13 @@ def _generate_source(source, shape, external_fields=None, cancel_check=None):
     if source.source_type == "truchet":
         return generate_truchet_field(shape, TilingParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "superformula":
-        return generate_superformula_field(shape, SuperformulaParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_superformula_field(
+            shape, SuperformulaParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "gaussian_peaks":
-        return generate_gaussian_peaks_field(shape, GaussianPeakParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_gaussian_peaks_field(
+            shape, GaussianPeakParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "julia":
         return generate_julia_field(shape, JuliaParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "moire":
@@ -124,7 +132,9 @@ def _generate_source(source, shape, external_fields=None, cancel_check=None):
         rows, columns = shape
         x = np.linspace(0.0, 1.0, columns, dtype=np.float32)
         y = np.linspace(0.0, 1.0, rows, dtype=np.float32)
-        distance = np.hypot(x[None, :] - float(parameters.get("center_x", 0.5)), y[:, None] - float(parameters.get("center_y", 0.5)))
+        distance = np.hypot(
+            x[None, :] - float(parameters.get("center_x", 0.5)), y[:, None] - float(parameters.get("center_y", 0.5))
+        )
         inner = float(parameters.get("inner_radius", 0.0))
         outer = float(parameters.get("outer_radius", 0.5))
         if outer <= inner:
@@ -159,8 +169,14 @@ def evaluate_serialized_pipeline(
     composition = snapshot.composition or {}
     if snapshot.secondary_source is not None and composition.get("enabled", False):
         secondary = _generate_source(snapshot.secondary_source, shape, external_fields, cancel_check)
-        secondary = process_field(secondary, FieldProcessingSettings(**snapshot.secondary_processing), cancel_check=cancel_check)
-        mask = _generate_source(snapshot.mask_source, shape, external_fields, cancel_check) if snapshot.mask_source is not None else None
+        secondary = process_field(
+            secondary, FieldProcessingSettings(**snapshot.secondary_processing), cancel_check=cancel_check
+        )
+        mask = (
+            _generate_source(snapshot.mask_source, shape, external_fields, cancel_check)
+            if snapshot.mask_source is not None
+            else None
+        )
         field = compose_fields(
             field,
             secondary,

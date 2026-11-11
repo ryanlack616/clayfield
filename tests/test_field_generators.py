@@ -102,7 +102,9 @@ def test_long_generator_honors_cancellation() -> None:
 
 
 def test_generator_reference_statistics_are_stable_with_tolerance() -> None:
-    noise = generate_fractal_noise((17, 23), NoiseParameters(seed=42, base_frequency=2, octaves=4, persistence=0.55, lacunarity=2))
+    noise = generate_fractal_noise(
+        (17, 23), NoiseParameters(seed=42, base_frequency=2, octaves=4, persistence=0.55, lacunarity=2)
+    )
     waves = generate_wave_field((17, 23), WaveParameters(frequency_x=2, frequency_y=3))
     mandelbrot = generate_mandelbrot_field((17, 23), MandelbrotParameters(iterations=32))
     assert noise.values.mean() == pytest.approx(0.59642726, abs=2e-5)
@@ -139,7 +141,9 @@ def test_p2_and_p3_pattern_sources_are_bounded() -> None:
 
 def test_sdf_boolean_operations_are_bounded() -> None:
     for operation in ("union", "difference", "intersection"):
-        source = generate_sdf_field((24, 24), SdfParameters(boolean_shape="circle", boolean_operation=operation, boolean_offset_x=0.2))
+        source = generate_sdf_field(
+            (24, 24), SdfParameters(boolean_shape="circle", boolean_operation=operation, boolean_offset_x=0.2)
+        )
         assert np.isfinite(source.values).all()
         assert 0.0 <= float(source.values.min()) <= float(source.values.max()) <= 1.0
 

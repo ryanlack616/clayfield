@@ -31,6 +31,7 @@ class PhysicalDimensions:
 @dataclass(frozen=True)
 class HeightOptions:
     """Independent height mapping and modifier controls."""
+
     normalize: bool = False
     offset_mm: float = 0.0
     scale: float = 1.0
@@ -42,29 +43,51 @@ class HeightOptions:
     noise_persistence: float = 0.5
 
     def validate(self) -> None:
-        numbers = (self.offset_mm, self.scale, self.clamp_min, self.clamp_max, self.smoothing_strength, self.edge_strength, self.noise_persistence)
+        numbers = (
+            self.offset_mm,
+            self.scale,
+            self.clamp_min,
+            self.clamp_max,
+            self.smoothing_strength,
+            self.edge_strength,
+            self.noise_persistence,
+        )
         if not np.isfinite(numbers).all():
             raise ValueError("Height options must be finite")
         if self.scale <= 0 or not 0 <= self.clamp_min <= self.clamp_max <= 1:
             raise ValueError("Height scale and clamp range are invalid")
         if not 0 <= self.smoothing_strength <= 1 or not 0 <= self.edge_strength <= 1:
             raise ValueError("Modifier strengths must be between 0 and 1")
-        if isinstance(self.noise_octaves, bool) or not isinstance(self.noise_octaves, int) or not 1 <= self.noise_octaves <= 8:
+        if (
+            isinstance(self.noise_octaves, bool)
+            or not isinstance(self.noise_octaves, int)
+            or not 1 <= self.noise_octaves <= 8
+        ):
             raise ValueError("Noise octaves must be between 1 and 8")
         if not 0 <= self.noise_persistence <= 1:
             raise ValueError("Noise persistence must be between 0 and 1")
 
 
 def options_from_state(state) -> HeightOptions:
-    return HeightOptions(state.height_normalize, state.height_offset_mm, state.height_scale,
-                         state.height_clamp_min, state.height_clamp_max, state.smoothing_strength,
-                         state.edge_falloff_strength, state.noise_octaves, state.noise_persistence)
+    return HeightOptions(
+        state.height_normalize,
+        state.height_offset_mm,
+        state.height_scale,
+        state.height_clamp_min,
+        state.height_clamp_max,
+        state.smoothing_strength,
+        state.edge_falloff_strength,
+        state.noise_octaves,
+        state.noise_persistence,
+    )
 
 
 def physical_height_bounds(dimensions: PhysicalDimensions, options: HeightOptions) -> tuple[float, float]:
     span = dimensions.maximum_height_mm - dimensions.minimum_height_mm
-    return ((dimensions.minimum_height_mm + span * options.clamp_min) * options.scale + options.offset_mm,
-            (dimensions.minimum_height_mm + span * options.clamp_max) * options.scale + options.offset_mm)
+    return (
+        (dimensions.minimum_height_mm + span * options.clamp_min) * options.scale + options.offset_mm,
+        (dimensions.minimum_height_mm + span * options.clamp_max) * options.scale + options.offset_mm,
+    )
 
 
 def resize_heightfield(image: np.ndarray, width: int, height: int) -> np.ndarray:
@@ -126,7 +149,7 @@ def generate_physical_heightfield(
         noise = np.zeros_like(values)
         weight, total = 1.0, 0.0
         for octave in range(options.noise_octaves):
-            frequency = noise_frequency * (2 ** octave)
+            frequency = noise_frequency * (2**octave)
             grid_rows = max(2, int(round(rows / max(1.0, 32.0 / frequency))))
             grid_columns = max(2, int(round(columns / max(1.0, 32.0 / frequency))))
             coarse = generator.random((grid_rows, grid_columns), dtype=np.float32)

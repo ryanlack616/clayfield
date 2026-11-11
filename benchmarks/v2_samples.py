@@ -15,13 +15,37 @@ from clayfield.terrain.mapping import MappingSettings
 
 def _descriptor(kind: str) -> SourceDescriptor:
     if kind == "noise":
-        parameters = NoiseParameters(seed=42, base_frequency=2.0, octaves=6, persistence=0.55, lacunarity=2.0, amplitude=1.0, normalization="fixed")
-        return SourceDescriptor(source_type="fractal_noise", parameters=parameters.__dict__.copy(), algorithm="value_fbm", algorithm_version="1", seed=42)
+        parameters = NoiseParameters(
+            seed=42,
+            base_frequency=2.0,
+            octaves=6,
+            persistence=0.55,
+            lacunarity=2.0,
+            amplitude=1.0,
+            normalization="fixed",
+        )
+        return SourceDescriptor(
+            source_type="fractal_noise",
+            parameters=parameters.__dict__.copy(),
+            algorithm="value_fbm",
+            algorithm_version="1",
+            seed=42,
+        )
     if kind == "waves":
         parameters = WaveParameters(mode="radial", radial_frequency=6.0, output_amplitude=1.0)
-        return SourceDescriptor(source_type="wave_interference", parameters=parameters.__dict__.copy(), algorithm="wave_interference", algorithm_version="1")
+        return SourceDescriptor(
+            source_type="wave_interference",
+            parameters=parameters.__dict__.copy(),
+            algorithm="wave_interference",
+            algorithm_version="1",
+        )
     parameters = MandelbrotParameters(zoom=1.0, iterations=100, contrast=1.0, invert=False)
-    return SourceDescriptor(source_type="mandelbrot", parameters=parameters.__dict__.copy(), algorithm="smooth_escape_time", algorithm_version="1")
+    return SourceDescriptor(
+        source_type="mandelbrot",
+        parameters=parameters.__dict__.copy(),
+        algorithm="smooth_escape_time",
+        algorithm_version="1",
+    )
 
 
 def generate_samples(output: Path, resolution: tuple[int, int]) -> list[Path]:
@@ -31,7 +55,9 @@ def generate_samples(output: Path, resolution: tuple[int, int]) -> list[Path]:
     for kind in ("noise", "waves", "mandelbrot"):
         source = _descriptor(kind)
         snapshot = PipelineSnapshot.from_settings(source, mapping=MappingSettings(maximum_height_mm=5.0))
-        state = ProjectState(source_type=source.source_type, source_descriptor=source.to_dict(), pipeline_snapshot=snapshot.to_dict())
+        state = ProjectState(
+            source_type=source.source_type, source_descriptor=source.to_dict(), pipeline_snapshot=snapshot.to_dict()
+        )
         project = save_project(state, output / f"v2-{kind}.clayfield")
         export_procedural_mesh_task(snapshot, dimensions, resolution, 3.0, "positive", output / f"v2-{kind}.stl", "stl")
         export_procedural_heightmap_task(snapshot, resolution, output / f"v2-{kind}.png")

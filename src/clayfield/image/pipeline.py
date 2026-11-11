@@ -30,6 +30,7 @@ def apply_adjustments(
     image, the returned array may be the input itself; callers must not mutate
     it. Every stage operation otherwise returns a new owned array.
     """
+
     def get(name: str, default: float) -> float:
         value: float | bool = settings.get(name, default)
         return float(value)
@@ -111,8 +112,14 @@ class AdjustmentCache:
             value: float | bool = settings.get(name, default)
             return float(value)
 
-        level = (bool(settings.get("inverted", False)), get("Black point", 0), get("Gamma", 1),
-                 get("White point", 1), get("Output black", 0), get("Output white", 1))
+        level = (
+            bool(settings.get("inverted", False)),
+            get("Black point", 0),
+            get("Gamma", 1),
+            get("White point", 1),
+            get("Output black", 0),
+            get("Output white", 1),
+        )
         curve = (tuple(tuple(p) for p in curve_points), str(settings.get("Curve interpolation", "linear")))
         contrast = (get("Brightness", 0), get("Contrast", 1))
         blur = get("Blur", 0)

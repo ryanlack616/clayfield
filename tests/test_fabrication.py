@@ -52,7 +52,9 @@ def test_fabrication_thresholds_are_validated() -> None:
 
 
 def test_profile_overrides_advisory_limits_for_calibration_fixture() -> None:
-    profile = FabricationProfile(name="Calibration", minimum_feature_width_mm=20.1, maximum_slope_degrees=10.0, high_frequency_limit=0.01)
+    profile = FabricationProfile(
+        name="Calibration", minimum_feature_width_mm=20.1, maximum_slope_degrees=10.0, high_frequency_limit=0.01
+    )
     metrics = analyze_heightfield(np.array([[0.0, 5.0], [0.0, 5.0]], dtype=np.float32), 10, 10, 3, profile=profile)
     assert "insufficient_sampling_for_feature_width" in metrics.warnings
     assert "surface_slope_exceeds_limit" in metrics.warnings

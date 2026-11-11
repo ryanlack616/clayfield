@@ -38,7 +38,18 @@ def render_qfractalnow_config(
         config_path = root / "source.config"
         output_path = root / "render.ppm"
         config_path.write_text(config_text, encoding="utf-8")
-        command = [executable, "-q", "-c", os.fspath(config_path), "-x", str(columns), "-y", str(rows), "-o", os.fspath(output_path)]
+        command = [
+            executable,
+            "-q",
+            "-c",
+            os.fspath(config_path),
+            "-x",
+            str(columns),
+            "-y",
+            str(rows),
+            "-o",
+            os.fspath(output_path),
+        ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
             # Drain the pipes while waiting. The previous loop only poll()ed,
@@ -67,7 +78,9 @@ def render_qfractalnow_config(
                 values = cv2.resize(values, (columns, rows), interpolation=cv2.INTER_AREA)
             if progress_callback:
                 progress_callback(100, "QFractalNow source ready")
-            return NormalizedField(np.asarray(values, dtype=np.float32), FieldMetadata("qfractalnow_config", "fractalnow", "1"))
+            return NormalizedField(
+                np.asarray(values, dtype=np.float32), FieldMetadata("qfractalnow_config", "fractalnow", "1")
+            )
         finally:
             if process.poll() is None:
                 process.kill()

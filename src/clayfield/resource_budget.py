@@ -262,4 +262,3 @@ def recommended_resolution_for_budget(
         else:
             break
     return suggested_rows, suggested_columns
-

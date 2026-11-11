@@ -58,6 +58,7 @@ def test_v2_metadata_migrates_to_default_image_geometry():
 
 def test_version_one_project_reopens_and_resaves(tmp_path: Path):
     from clayfield.app.project_io import save_project
+
     _, encoded = cv2.imencode(".png", np.zeros((2, 2), dtype=np.uint8))
     path = tmp_path / "old.clayfield"
     with ZipFile(path, "w") as archive:

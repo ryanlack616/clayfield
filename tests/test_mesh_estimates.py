@@ -31,9 +31,7 @@ def test_estimate_reports_mebibytes() -> None:
     estimate = estimate_solid_mesh(2048, 2048)
 
     assert estimate.total_mebibytes > 0
-    assert estimate.working_mebibytes == pytest.approx(
-        estimate.total_mebibytes * MESH_WORKING_FACTOR
-    )
+    assert estimate.working_mebibytes == pytest.approx(estimate.total_mebibytes * MESH_WORKING_FACTOR)
     assert estimate.triangle_count > 8_000_000
 
 

@@ -309,7 +309,9 @@ def test_environment_override_cannot_raise_export_resolution_ceiling(
         load_project(project, ProjectState())
 
 
-def test_environment_override_cannot_lower_ceiling_below_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_environment_override_cannot_lower_ceiling_below_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _shrink_limits(monkeypatch)
     # Even a restrictive override must not change the enforced bound; the
     # function must return the absolute constant regardless of the environment.

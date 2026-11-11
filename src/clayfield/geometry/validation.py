@@ -1,6 +1,5 @@
 """Mesh validation for printable relief solids."""
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,9 +29,7 @@ class MeshValidation:
     euler_number: int
 
 
-def _edge_topology(
-    vertices_count: int, faces: np.ndarray, cancel_check=None
-) -> tuple[bool, bool, int, int]:
+def _edge_topology(vertices_count: int, faces: np.ndarray, cancel_check=None) -> tuple[bool, bool, int, int]:
     """Return ``(edge_manifold, winding_consistent, components, euler)``.
 
     A per-edge Python dictionary over every triangle edge costs roughly 25
@@ -62,9 +59,7 @@ def _edge_topology(
     check_cancelled(cancel_check)
     edge_keys = edge_pairs[:, 0] * vertices_count + edge_pairs[:, 1]
     del edge_pairs
-    unique_keys, inverse, edge_counts = np.unique(
-        edge_keys, return_counts=True, return_inverse=True
-    )
+    unique_keys, inverse, edge_counts = np.unique(edge_keys, return_counts=True, return_inverse=True)
     del edge_keys
     edge_count = len(unique_keys)
     edge_manifold = bool(np.all(edge_counts == 2))
@@ -95,12 +90,34 @@ def validate_mesh(mesh: SolidMesh, *, cancel_check=None) -> MeshValidation:
     vertices = np.asarray(mesh.vertices)
     faces = np.asarray(mesh.faces)
     finite = bool(np.isfinite(vertices).all())
-    if vertices.ndim != 2 or vertices.shape[1] != 3 or faces.ndim != 2 or faces.shape[1] != 3 or not finite or len(vertices) == 0 or len(faces) == 0 or not np.issubdtype(faces.dtype, np.integer) or np.any(faces < 0) or np.any(faces >= len(vertices)):
-        return MeshValidation(False, False, False, finite, ((0.0, 0.0),) * 3, "Invalid mesh arrays or non-finite coordinates", False, False, False, 0, 0)
+    if (
+        vertices.ndim != 2
+        or vertices.shape[1] != 3
+        or faces.ndim != 2
+        or faces.shape[1] != 3
+        or not finite
+        or len(vertices) == 0
+        or len(faces) == 0
+        or not np.issubdtype(faces.dtype, np.integer)
+        or np.any(faces < 0)
+        or np.any(faces >= len(vertices))
+    ):
+        return MeshValidation(
+            False,
+            False,
+            False,
+            finite,
+            ((0.0, 0.0),) * 3,
+            "Invalid mesh arrays or non-finite coordinates",
+            False,
+            False,
+            False,
+            0,
+            0,
+        )
     check_cancelled(cancel_check)
     bounds = tuple(
-        (float(low), float(high))
-        for low, high in zip(vertices.min(axis=0), vertices.max(axis=0), strict=True)
+        (float(low), float(high)) for low, high in zip(vertices.min(axis=0), vertices.max(axis=0), strict=True)
     )
     # Signed volume and triangle areas are accumulated in face chunks. Expanding
     # all faces at once would create a second copy of the face array scaled by
@@ -116,9 +133,35 @@ def validate_mesh(mesh: SolidMesh, *, cancel_check=None) -> MeshValidation:
         non_degenerate = non_degenerate and bool(np.isfinite(areas).all() and np.all(areas > 1e-9))
     positive_volume = bool(volume > 0.0)
     check_cancelled(cancel_check)
-    edge_manifold, winding_consistent, connected_components, euler_number = _edge_topology(len(vertices), faces, cancel_check=cancel_check)
+    edge_manifold, winding_consistent, connected_components, euler_number = _edge_topology(
+        len(vertices), faces, cancel_check=cancel_check
+    )
     watertight = edge_manifold
     check_cancelled(cancel_check)
-    valid = watertight and winding_consistent and positive_volume and finite and non_degenerate and edge_manifold and connected_components == 1
-    message = "Mesh is watertight and printable" if valid else "Mesh failed closure, manifoldness, winding, volume, connectivity, or degeneracy checks"
-    return MeshValidation(valid, watertight, positive_volume, finite, bounds, message, winding_consistent, non_degenerate, edge_manifold, connected_components, euler_number)
+    valid = (
+        watertight
+        and winding_consistent
+        and positive_volume
+        and finite
+        and non_degenerate
+        and edge_manifold
+        and connected_components == 1
+    )
+    message = (
+        "Mesh is watertight and printable"
+        if valid
+        else "Mesh failed closure, manifoldness, winding, volume, connectivity, or degeneracy checks"
+    )
+    return MeshValidation(
+        valid,
+        watertight,
+        positive_volume,
+        finite,
+        bounds,
+        message,
+        winding_consistent,
+        non_degenerate,
+        edge_manifold,
+        connected_components,
+        euler_number,
+    )

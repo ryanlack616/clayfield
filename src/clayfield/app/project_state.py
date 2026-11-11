@@ -20,7 +20,9 @@ class ProjectState:
     pipeline_snapshot: dict | None = None
     secondary_source_descriptor: dict | None = None
     mask_source_descriptor: dict | None = None
-    composition_settings: dict = field(default_factory=lambda: {"enabled": False, "operation": "blend", "amount": 1.0, "range_policy": "clip"})
+    composition_settings: dict = field(
+        default_factory=lambda: {"enabled": False, "operation": "blend", "amount": 1.0, "range_policy": "clip"}
+    )
     secondary_processing_settings: dict = field(default_factory=dict)
     secondary_field: np.ndarray | None = None
     secondary_field_name: str | None = None
@@ -47,7 +49,14 @@ class ProjectState:
     export_resolution: tuple[int, int] = (2048, 2048)
     physical_heightfield: np.ndarray | None = None
     base_thickness_mm: float = 5.0
-    fabrication_profile: dict = field(default_factory=lambda: {"name": "Generic FDM", "minimum_feature_width_mm": 0.4, "maximum_slope_degrees": 65.0, "high_frequency_limit": 0.15})
+    fabrication_profile: dict = field(
+        default_factory=lambda: {
+            "name": "Generic FDM",
+            "minimum_feature_width_mm": 0.4,
+            "maximum_slope_degrees": 65.0,
+            "high_frequency_limit": 0.15,
+        }
+    )
     container_mode: str = "none"
     container_wall_thickness_mm: float = 2.0
     container_clearance_mm: float = 2.0

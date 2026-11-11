@@ -54,6 +54,7 @@ def export_heightmap(
         # return value alone. Import lazily so verification's Trimesh dependency
         # is not pulled into every heightmap-only session.
         from clayfield.export.verification import verify_heightmap_export
+
         verify_heightmap_export(temporary_path, pixels, cancel_check=cancel_check)
         check_cancelled(cancel_check)
         os.replace(temporary_path, output)

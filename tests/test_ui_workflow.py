@@ -68,7 +68,12 @@ def test_image_primary_can_use_v2_secondary_composition(window, tmp_path: Path):
     wait_for(app, lambda: win.state.physical_heightfield is not None)
     original = win.state.physical_heightfield.copy()
     win.image_panel.composition_controls["enabled"].setChecked(True)
-    wait_for(app, lambda: win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, original))
+    wait_for(
+        app,
+        lambda: (
+            win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, original)
+        ),
+    )
     assert win.state.source_type == "image"
     assert win.state.pipeline_snapshot is not None
 
@@ -96,6 +101,7 @@ def test_image_primary_composition_preserves_non_square_preview_resolution(windo
 
     assert win.state.physical_heightfield.shape == (16, 32)
 
+
 def test_image_primary_mask_composition_uses_v2_pipeline(window, tmp_path: Path):
     win, app = window
     path = tmp_path / "primary-mask.png"
@@ -105,7 +111,12 @@ def test_image_primary_mask_composition_uses_v2_pipeline(window, tmp_path: Path)
     original = win.state.physical_heightfield.copy()
     win.image_panel.composition_controls["enabled"].setChecked(True)
     win.image_panel.composition_controls["mask_enabled"].setChecked(True)
-    wait_for(app, lambda: win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, original))
+    wait_for(
+        app,
+        lambda: (
+            win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, original)
+        ),
+    )
     assert win.state.mask_source_descriptor["type"] == "radial_mask"
 
 
@@ -139,7 +150,26 @@ def test_pattern_source_randomize_and_reset_are_undoable(window):
 
 def test_all_pattern_source_modes_build_preview(window):
     win, app = window
-    modes = ["Fractal noise", "Wave interference", "Mandelbrot", "Voronoi", "Ridged noise", "Warped noise", "SDF shapes", "Chladni", "Spectral", "Reaction-diffusion", "Phyllotaxis", "Cellular automata", "Flow field", "Erosion", "L-system", "Cracks", "Penrose", "Truchet"]
+    modes = [
+        "Fractal noise",
+        "Wave interference",
+        "Mandelbrot",
+        "Voronoi",
+        "Ridged noise",
+        "Warped noise",
+        "SDF shapes",
+        "Chladni",
+        "Spectral",
+        "Reaction-diffusion",
+        "Phyllotaxis",
+        "Cellular automata",
+        "Flow field",
+        "Erosion",
+        "L-system",
+        "Cracks",
+        "Penrose",
+        "Truchet",
+    ]
     for mode in modes:
         win.image_panel.source_mode.setCurrentText(mode)
         wait_for(app, lambda: win.state.physical_heightfield is not None)
@@ -155,7 +185,12 @@ def test_procedural_noise_builds_terrain_without_an_image(window):
     assert win.state.physical_heightfield.shape == (32, 32)
     first = win.state.physical_heightfield.copy()
     win.image_panel.procedural_controls["noise_seed"].setValue(9)
-    wait_for(app, lambda: win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, first))
+    wait_for(
+        app,
+        lambda: (
+            win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, first)
+        ),
+    )
     assert win.image_panel._procedural_preview is not None
 
 
@@ -177,7 +212,12 @@ def test_procedural_composition_and_mask_are_persisted(window, tmp_path: Path):
     win.image_panel.composition_controls["enabled"].setChecked(True)
     win.image_panel.composition_controls["mask_enabled"].setChecked(True)
     win.image_panel.composition_controls["amount"].setValue(0.8)
-    wait_for(app, lambda: win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, first))
+    wait_for(
+        app,
+        lambda: (
+            win.state.physical_heightfield is not None and not np.array_equal(win.state.physical_heightfield, first)
+        ),
+    )
     assert win.state.secondary_source_descriptor is not None
     assert win.state.mask_source_descriptor is not None
     project = save_project(win.state, tmp_path / "composed.clayfield")
@@ -194,7 +234,9 @@ def test_secondary_can_copy_primary_source_configuration(window):
     wait_for(app, lambda: win.state.physical_heightfield is not None)
     primary = dict(win.state.source_descriptor)
     win.image_panel.composition_controls["copy_primary"].click()
-    wait_for(app, lambda: win.state.secondary_source_descriptor is not None and win.state.physical_heightfield is not None)
+    wait_for(
+        app, lambda: win.state.secondary_source_descriptor is not None and win.state.physical_heightfield is not None
+    )
     assert win.state.secondary_source_descriptor == primary
 
 
@@ -258,7 +300,9 @@ def test_procedural_heightmap_export_regenerates_at_export_resolution(window, tm
     assert win.state.source_type == "mandelbrot"
     win.terrain_panel.export_resolution.setValue(32)
     output = tmp_path / "procedural.png"
-    monkeypatch.setattr("clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "PNG 16-bit (*.png)"))
+    monkeypatch.setattr(
+        "clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "PNG 16-bit (*.png)")
+    )
     monkeypatch.setattr("clayfield.ui.main_window.ExportPreviewDialog.exec", lambda self: QDialog.DialogCode.Accepted)
     win._export_heightmap()
     wait_for(app, lambda: not win._export_active)
@@ -270,8 +314,12 @@ def test_procedural_heightmap_export_regenerates_at_export_resolution(window, tm
 def test_opened_project_restores_controls_without_becoming_dirty(window, tmp_path: Path):
     win, app = window
     pixels = np.array([[[20, 90, 180], [40, 80, 200]]], dtype=np.uint8)
-    state = ProjectState(source_path=tmp_path / "original.png", source_image=pixels,
-                         inverted=True, adjustment_settings={"linear_light": True, "inverted": True})
+    state = ProjectState(
+        source_path=tmp_path / "original.png",
+        source_image=pixels,
+        inverted=True,
+        adjustment_settings={"linear_light": True, "inverted": True},
+    )
     project = save_project(state, tmp_path / "saved.clayfield")
     win.image_panel.controls["Brightness"].setValue(0.5)
     load_project(project, win.state)
@@ -312,7 +360,9 @@ def test_heightmap_export_uses_current_inverted_image(window, tmp_path: Path, mo
     wait_for(app, lambda: win.state.physical_heightfield is not None)
     win.terrain_panel.export_resolution.setValue(32)
     output = tmp_path / "heightmap.tiff"
-    monkeypatch.setattr("clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "TIFF files (*.tif *.tiff)"))
+    monkeypatch.setattr(
+        "clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "TIFF files (*.tif *.tiff)")
+    )
     monkeypatch.setattr("clayfield.ui.main_window.ExportPreviewDialog.exec", lambda self: QDialog.DialogCode.Accepted)
     win._export_heightmap()
     wait_for(app, lambda: not win._export_active)
@@ -330,7 +380,9 @@ def test_heightmap_export_supports_eight_bits(window, tmp_path: Path, monkeypatc
     wait_for(app, lambda: win.state.physical_heightfield is not None)
     win.terrain_panel.export_resolution.setValue(32)
     output = tmp_path / "heightmap.png"
-    monkeypatch.setattr("clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "PNG 8-bit (*.png)"))
+    monkeypatch.setattr(
+        "clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "PNG 8-bit (*.png)")
+    )
     monkeypatch.setattr("clayfield.ui.main_window.ExportPreviewDialog.exec", lambda self: QDialog.DialogCode.Accepted)
     win._export_heightmap()
     wait_for(app, lambda: not win._export_active)
@@ -376,6 +428,7 @@ def test_undo_width_keeps_image_and_aspect_ratio(window, tmp_path: Path):
 
 def test_background_load_does_not_repopulate_a_new_project(window, tmp_path: Path, monkeypatch):
     from clayfield.ui import image_panel
+
     win, app = window
     path = tmp_path / "slow.png"
     assert cv2.imwrite(str(path), np.zeros((4, 4), dtype=np.uint8))
@@ -401,6 +454,7 @@ def test_background_load_does_not_repopulate_a_new_project(window, tmp_path: Pat
 
 def test_autosave_does_not_publish_stale_snapshot(window, tmp_path: Path, monkeypatch):
     import clayfield.ui.main_window as main_window
+
     win, app = window
     path = tmp_path / "source.png"
     assert cv2.imwrite(str(path), np.zeros((4, 4), dtype=np.uint8))
@@ -478,6 +532,7 @@ def test_base_and_export_resolution_do_not_recompute_heightfield(window, tmp_pat
 
 def test_preview_reports_mesh_validation_and_minimum_wall(window, tmp_path: Path):
     from clayfield.ui.export_preview import ExportPreviewDialog
+
     win, app = window
     path = tmp_path / "source.png"
     assert cv2.imwrite(str(path), np.zeros((4, 4), dtype=np.uint8))
@@ -519,7 +574,9 @@ def test_edited_heightmap_export_matches_authoritative_preview(window, tmp_path:
     wait_for(app, lambda: win.state.physical_heightfield is not None)
     image = win.state.physical_heightfield
     output = tmp_path / "edited.png"
-    monkeypatch.setattr("clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "PNG 16-bit (*.png)"))
+    monkeypatch.setattr(
+        "clayfield.ui.main_window.QFileDialog.getSaveFileName", lambda *args: (str(output), "PNG 16-bit (*.png)")
+    )
     monkeypatch.setattr("clayfield.ui.main_window.ExportPreviewDialog.exec", lambda self: QDialog.DialogCode.Accepted)
     win._export_heightmap()
     wait_for(app, lambda: not win._export_active)

@@ -74,14 +74,9 @@ def test_recommended_resolution_for_budget_fits() -> None:
 
 
 def test_recommended_resolution_for_container_budget_fits() -> None:
-    rows, columns = recommended_resolution_for_budget(
-        8192, 8192, DEFAULT_BUDGET.cpu_limit_bytes, container=True
-    )
+    rows, columns = recommended_resolution_for_budget(8192, 8192, DEFAULT_BUDGET.cpu_limit_bytes, container=True)
     assert max(rows, columns) < 8192
-    assert (
-        estimate_mesh_export(rows, columns, container=True).total_cpu_bytes
-        <= DEFAULT_BUDGET.cpu_limit_bytes
-    )
+    assert estimate_mesh_export(rows, columns, container=True).total_cpu_bytes <= DEFAULT_BUDGET.cpu_limit_bytes
 
 
 def test_adjustment_cache_evicts_by_bytes() -> None:

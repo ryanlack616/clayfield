@@ -105,7 +105,7 @@ def _is_allowed_member(name: str) -> bool:
     if name in _ALLOWED_MEMBERS:
         return True
     if name.startswith("source_image."):
-        suffix = name[len("source_image."):].lower()
+        suffix = name[len("source_image.") :].lower()
         return f".{suffix}" in _ALLOWED_SOURCE_IMAGE_EXTENSIONS
     return False
 
@@ -220,7 +220,7 @@ def _read_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int, fi
                 chunk = member.read(min(1024 * 1024, len(buffer) - total))
                 if not chunk:
                     break
-                view[total:total + len(chunk)] = chunk
+                view[total : total + len(chunk)] = chunk
                 total += len(chunk)
                 if total > limit:
                     raise ProjectIOError(
@@ -303,7 +303,15 @@ def migrate_project_metadata(metadata: dict) -> dict:
     if version == 3:
         result.setdefault(
             "source",
-            {"type": "image", "schema_version": 1, "parameters": {}, "algorithm": None, "algorithm_version": None, "seed": None, "content_hash": None},
+            {
+                "type": "image",
+                "schema_version": 1,
+                "parameters": {},
+                "algorithm": None,
+                "algorithm_version": None,
+                "seed": None,
+                "content_hash": None,
+            },
         )
         result.setdefault("pipeline", None)
         result["version"] = 4
@@ -330,8 +338,7 @@ def _parse_resolution(value, field_name: str) -> tuple[int, int] | None:
     resolution = (int(value[0]), int(value[1]))
     if any(item > maximum for item in resolution):
         raise ProjectIOError(
-            f"Project contains an implausible {field_name} {resolution}; "
-            f"absolute limit is {maximum} per axis"
+            f"Project contains an implausible {field_name} {resolution}; absolute limit is {maximum} per axis"
         )
     return resolution
 
@@ -380,13 +387,25 @@ def save_project(state: ProjectState, path: str | Path, *, update_state: bool = 
     secondary_encoded = None
     if state.secondary_field is not None:
         values = np.asarray(state.secondary_field, dtype=np.float32)
-        if values.ndim != 2 or min(values.shape, default=0) < 2 or not np.isfinite(values).all() or float(values.min()) < 0 or float(values.max()) > 1:
+        if (
+            values.ndim != 2
+            or min(values.shape, default=0) < 2
+            or not np.isfinite(values).all()
+            or float(values.min()) < 0
+            or float(values.max()) > 1
+        ):
             raise ProjectIOError("Secondary field must be finite normalized 2D data")
         secondary_encoded = np.rint(values * 65535.0).astype(np.uint16)
     mask_encoded = None
     if state.mask_field is not None:
         values = np.asarray(state.mask_field, dtype=np.float32)
-        if values.ndim != 2 or min(values.shape, default=0) < 2 or not np.isfinite(values).all() or float(values.min()) < 0 or float(values.max()) > 1:
+        if (
+            values.ndim != 2
+            or min(values.shape, default=0) < 2
+            or not np.isfinite(values).all()
+            or float(values.min()) < 0
+            or float(values.max()) > 1
+        ):
             raise ProjectIOError("Mask field must be finite normalized 2D data")
         mask_encoded = np.rint(values * 65535.0).astype(np.uint16)
     output = Path(path).expanduser()
@@ -534,7 +553,9 @@ def _load_project(path: str | Path, state: ProjectState) -> Path:
             secondary_original_names = [name for name in members if name == "secondary_original.bin"]
             mask_original_names = [name for name in members if name == "mask_original.bin"]
             secondary_original_bytes = (
-                _read_member(archive, members[secondary_original_names[0]], limits.max_member_bytes, "secondary original field")
+                _read_member(
+                    archive, members[secondary_original_names[0]], limits.max_member_bytes, "secondary original field"
+                )
                 if secondary_original_names
                 else None
             )
@@ -588,8 +609,12 @@ def _load_project(path: str | Path, state: ProjectState) -> Path:
         try:
             restored_pipeline = PipelineSnapshot.from_dict(metadata["pipeline"])
             state.pipeline_snapshot = restored_pipeline.to_dict()
-            state.secondary_source_descriptor = restored_pipeline.secondary_source.to_dict() if restored_pipeline.secondary_source is not None else None
-            state.mask_source_descriptor = restored_pipeline.mask_source.to_dict() if restored_pipeline.mask_source is not None else None
+            state.secondary_source_descriptor = (
+                restored_pipeline.secondary_source.to_dict() if restored_pipeline.secondary_source is not None else None
+            )
+            state.mask_source_descriptor = (
+                restored_pipeline.mask_source.to_dict() if restored_pipeline.mask_source is not None else None
+            )
             state.composition_settings = dict(restored_pipeline.composition)
             state.secondary_processing_settings = dict(restored_pipeline.secondary_processing)
         except (TypeError, ValueError) as error:
@@ -653,9 +678,27 @@ def _load_project(path: str | Path, state: ProjectState) -> Path:
         raise ProjectIOError("Project contains an invalid relief mode")
     if state.terrain_width_mm <= 0 or state.terrain_depth_mm <= 0 or state.base_thickness_mm <= 0:
         raise ProjectIOError("Project contains invalid physical dimensions")
-    if not all(math.isfinite(value) for value in (state.terrain_width_mm, state.terrain_depth_mm, state.minimum_height_mm, state.maximum_height_mm, state.base_thickness_mm, state.smoothing_sigma, state.edge_falloff, state.height_mapping_gamma, state.noise_amplitude, state.noise_frequency)):
+    if not all(
+        math.isfinite(value)
+        for value in (
+            state.terrain_width_mm,
+            state.terrain_depth_mm,
+            state.minimum_height_mm,
+            state.maximum_height_mm,
+            state.base_thickness_mm,
+            state.smoothing_sigma,
+            state.edge_falloff,
+            state.height_mapping_gamma,
+            state.noise_amplitude,
+            state.noise_frequency,
+        )
+    ):
         raise ProjectIOError("Project contains non-finite settings")
-    if state.minimum_height_mm > state.maximum_height_mm or state.smoothing_sigma < 0 or not 0 <= state.edge_falloff <= 1:
+    if (
+        state.minimum_height_mm > state.maximum_height_mm
+        or state.smoothing_sigma < 0
+        or not 0 <= state.edge_falloff <= 1
+    ):
         raise ProjectIOError("Project contains invalid height or terrain settings")
     adjustment_settings = dict(metadata.get("adjustments", {}))
     adjustment_order = metadata.get("adjustment_order")

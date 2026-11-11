@@ -25,13 +25,7 @@ def test_viewport_shaders_preserve_displacement_and_lighting_paths():
 
 
 def test_viewport_uses_physical_height_range_and_preview_limits():
-    viewport = (
-        Path(__file__).parents[1]
-        / "src"
-        / "clayfield"
-        / "ui"
-        / "viewport.py"
-    ).read_text()
+    viewport = (Path(__file__).parents[1] / "src" / "clayfield" / "ui" / "viewport.py").read_text()
 
     assert "height_min_mm" in viewport
     assert "height_max_mm" in viewport

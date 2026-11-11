@@ -58,37 +58,82 @@ def load_preset(path, state) -> dict:
         validate_geometry(snapshot["crop_margins"], snapshot["image_resize"])
         for name, maximum in (("heightfield_resolution", 2048), ("export_resolution", 4096)):
             resolution = snapshot[name]
-            if resolution is not None and (len(resolution) != 2 or any(isinstance(v, bool) or not isinstance(v, int) or not 2 <= v <= maximum for v in resolution)):
+            if resolution is not None and (
+                len(resolution) != 2
+                or any(isinstance(v, bool) or not isinstance(v, int) or not 2 <= v <= maximum for v in resolution)
+            ):
                 raise PresetError(f"Invalid {name}")
         temp = copy(state)
         restore_parameters(temp, snapshot)
-        dimensions = PhysicalDimensions(temp.terrain_width_mm, temp.terrain_depth_mm, temp.minimum_height_mm, temp.maximum_height_mm)
+        dimensions = PhysicalDimensions(
+            temp.terrain_width_mm, temp.terrain_depth_mm, temp.minimum_height_mm, temp.maximum_height_mm
+        )
         dimensions.validate()
         options_from_state(temp).validate()
-        if not (0 < temp.terrain_width_mm <= 10000 and 0 < temp.terrain_depth_mm <= 10000 and
-                0 <= temp.minimum_height_mm <= temp.maximum_height_mm <= 10000 and
-                abs(temp.height_offset_mm) <= 10000 and temp.height_scale <= 100 and
-                0 < temp.base_thickness_mm <= 10000 and 0 <= temp.smoothing_sigma <= 50 and
-                0 <= temp.edge_falloff <= 1 and 0.05 <= temp.height_mapping_gamma <= 10 and
-                0 <= temp.noise_amplitude <= 1 and 0.1 <= temp.noise_frequency <= 32):
+        if not (
+            0 < temp.terrain_width_mm <= 10000
+            and 0 < temp.terrain_depth_mm <= 10000
+            and 0 <= temp.minimum_height_mm <= temp.maximum_height_mm <= 10000
+            and abs(temp.height_offset_mm) <= 10000
+            and temp.height_scale <= 100
+            and 0 < temp.base_thickness_mm <= 10000
+            and 0 <= temp.smoothing_sigma <= 50
+            and 0 <= temp.edge_falloff <= 1
+            and 0.05 <= temp.height_mapping_gamma <= 10
+            and 0 <= temp.noise_amplitude <= 1
+            and 0.1 <= temp.noise_frequency <= 32
+        ):
             raise PresetError("Preset contains out-of-range terrain settings")
         if temp.relief_mode not in {"positive", "negative"} or temp.edge_falloff_mode not in {"linear", "smoothstep"}:
             raise PresetError("Preset contains an invalid terrain mode")
         for name in ("inverted", "lock_aspect_ratio", "height_invert", "height_normalize"):
             if not isinstance(snapshot[name], bool):
                 raise PresetError(f"Invalid {name}")
-        if not isinstance(temp.noise_seed, int) or isinstance(temp.noise_seed, bool) or not -2147483648 <= temp.noise_seed <= 2147483647:
+        if (
+            not isinstance(temp.noise_seed, int)
+            or isinstance(temp.noise_seed, bool)
+            or not -2147483648 <= temp.noise_seed <= 2147483647
+        ):
             raise PresetError("Invalid noise seed")
         settings = temp.adjustment_settings
         if not isinstance(settings, dict):
             raise PresetError("Invalid adjustment settings")
-        known = {"Black point", "Gamma", "White point", "Output black", "Output white", "Brightness", "Contrast", "Blur", "Sharpen", "Threshold", "threshold_enabled", "linear_light", "Curve interpolation", "inverted"}
+        known = {
+            "Black point",
+            "Gamma",
+            "White point",
+            "Output black",
+            "Output white",
+            "Brightness",
+            "Contrast",
+            "Blur",
+            "Sharpen",
+            "Threshold",
+            "threshold_enabled",
+            "linear_light",
+            "Curve interpolation",
+            "inverted",
+        }
         if set(settings) - known:
             raise PresetError("Preset contains unknown adjustment settings")
-        apply_levels(np.zeros((1, 1), dtype=np.float32), float(settings.get("Black point", 0)), float(settings.get("Gamma", 1)), float(settings.get("White point", 1)), float(settings.get("Output black", 0)), float(settings.get("Output white", 1)))
+        apply_levels(
+            np.zeros((1, 1), dtype=np.float32),
+            float(settings.get("Black point", 0)),
+            float(settings.get("Gamma", 1)),
+            float(settings.get("White point", 1)),
+            float(settings.get("Output black", 0)),
+            float(settings.get("Output white", 1)),
+        )
         if settings.get("Curve interpolation", "linear") not in {"linear", "smoothstep"}:
             raise PresetError("Invalid curve interpolation")
-        ranges = {"Gamma": (0.1, 5), "Brightness": (-1, 1), "Contrast": (0, 4), "Blur": (0, 20), "Sharpen": (0, 5), "Threshold": (0, 1)}
+        ranges = {
+            "Gamma": (0.1, 5),
+            "Brightness": (-1, 1),
+            "Contrast": (0, 4),
+            "Blur": (0, 20),
+            "Sharpen": (0, 5),
+            "Threshold": (0, 1),
+        }
         for name, (minimum, maximum) in ranges.items():
             value = float(settings.get(name, 1 if name in {"Gamma", "Contrast"} else 0))
             if not np.isfinite(value) or not minimum <= value <= maximum:

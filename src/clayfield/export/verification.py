@@ -50,13 +50,9 @@ def verify_heightmap_export(path: str | Path, expected: np.ndarray, *, cancel_ch
     if loaded is None:
         raise ExportError("Written heightmap could not be reopened")
     if loaded.shape != expected.shape:
-        raise ExportError(
-            f"Written heightmap shape {loaded.shape} does not match the source {expected.shape}"
-        )
+        raise ExportError(f"Written heightmap shape {loaded.shape} does not match the source {expected.shape}")
     if loaded.dtype != expected.dtype:
-        raise ExportError(
-            f"Written heightmap dtype {loaded.dtype} does not match the source {expected.dtype}"
-        )
+        raise ExportError(f"Written heightmap dtype {loaded.dtype} does not match the source {expected.dtype}")
 
 
 def verify_3mf_export(path: str | Path, expected: SolidMesh, *, cancel_check=None) -> None:
@@ -72,7 +68,9 @@ def verify_3mf_export(path: str | Path, expected: SolidMesh, *, cancel_check=Non
             with archive.open("3D/3dmodel.model") as model:
                 for event, element in ET.iterparse(model, events=("start", "end")):
                     if event == "start":
-                        if not stack and (element.tag != f"{{{MODEL_NS}}}model" or element.attrib.get("unit") != "millimeter"):
+                        if not stack and (
+                            element.tag != f"{{{MODEL_NS}}}model" or element.attrib.get("unit") != "millimeter"
+                        ):
                             raise ExportError("Written 3MF has invalid model metadata")
                         stack.append(element)
                     else:

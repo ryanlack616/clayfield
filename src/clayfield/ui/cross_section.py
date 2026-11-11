@@ -37,7 +37,10 @@ class ProfilePlot(QWidget):
         # strict=False: a length mismatch should leave a short plot rather than
         # raise inside paintEvent, which Qt cannot recover from gracefully.
         for distance, value in zip(self.distance, self.values, strict=False):
-            x = plot.left() + (distance - self.distance[0]) / max(1e-6, self.distance[-1] - self.distance[0]) * plot.width()
+            x = (
+                plot.left()
+                + (distance - self.distance[0]) / max(1e-6, self.distance[-1] - self.distance[0]) * plot.width()
+            )
             y = plot.bottom() - (value - low) / (high - low) * plot.height()
             points.append(QPointF(x, y))
         # strict=False: adjacent-pair iteration is shorter by one by design.

@@ -72,7 +72,9 @@ def _load_external_field(path: str):
     return field, loaded.path.name, hashlib.sha256(original).hexdigest(), original
 
 
-def _process_adjustments(source, grayscale, settings, points, cache, margins, resize, *, cancel_check=None, progress_callback=None):
+def _process_adjustments(
+    source, grayscale, settings, points, cache, margins, resize, *, cancel_check=None, progress_callback=None
+):
     check_cancelled(cancel_check)
     if grayscale is None:
         pixels = apply_image_geometry(source, margins, resize)
@@ -128,7 +130,35 @@ class ImagePanel(QWidget):
         self.info.setWordWrap(True)
         self.load_button = QPushButton("Load Image…")
         self.source_mode = QComboBox()
-        self.source_mode.addItems(["Image", "Fractal noise", "Wave interference", "Mandelbrot", "Voronoi", "Ridged noise", "Warped noise", "SDF shapes", "Chladni", "Spectral", "Reaction-diffusion", "Phyllotaxis", "Cellular automata", "Flow field", "Erosion", "L-system", "Cracks", "Penrose", "Truchet", "Superformula", "Gaussian peaks", "Julia", "Moiré", "Gabor", "QFractalNow config"])
+        self.source_mode.addItems(
+            [
+                "Image",
+                "Fractal noise",
+                "Wave interference",
+                "Mandelbrot",
+                "Voronoi",
+                "Ridged noise",
+                "Warped noise",
+                "SDF shapes",
+                "Chladni",
+                "Spectral",
+                "Reaction-diffusion",
+                "Phyllotaxis",
+                "Cellular automata",
+                "Flow field",
+                "Erosion",
+                "L-system",
+                "Cracks",
+                "Penrose",
+                "Truchet",
+                "Superformula",
+                "Gaussian peaks",
+                "Julia",
+                "Moiré",
+                "Gabor",
+                "QFractalNow config",
+            ]
+        )
         self.source_mode.currentIndexChanged.connect(self._source_mode_changed)
         self.source_randomize = QPushButton("Randomize Source")
         self.source_reset = QPushButton("Reset Source")
@@ -201,13 +231,19 @@ class ImagePanel(QWidget):
         self.load_button.clicked.connect(self._choose_image)
         self.grayscale_button.clicked.connect(self._apply_grayscale)
         self.invert_button.clicked.connect(self._apply_invert)
+
         def section(title: str, content: QWidget, expanded: bool = True) -> tuple[QToolButton, QWidget]:
             toggle = QToolButton()
             toggle.setText(f"{title}  ▾" if expanded else f"{title}  ▸")
             toggle.setCheckable(True)
             toggle.setChecked(expanded)
             content.setVisible(expanded)
-            toggle.toggled.connect(lambda visible, label=title: (content.setVisible(visible), toggle.setText(f"{label}  ▾" if visible else f"{label}  ▸")))
+            toggle.toggled.connect(
+                lambda visible, label=title: (
+                    content.setVisible(visible),
+                    toggle.setText(f"{label}  ▾" if visible else f"{label}  ▸"),
+                )
+            )
             return toggle, content
 
         source_content = QWidget()
@@ -259,11 +295,19 @@ class ImagePanel(QWidget):
         layout.addWidget(process_content)
         layout.addStretch()
         layout.addWidget(self.compose_toggle)
-        for name, widget in {"source_mode": self.source_mode, "source_randomize": self.source_randomize, "source_reset": self.source_reset, **self.procedural_controls, **self.composition_controls}.items():
+        for name, widget in {
+            "source_mode": self.source_mode,
+            "source_randomize": self.source_randomize,
+            "source_reset": self.source_reset,
+            **self.procedural_controls,
+            **self.composition_controls,
+        }.items():
             if isinstance(widget, QWidget):
                 widget.setAccessibleName(name.replace("_", " ").title())
         self.composition_controls["enabled"].setToolTip("Enable a second field before composition")
-        self.composition_controls["operation"].setToolTip("Choose how the secondary field combines with the primary field")
+        self.composition_controls["operation"].setToolTip(
+            "Choose how the secondary field combines with the primary field"
+        )
         self.composition_controls["amount"].setToolTip("How strongly the composition replaces the primary field")
         self._source_mode_changed(0)
         self._toggle_compose(False)
@@ -280,12 +324,18 @@ class ImagePanel(QWidget):
         mask = self.state.mask_source_descriptor or {}
         lines = []
         if secondary:
-            lines.append(f"Secondary: {secondary.get('type', 'unknown')} ({'embedded' if self.state.secondary_field is not None else 'external'})")
+            lines.append(
+                f"Secondary: {secondary.get('type', 'unknown')} ({'embedded' if self.state.secondary_field is not None else 'external'})"
+            )
         if mask:
-            lines.append(f"Mask: {mask.get('type', 'unknown')} ({'embedded' if self.state.mask_field is not None else 'external'})")
+            lines.append(
+                f"Mask: {mask.get('type', 'unknown')} ({'embedded' if self.state.mask_field is not None else 'external'})"
+            )
         if self.state.pipeline_snapshot and self.state.pipeline_snapshot.get("algorithm_versions"):
             versions = self.state.pipeline_snapshot["algorithm_versions"]
-            lines.append("Pipeline algorithms: " + ", ".join(f"{key} {value}" for key, value in sorted(versions.items())))
+            lines.append(
+                "Pipeline algorithms: " + ", ".join(f"{key} {value}" for key, value in sorted(versions.items()))
+            )
         self.provenance.setText("\n".join(lines))
 
     def _build_procedural_controls(self) -> dict[str, object]:
@@ -317,7 +367,15 @@ class ImagePanel(QWidget):
         controls["noise_normalization"] = QComboBox()
         controls["noise_normalization"].addItems(["Auto", "Fixed"])
         controls["noise_tileable"] = QCheckBox("Tileable (integer frequencies only)")
-        for label, name in (("Seed", "noise_seed"), ("Base frequency", "noise_frequency"), ("Octaves", "noise_octaves"), ("Persistence", "noise_persistence"), ("Lacunarity", "noise_lacunarity"), ("Amplitude", "noise_amplitude"), ("Normalization", "noise_normalization")):
+        for label, name in (
+            ("Seed", "noise_seed"),
+            ("Base frequency", "noise_frequency"),
+            ("Octaves", "noise_octaves"),
+            ("Persistence", "noise_persistence"),
+            ("Lacunarity", "noise_lacunarity"),
+            ("Amplitude", "noise_amplitude"),
+            ("Normalization", "noise_normalization"),
+        ):
             noise_form.addRow(label, controls[name])
         noise_form.addRow(controls["noise_tileable"])
 
@@ -343,7 +401,14 @@ class ImagePanel(QWidget):
         controls["wave_output_amplitude"].setRange(0.0, 1.0)
         controls["wave_output_amplitude"].setValue(1.0)
         controls["wave_output_amplitude"].setSingleStep(0.05)
-        for label, name in (("Mode", "wave_mode"), ("Frequency X", "wave_frequency_x"), ("Frequency Y", "wave_frequency_y"), ("Amplitude X", "wave_amplitude_x"), ("Amplitude Y", "wave_amplitude_y"), ("Output amplitude", "wave_output_amplitude")):
+        for label, name in (
+            ("Mode", "wave_mode"),
+            ("Frequency X", "wave_frequency_x"),
+            ("Frequency Y", "wave_frequency_y"),
+            ("Amplitude X", "wave_amplitude_x"),
+            ("Amplitude Y", "wave_amplitude_y"),
+            ("Output amplitude", "wave_output_amplitude"),
+        ):
             wave_form.addRow(label, controls[name])
 
         mandelbrot_page = QWidget()
@@ -368,7 +433,13 @@ class ImagePanel(QWidget):
         controls["mandelbrot_contrast"].setValue(1.0)
         controls["mandelbrot_contrast"].setSingleStep(0.1)
         controls["mandelbrot_invert"] = QCheckBox("Invert escape field")
-        for label, name in (("Center real", "mandelbrot_center_real"), ("Center imaginary", "mandelbrot_center_imaginary"), ("Zoom", "mandelbrot_zoom"), ("Iterations", "mandelbrot_iterations"), ("Contrast", "mandelbrot_contrast")):
+        for label, name in (
+            ("Center real", "mandelbrot_center_real"),
+            ("Center imaginary", "mandelbrot_center_imaginary"),
+            ("Zoom", "mandelbrot_zoom"),
+            ("Iterations", "mandelbrot_iterations"),
+            ("Contrast", "mandelbrot_contrast"),
+        ):
             mandelbrot_form.addRow(label, controls[name])
         mandelbrot_form.addRow(controls["mandelbrot_invert"])
 
@@ -385,7 +456,12 @@ class ImagePanel(QWidget):
         controls["voronoi_jitter"].setSingleStep(0.05)
         controls["voronoi_mode"] = QComboBox()
         controls["voronoi_mode"].addItems(["Boundary", "Distance", "Cells"])
-        for label, name in (("Seed", "voronoi_seed"), ("Cell density", "voronoi_density"), ("Jitter", "voronoi_jitter"), ("Mode", "voronoi_mode")):
+        for label, name in (
+            ("Seed", "voronoi_seed"),
+            ("Cell density", "voronoi_density"),
+            ("Jitter", "voronoi_jitter"),
+            ("Mode", "voronoi_mode"),
+        ):
             voronoi_form.addRow(label, controls[name])
 
         ridged_page = QWidget()
@@ -402,7 +478,12 @@ class ImagePanel(QWidget):
         controls["ridged_sharpness"].setRange(0.1, 8.0)
         controls["ridged_sharpness"].setValue(2.0)
         controls["ridged_sharpness"].setSingleStep(0.1)
-        for label, name in (("Seed", "ridged_seed"), ("Base frequency", "ridged_frequency"), ("Octaves", "ridged_octaves"), ("Sharpness", "ridged_sharpness")):
+        for label, name in (
+            ("Seed", "ridged_seed"),
+            ("Base frequency", "ridged_frequency"),
+            ("Octaves", "ridged_octaves"),
+            ("Sharpness", "ridged_sharpness"),
+        ):
             ridged_form.addRow(label, controls[name])
 
         warped_page = QWidget()
@@ -422,7 +503,13 @@ class ImagePanel(QWidget):
         controls["warped_octaves"] = QSpinBox()
         controls["warped_octaves"].setRange(1, 12)
         controls["warped_octaves"].setValue(5)
-        for label, name in (("Seed", "warped_seed"), ("Base frequency", "warped_frequency"), ("Warp frequency", "warped_warp_frequency"), ("Warp strength", "warped_strength"), ("Octaves", "warped_octaves")):
+        for label, name in (
+            ("Seed", "warped_seed"),
+            ("Base frequency", "warped_frequency"),
+            ("Warp frequency", "warped_warp_frequency"),
+            ("Warp strength", "warped_strength"),
+            ("Octaves", "warped_octaves"),
+        ):
             warped_form.addRow(label, controls[name])
 
         sdf_page = QWidget()
@@ -458,13 +545,27 @@ class ImagePanel(QWidget):
         controls["sdf_boolean_offset_y"] = QDoubleSpinBox()
         controls["sdf_boolean_offset_y"].setRange(-1.0, 1.0)
         controls["sdf_boolean_offset_y"].setSingleStep(0.05)
-        for label, name in (("Shape", "sdf_shape"), ("Radius", "sdf_radius"), ("Width", "sdf_width"), ("Height", "sdf_height"), ("Repeat X", "sdf_repeats_x"), ("Repeat Y", "sdf_repeats_y"), ("Edge softness", "sdf_softness")):
+        for label, name in (
+            ("Shape", "sdf_shape"),
+            ("Radius", "sdf_radius"),
+            ("Width", "sdf_width"),
+            ("Height", "sdf_height"),
+            ("Repeat X", "sdf_repeats_x"),
+            ("Repeat Y", "sdf_repeats_y"),
+            ("Edge softness", "sdf_softness"),
+        ):
             sdf_form.addRow(label, controls[name])
         sdf_form.addRow(controls["sdf_invert"])
-        for label, name in (("Boolean shape", "sdf_boolean_shape"), ("Boolean operation", "sdf_boolean_operation"), ("Boolean offset X", "sdf_boolean_offset_x"), ("Boolean offset Y", "sdf_boolean_offset_y")):
+        for label, name in (
+            ("Boolean shape", "sdf_boolean_shape"),
+            ("Boolean operation", "sdf_boolean_operation"),
+            ("Boolean offset X", "sdf_boolean_offset_x"),
+            ("Boolean offset Y", "sdf_boolean_offset_y"),
+        ):
             sdf_form.addRow(label, controls[name])
 
         advanced_pages = []
+
         def advanced_page(title, specifications):
             page = QWidget()
             form = QFormLayout(page)
@@ -487,22 +588,162 @@ class ImagePanel(QWidget):
                 form.addRow(name.replace("_", " ").title(), widget)
             advanced_pages.append(page)
 
-        advanced_page("Chladni", [("chladni_mode_x", "int", 3, 1, 64), ("chladni_mode_y", "int", 5, 1, 64), ("chladni_phase", "float", 0.0, -6.28, 6.28), ("chladni_line_width", "float", 0.2, 0.01, 1.0)])
-        advanced_page("Spectral", [("spectral_seed", "int", 0, -2147483648, 2147483647), ("spectral_components", "int", 12, 1, 128), ("spectral_min_frequency", "float", 1.0, 0.1, 64.0), ("spectral_max_frequency", "float", 12.0, 0.1, 128.0)])
-        advanced_page("Reaction diffusion", [("reaction_seed", "int", 0, -2147483648, 2147483647), ("reaction_iterations", "int", 300, 1, 5000), ("reaction_feed", "float", 0.055, 0.0, 1.0), ("reaction_kill", "float", 0.062, 0.0, 1.0)])
-        advanced_page("Phyllotaxis", [("phyllotaxis_count", "int", 500, 1, 10000), ("phyllotaxis_divergence", "float", 137.5, 0.0, 360.0), ("phyllotaxis_growth", "float", 0.018, 0.001, 1.0), ("phyllotaxis_radius", "float", 0.025, 0.001, 0.5)])
-        advanced_page("Cellular automata", [("cellular_seed", "int", 0, -2147483648, 2147483647), ("cellular_iterations", "int", 10, 1, 100), ("cellular_density", "float", 0.45, 0.0, 1.0), ("cellular_birth", "int", 4, 0, 8), ("cellular_survival", "int", 4, 0, 8)])
-        advanced_page("Flow field", [("flow_frequency", "float", 4.0, 0.1, 64.0), ("flow_swirl", "float", 1.0, 0.0, 8.0), ("flow_bands", "int", 8, 1, 128)])
-        advanced_page("Erosion", [("erosion_seed", "int", 0, -2147483648, 2147483647), ("erosion_iterations", "int", 50, 1, 500), ("erosion_strength", "float", 0.25, 0.0, 1.0), ("erosion_evaporation", "float", 0.1, 0.0, 1.0)])
-        advanced_page("L-system", [("lsystem_seed", "int", 0, -2147483648, 2147483647), ("lsystem_iterations", "int", 4, 1, 8), ("lsystem_angle", "float", 25.0, -180.0, 180.0), ("lsystem_length", "float", 0.18, 0.001, 1.0), ("lsystem_reduction", "float", 0.7, 0.1, 0.99)])
-        advanced_page("Cracks", [("crack_seed", "int", 0, -2147483648, 2147483647), ("crack_count", "int", 12, 1, 512), ("crack_steps", "int", 80, 1, 2000), ("crack_step_length", "float", 0.02, 0.001, 0.2), ("crack_thickness", "float", 0.01, 0.001, 0.2)])
-        advanced_page("Penrose", [("penrose_seed", "int", 0, -2147483648, 2147483647), ("penrose_scale", "float", 8.0, 0.1, 64.0), ("penrose_line_width", "float", 0.18, 0.01, 1.0), ("penrose_rotation", "float", 0.0, -6.28, 6.28)])
-        advanced_page("Truchet", [("truchet_seed", "int", 0, -2147483648, 2147483647), ("truchet_scale", "float", 8.0, 0.1, 64.0), ("truchet_line_width", "float", 0.18, 0.01, 1.0)])
-        advanced_page("Superformula", [("superformula_m", "float", 5.0, 0.1, 32.0), ("superformula_n1", "float", 0.3, 0.01, 8.0), ("superformula_n2", "float", 1.0, 0.01, 8.0), ("superformula_n3", "float", 1.0, 0.01, 8.0), ("superformula_scale", "float", 0.35, 0.01, 1.0), ("superformula_edge_softness", "float", 0.05, 0.001, 1.0)])
-        advanced_page("Gaussian peaks", [("gaussian_seed", "int", 0, -2147483648, 2147483647), ("gaussian_count", "int", 8, 1, 128), ("gaussian_width", "float", 0.12, 0.01, 1.0), ("gaussian_height", "float", 1.0, 0.01, 4.0), ("gaussian_crater", "check", False, 0, 1)])
-        advanced_page("Julia", [("julia_center_real", "float", 0.0, -2.0, 2.0), ("julia_center_imaginary", "float", 0.0, -2.0, 2.0), ("julia_constant_real", "float", -0.7, -2.0, 2.0), ("julia_constant_imaginary", "float", 0.27015, -2.0, 2.0), ("julia_zoom", "float", 1.0, 0.1, 1000.0), ("julia_iterations", "int", 100, 1, 2000), ("julia_contrast", "float", 1.0, 0.1, 10.0), ("julia_invert", "check", False, 0, 1)])
-        advanced_page("Moiré", [("moire_frequency_a", "float", 8.0, 0.1, 64.0), ("moire_frequency_b", "float", 8.5, 0.1, 64.0), ("moire_angle_a", "float", 0.0, -6.28, 6.28), ("moire_angle_b", "float", 0.35, -6.28, 6.28), ("moire_phase_a", "float", 0.0, -6.28, 6.28), ("moire_phase_b", "float", 0.0, -6.28, 6.28), ("moire_radial", "check", False, 0, 1)])
-        advanced_page("Gabor", [("gabor_seed", "int", 0, -2147483648, 2147483647), ("gabor_frequency", "float", 12.0, 0.1, 128.0), ("gabor_orientation", "float", 0.0, -6.28, 6.28), ("gabor_sigma", "float", 0.08, 0.001, 1.0), ("gabor_components", "int", 4, 1, 64)])
+        advanced_page(
+            "Chladni",
+            [
+                ("chladni_mode_x", "int", 3, 1, 64),
+                ("chladni_mode_y", "int", 5, 1, 64),
+                ("chladni_phase", "float", 0.0, -6.28, 6.28),
+                ("chladni_line_width", "float", 0.2, 0.01, 1.0),
+            ],
+        )
+        advanced_page(
+            "Spectral",
+            [
+                ("spectral_seed", "int", 0, -2147483648, 2147483647),
+                ("spectral_components", "int", 12, 1, 128),
+                ("spectral_min_frequency", "float", 1.0, 0.1, 64.0),
+                ("spectral_max_frequency", "float", 12.0, 0.1, 128.0),
+            ],
+        )
+        advanced_page(
+            "Reaction diffusion",
+            [
+                ("reaction_seed", "int", 0, -2147483648, 2147483647),
+                ("reaction_iterations", "int", 300, 1, 5000),
+                ("reaction_feed", "float", 0.055, 0.0, 1.0),
+                ("reaction_kill", "float", 0.062, 0.0, 1.0),
+            ],
+        )
+        advanced_page(
+            "Phyllotaxis",
+            [
+                ("phyllotaxis_count", "int", 500, 1, 10000),
+                ("phyllotaxis_divergence", "float", 137.5, 0.0, 360.0),
+                ("phyllotaxis_growth", "float", 0.018, 0.001, 1.0),
+                ("phyllotaxis_radius", "float", 0.025, 0.001, 0.5),
+            ],
+        )
+        advanced_page(
+            "Cellular automata",
+            [
+                ("cellular_seed", "int", 0, -2147483648, 2147483647),
+                ("cellular_iterations", "int", 10, 1, 100),
+                ("cellular_density", "float", 0.45, 0.0, 1.0),
+                ("cellular_birth", "int", 4, 0, 8),
+                ("cellular_survival", "int", 4, 0, 8),
+            ],
+        )
+        advanced_page(
+            "Flow field",
+            [
+                ("flow_frequency", "float", 4.0, 0.1, 64.0),
+                ("flow_swirl", "float", 1.0, 0.0, 8.0),
+                ("flow_bands", "int", 8, 1, 128),
+            ],
+        )
+        advanced_page(
+            "Erosion",
+            [
+                ("erosion_seed", "int", 0, -2147483648, 2147483647),
+                ("erosion_iterations", "int", 50, 1, 500),
+                ("erosion_strength", "float", 0.25, 0.0, 1.0),
+                ("erosion_evaporation", "float", 0.1, 0.0, 1.0),
+            ],
+        )
+        advanced_page(
+            "L-system",
+            [
+                ("lsystem_seed", "int", 0, -2147483648, 2147483647),
+                ("lsystem_iterations", "int", 4, 1, 8),
+                ("lsystem_angle", "float", 25.0, -180.0, 180.0),
+                ("lsystem_length", "float", 0.18, 0.001, 1.0),
+                ("lsystem_reduction", "float", 0.7, 0.1, 0.99),
+            ],
+        )
+        advanced_page(
+            "Cracks",
+            [
+                ("crack_seed", "int", 0, -2147483648, 2147483647),
+                ("crack_count", "int", 12, 1, 512),
+                ("crack_steps", "int", 80, 1, 2000),
+                ("crack_step_length", "float", 0.02, 0.001, 0.2),
+                ("crack_thickness", "float", 0.01, 0.001, 0.2),
+            ],
+        )
+        advanced_page(
+            "Penrose",
+            [
+                ("penrose_seed", "int", 0, -2147483648, 2147483647),
+                ("penrose_scale", "float", 8.0, 0.1, 64.0),
+                ("penrose_line_width", "float", 0.18, 0.01, 1.0),
+                ("penrose_rotation", "float", 0.0, -6.28, 6.28),
+            ],
+        )
+        advanced_page(
+            "Truchet",
+            [
+                ("truchet_seed", "int", 0, -2147483648, 2147483647),
+                ("truchet_scale", "float", 8.0, 0.1, 64.0),
+                ("truchet_line_width", "float", 0.18, 0.01, 1.0),
+            ],
+        )
+        advanced_page(
+            "Superformula",
+            [
+                ("superformula_m", "float", 5.0, 0.1, 32.0),
+                ("superformula_n1", "float", 0.3, 0.01, 8.0),
+                ("superformula_n2", "float", 1.0, 0.01, 8.0),
+                ("superformula_n3", "float", 1.0, 0.01, 8.0),
+                ("superformula_scale", "float", 0.35, 0.01, 1.0),
+                ("superformula_edge_softness", "float", 0.05, 0.001, 1.0),
+            ],
+        )
+        advanced_page(
+            "Gaussian peaks",
+            [
+                ("gaussian_seed", "int", 0, -2147483648, 2147483647),
+                ("gaussian_count", "int", 8, 1, 128),
+                ("gaussian_width", "float", 0.12, 0.01, 1.0),
+                ("gaussian_height", "float", 1.0, 0.01, 4.0),
+                ("gaussian_crater", "check", False, 0, 1),
+            ],
+        )
+        advanced_page(
+            "Julia",
+            [
+                ("julia_center_real", "float", 0.0, -2.0, 2.0),
+                ("julia_center_imaginary", "float", 0.0, -2.0, 2.0),
+                ("julia_constant_real", "float", -0.7, -2.0, 2.0),
+                ("julia_constant_imaginary", "float", 0.27015, -2.0, 2.0),
+                ("julia_zoom", "float", 1.0, 0.1, 1000.0),
+                ("julia_iterations", "int", 100, 1, 2000),
+                ("julia_contrast", "float", 1.0, 0.1, 10.0),
+                ("julia_invert", "check", False, 0, 1),
+            ],
+        )
+        advanced_page(
+            "Moiré",
+            [
+                ("moire_frequency_a", "float", 8.0, 0.1, 64.0),
+                ("moire_frequency_b", "float", 8.5, 0.1, 64.0),
+                ("moire_angle_a", "float", 0.0, -6.28, 6.28),
+                ("moire_angle_b", "float", 0.35, -6.28, 6.28),
+                ("moire_phase_a", "float", 0.0, -6.28, 6.28),
+                ("moire_phase_b", "float", 0.0, -6.28, 6.28),
+                ("moire_radial", "check", False, 0, 1),
+            ],
+        )
+        advanced_page(
+            "Gabor",
+            [
+                ("gabor_seed", "int", 0, -2147483648, 2147483647),
+                ("gabor_frequency", "float", 12.0, 0.1, 128.0),
+                ("gabor_orientation", "float", 0.0, -6.28, 6.28),
+                ("gabor_sigma", "float", 0.08, 0.001, 1.0),
+                ("gabor_components", "int", 4, 1, 64),
+            ],
+        )
 
         self.procedural_stack.addWidget(noise_page)
         self.procedural_stack.addWidget(wave_page)
@@ -537,7 +778,33 @@ class ImagePanel(QWidget):
         form = QFormLayout(box)
         controls["box"] = box
         controls["enabled"] = QCheckBox("Enable secondary field")
-        secondary_sources = ["Fractal noise", "Wave interference", "Mandelbrot", "Voronoi", "Ridged noise", "Warped noise", "SDF shapes", "Chladni", "Spectral", "Reaction-diffusion", "Phyllotaxis", "Cellular automata", "Flow field", "Erosion", "L-system", "Cracks", "Penrose", "Truchet", "Superformula", "Gaussian peaks", "Julia", "Moiré", "Gabor", "Imported heightmap", "Primary source"]
+        secondary_sources = [
+            "Fractal noise",
+            "Wave interference",
+            "Mandelbrot",
+            "Voronoi",
+            "Ridged noise",
+            "Warped noise",
+            "SDF shapes",
+            "Chladni",
+            "Spectral",
+            "Reaction-diffusion",
+            "Phyllotaxis",
+            "Cellular automata",
+            "Flow field",
+            "Erosion",
+            "L-system",
+            "Cracks",
+            "Penrose",
+            "Truchet",
+            "Superformula",
+            "Gaussian peaks",
+            "Julia",
+            "Moiré",
+            "Gabor",
+            "Imported heightmap",
+            "Primary source",
+        ]
         controls["source"] = QComboBox()
         controls["source"].addItems(secondary_sources)
         controls["seed"] = QSpinBox()
@@ -627,18 +894,38 @@ class ImagePanel(QWidget):
         controls["mandelbrot_invert"] = QCheckBox("Invert escape field")
         fractal_page = QWidget()
         fractal_form = QFormLayout(fractal_page)
-        for label, name in (("Seed", "seed"), ("Base frequency", "frequency"), ("Octaves", "octaves"), ("Persistence", "persistence")):
+        for label, name in (
+            ("Seed", "seed"),
+            ("Base frequency", "frequency"),
+            ("Octaves", "octaves"),
+            ("Persistence", "persistence"),
+        ):
             fractal_form.addRow(label, controls[name])
         wave_page = QWidget()
         wave_form = QFormLayout(wave_page)
-        for label, name in (("Mode", "wave_mode"), ("Frequency X", "wave_frequency_x"), ("Frequency Y", "wave_frequency_y"), ("Amplitude X", "wave_amplitude_x"), ("Amplitude Y", "wave_amplitude_y"), ("Output amplitude", "wave_output_amplitude")):
+        for label, name in (
+            ("Mode", "wave_mode"),
+            ("Frequency X", "wave_frequency_x"),
+            ("Frequency Y", "wave_frequency_y"),
+            ("Amplitude X", "wave_amplitude_x"),
+            ("Amplitude Y", "wave_amplitude_y"),
+            ("Output amplitude", "wave_output_amplitude"),
+        ):
             wave_form.addRow(label, controls[name])
         mandelbrot_page = QWidget()
         mandelbrot_form = QFormLayout(mandelbrot_page)
-        for label, name in (("Center real", "mandelbrot_center_real"), ("Center imaginary", "mandelbrot_center_imaginary"), ("Zoom", "mandelbrot_zoom"), ("Iterations", "mandelbrot_iterations"), ("Contrast", "mandelbrot_contrast")):
+        for label, name in (
+            ("Center real", "mandelbrot_center_real"),
+            ("Center imaginary", "mandelbrot_center_imaginary"),
+            ("Zoom", "mandelbrot_zoom"),
+            ("Iterations", "mandelbrot_iterations"),
+            ("Contrast", "mandelbrot_contrast"),
+        ):
             mandelbrot_form.addRow(label, controls[name])
         mandelbrot_form.addRow(controls["mandelbrot_invert"])
-        fallback_pages = [QLabel(f"{source} uses its generator defaults in composition.") for source in secondary_sources[3:-2]]
+        fallback_pages = [
+            QLabel(f"{source} uses its generator defaults in composition.") for source in secondary_sources[3:-2]
+        ]
         imported_page = QLabel("Imported heightmap uses its source pixels directly.")
         primary_page = QLabel("Uses the current primary source.")
         controls["secondary_stack"] = QStackedWidget()
@@ -647,7 +934,15 @@ class ImagePanel(QWidget):
         for label, name in (("Secondary source", "source"),):
             form.addRow(label, controls[name])
         form.addRow("Source parameters", controls["secondary_stack"])
-        for label, name in (("Secondary gamma", "secondary_gamma"), ("Secondary contrast", "secondary_contrast"), ("Secondary blur", "secondary_blur"), ("Operation", "operation"), ("Amount", "amount"), ("Mask radius", "mask_radius"), ("Mask feather", "mask_feather")):
+        for label, name in (
+            ("Secondary gamma", "secondary_gamma"),
+            ("Secondary contrast", "secondary_contrast"),
+            ("Secondary blur", "secondary_blur"),
+            ("Operation", "operation"),
+            ("Amount", "amount"),
+            ("Mask radius", "mask_radius"),
+            ("Mask feather", "mask_feather"),
+        ):
             form.addRow(label, controls[name])
         form.insertRow(0, controls["enabled"])
         form.addRow(controls["copy_primary"])
@@ -661,7 +956,12 @@ class ImagePanel(QWidget):
         controls["copy_primary"].clicked.connect(self._copy_primary_to_secondary)
         controls["source"].currentTextChanged.connect(self._secondary_source_changed)
         for control in controls.values():
-            if control is box or control is controls["source"] or control is controls["secondary_stack"] or isinstance(control, QPushButton):
+            if (
+                control is box
+                or control is controls["source"]
+                or control is controls["secondary_stack"]
+                or isinstance(control, QPushButton)
+            ):
                 continue
             if hasattr(control, "valueChanged"):
                 control.valueChanged.connect(self._composition_changed)
@@ -690,7 +990,9 @@ class ImagePanel(QWidget):
         self.procedural_source_changed.emit()
 
     def _choose_secondary_field(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Import Secondary Heightmap", "", "Images (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import Secondary Heightmap", "", "Images (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)"
+        )
         if path:
             self._start_external_import(path, "secondary")
 
@@ -707,7 +1009,9 @@ class ImagePanel(QWidget):
         generation = self._external_import_generation
         worker = FunctionWorker(_load_external_field, path)
         self._external_import_worker = worker
-        worker.signals.finished.connect(lambda result, selected=kind, token=generation: self._external_import_finished(token, selected, result))
+        worker.signals.finished.connect(
+            lambda result, selected=kind, token=generation: self._external_import_finished(token, selected, result)
+        )
         worker.signals.failed.connect(lambda message, token=generation: self._external_import_failed(token, message))
         self.thread_pool.start(worker)
 
@@ -718,7 +1022,13 @@ class ImagePanel(QWidget):
         field, name, content_hash, original = result
         field = np.array(field, dtype=np.float32, copy=True)
         field.setflags(write=False)
-        descriptor = SourceDescriptor("heightmap", parameters={"filename": name}, algorithm="imported_heightmap", algorithm_version="1", content_hash=content_hash)
+        descriptor = SourceDescriptor(
+            "heightmap",
+            parameters={"filename": name},
+            algorithm="imported_heightmap",
+            algorithm_version="1",
+            content_hash=content_hash,
+        )
         if kind == "secondary":
             self.state.secondary_field = field
             self.state.secondary_field_name = name
@@ -755,36 +1065,211 @@ class ImagePanel(QWidget):
         if mode == "imported heightmap" and self.state.secondary_source_descriptor is not None:
             return SourceDescriptor.from_dict(self.state.secondary_source_descriptor)
         if mode == "fractal noise":
-            parameters = NoiseParameters(seed=c["seed"].value(), base_frequency=c["frequency"].value(), octaves=c["octaves"].value(), persistence=c["persistence"].value(), lacunarity=2.0, amplitude=1.0, normalization="auto", tileable=False)
-            return SourceDescriptor("fractal_noise", parameters=parameters.__dict__.copy(), algorithm="value_fbm", algorithm_version="1", seed=parameters.seed)
+            parameters = NoiseParameters(
+                seed=c["seed"].value(),
+                base_frequency=c["frequency"].value(),
+                octaves=c["octaves"].value(),
+                persistence=c["persistence"].value(),
+                lacunarity=2.0,
+                amplitude=1.0,
+                normalization="auto",
+                tileable=False,
+            )
+            return SourceDescriptor(
+                "fractal_noise",
+                parameters=parameters.__dict__.copy(),
+                algorithm="value_fbm",
+                algorithm_version="1",
+                seed=parameters.seed,
+            )
         if mode == "wave interference":
-            parameters = WaveParameters(mode=c["wave_mode"].currentText().lower(), frequency_x=c["wave_frequency_x"].value(), frequency_y=c["wave_frequency_y"].value(), amplitude_x=c["wave_amplitude_x"].value(), amplitude_y=c["wave_amplitude_y"].value(), output_amplitude=c["wave_output_amplitude"].value())
-            return SourceDescriptor("wave_interference", parameters=parameters.__dict__.copy(), algorithm="wave_interference", algorithm_version="1")
+            parameters = WaveParameters(
+                mode=c["wave_mode"].currentText().lower(),
+                frequency_x=c["wave_frequency_x"].value(),
+                frequency_y=c["wave_frequency_y"].value(),
+                amplitude_x=c["wave_amplitude_x"].value(),
+                amplitude_y=c["wave_amplitude_y"].value(),
+                output_amplitude=c["wave_output_amplitude"].value(),
+            )
+            return SourceDescriptor(
+                "wave_interference",
+                parameters=parameters.__dict__.copy(),
+                algorithm="wave_interference",
+                algorithm_version="1",
+            )
         if mode == "mandelbrot":
-            parameters = MandelbrotParameters(center_real=c["mandelbrot_center_real"].value(), center_imaginary=c["mandelbrot_center_imaginary"].value(), zoom=c["mandelbrot_zoom"].value(), iterations=c["mandelbrot_iterations"].value(), contrast=c["mandelbrot_contrast"].value(), invert=c["mandelbrot_invert"].isChecked())
-            return SourceDescriptor("mandelbrot", parameters=parameters.__dict__.copy(), algorithm="smooth_escape_time", algorithm_version="1")
+            parameters = MandelbrotParameters(
+                center_real=c["mandelbrot_center_real"].value(),
+                center_imaginary=c["mandelbrot_center_imaginary"].value(),
+                zoom=c["mandelbrot_zoom"].value(),
+                iterations=c["mandelbrot_iterations"].value(),
+                contrast=c["mandelbrot_contrast"].value(),
+                invert=c["mandelbrot_invert"].isChecked(),
+            )
+            return SourceDescriptor(
+                "mandelbrot",
+                parameters=parameters.__dict__.copy(),
+                algorithm="smooth_escape_time",
+                algorithm_version="1",
+            )
         pattern_defaults = {
-            "voronoi": ("voronoi", {"seed": c["seed"].value(), "cell_density": c["frequency"].value(), "jitter": 1.0, "mode": "boundary", "edge_width": .15, "normalization": "auto"}, "voronoi"),
-            "ridged noise": ("ridged_noise", {"seed": c["seed"].value(), "base_frequency": c["frequency"].value(), "octaves": c["octaves"].value(), "persistence": c["persistence"].value(), "lacunarity": 2.0, "sharpness": 2.0}, "ridged_fbm"),
-            "warped noise": ("warped_noise", {"seed": c["seed"].value(), "base_frequency": c["frequency"].value(), "warp_frequency": c["frequency"].value(), "warp_strength": .25, "octaves": c["octaves"].value(), "persistence": c["persistence"].value(), "lacunarity": 2.0}, "domain_warped_fbm"),
-            "sdf shapes": ("sdf", {"shape": "circle", "radius": .35, "width": .6, "height": .6, "repeats_x": 1, "repeats_y": 1, "edge_softness": .05, "invert": False}, "sdf_circle"),
-            "chladni": ("chladni", {"mode_x": 3, "mode_y": 5, "phase": 0.0, "threshold": 0.0, "line_width": .2}, "chladni_modes"),
-            "spectral": ("spectral", {"seed": c["seed"].value(), "components": 12, "minimum_frequency": 1.0, "maximum_frequency": 12.0, "anisotropy": 1.0, "amplitude_falloff": 1.0}, "random_fourier"),
-            "reaction-diffusion": ("reaction_diffusion", {"seed": c["seed"].value(), "iterations": 300, "feed": .055, "kill": .062, "diffusion_a": 1.0, "diffusion_b": .5}, "gray_scott"),
-            "phyllotaxis": ("phyllotaxis", {"count": 500, "divergence_degrees": 137.5, "growth": .018, "point_radius": .025, "invert": False}, "golden_angle"),
-            "cellular automata": ("cellular_automata", {"seed": c["seed"].value(), "iterations": 10, "initial_density": .45, "birth_limit": 4, "survival_limit": 4}, "life_neighbors"),
-            "flow field": ("flow_field", {"frequency": c["frequency"].value(), "swirl": 1.0, "radial": False, "bands": 8}, "flow_bands"),
-            "erosion": ("erosion", {"seed": c["seed"].value(), "iterations": 50, "strength": .25, "evaporation": .1}, "bounded_erosion"),
-            "l-system": ("lsystem", {"seed": c["seed"].value(), "iterations": 4, "branch_angle_degrees": 25.0, "length": .18, "length_reduction": .7, "thickness": .025, "branch_probability": .85}, "branching_growth"),
-            "cracks": ("cracks", {"seed": c["seed"].value(), "cracks": 12, "steps": 80, "step_length": .02, "branch_probability": .08, "thickness": .01}, "random_walk_cracks"),
-            "penrose": ("penrose", {"seed": c["seed"].value(), "scale": 8.0, "line_width": .18, "rotation": 0.0}, "golden_interference"),
-            "truchet": ("truchet", {"seed": c["seed"].value(), "scale": 8.0, "line_width": .18, "rotation": 0.0}, "diagonal_tiles"),
+            "voronoi": (
+                "voronoi",
+                {
+                    "seed": c["seed"].value(),
+                    "cell_density": c["frequency"].value(),
+                    "jitter": 1.0,
+                    "mode": "boundary",
+                    "edge_width": 0.15,
+                    "normalization": "auto",
+                },
+                "voronoi",
+            ),
+            "ridged noise": (
+                "ridged_noise",
+                {
+                    "seed": c["seed"].value(),
+                    "base_frequency": c["frequency"].value(),
+                    "octaves": c["octaves"].value(),
+                    "persistence": c["persistence"].value(),
+                    "lacunarity": 2.0,
+                    "sharpness": 2.0,
+                },
+                "ridged_fbm",
+            ),
+            "warped noise": (
+                "warped_noise",
+                {
+                    "seed": c["seed"].value(),
+                    "base_frequency": c["frequency"].value(),
+                    "warp_frequency": c["frequency"].value(),
+                    "warp_strength": 0.25,
+                    "octaves": c["octaves"].value(),
+                    "persistence": c["persistence"].value(),
+                    "lacunarity": 2.0,
+                },
+                "domain_warped_fbm",
+            ),
+            "sdf shapes": (
+                "sdf",
+                {
+                    "shape": "circle",
+                    "radius": 0.35,
+                    "width": 0.6,
+                    "height": 0.6,
+                    "repeats_x": 1,
+                    "repeats_y": 1,
+                    "edge_softness": 0.05,
+                    "invert": False,
+                },
+                "sdf_circle",
+            ),
+            "chladni": (
+                "chladni",
+                {"mode_x": 3, "mode_y": 5, "phase": 0.0, "threshold": 0.0, "line_width": 0.2},
+                "chladni_modes",
+            ),
+            "spectral": (
+                "spectral",
+                {
+                    "seed": c["seed"].value(),
+                    "components": 12,
+                    "minimum_frequency": 1.0,
+                    "maximum_frequency": 12.0,
+                    "anisotropy": 1.0,
+                    "amplitude_falloff": 1.0,
+                },
+                "random_fourier",
+            ),
+            "reaction-diffusion": (
+                "reaction_diffusion",
+                {
+                    "seed": c["seed"].value(),
+                    "iterations": 300,
+                    "feed": 0.055,
+                    "kill": 0.062,
+                    "diffusion_a": 1.0,
+                    "diffusion_b": 0.5,
+                },
+                "gray_scott",
+            ),
+            "phyllotaxis": (
+                "phyllotaxis",
+                {"count": 500, "divergence_degrees": 137.5, "growth": 0.018, "point_radius": 0.025, "invert": False},
+                "golden_angle",
+            ),
+            "cellular automata": (
+                "cellular_automata",
+                {
+                    "seed": c["seed"].value(),
+                    "iterations": 10,
+                    "initial_density": 0.45,
+                    "birth_limit": 4,
+                    "survival_limit": 4,
+                },
+                "life_neighbors",
+            ),
+            "flow field": (
+                "flow_field",
+                {"frequency": c["frequency"].value(), "swirl": 1.0, "radial": False, "bands": 8},
+                "flow_bands",
+            ),
+            "erosion": (
+                "erosion",
+                {"seed": c["seed"].value(), "iterations": 50, "strength": 0.25, "evaporation": 0.1},
+                "bounded_erosion",
+            ),
+            "l-system": (
+                "lsystem",
+                {
+                    "seed": c["seed"].value(),
+                    "iterations": 4,
+                    "branch_angle_degrees": 25.0,
+                    "length": 0.18,
+                    "length_reduction": 0.7,
+                    "thickness": 0.025,
+                    "branch_probability": 0.85,
+                },
+                "branching_growth",
+            ),
+            "cracks": (
+                "cracks",
+                {
+                    "seed": c["seed"].value(),
+                    "cracks": 12,
+                    "steps": 80,
+                    "step_length": 0.02,
+                    "branch_probability": 0.08,
+                    "thickness": 0.01,
+                },
+                "random_walk_cracks",
+            ),
+            "penrose": (
+                "penrose",
+                {"seed": c["seed"].value(), "scale": 8.0, "line_width": 0.18, "rotation": 0.0},
+                "golden_interference",
+            ),
+            "truchet": (
+                "truchet",
+                {"seed": c["seed"].value(), "scale": 8.0, "line_width": 0.18, "rotation": 0.0},
+                "diagonal_tiles",
+            ),
         }
         if mode in pattern_defaults:
             source_type, parameters, algorithm = pattern_defaults[mode]
-            return SourceDescriptor(source_type, parameters=parameters, algorithm=algorithm, algorithm_version="1", seed=parameters.get("seed"))
-        parameters = MandelbrotParameters(zoom=max(0.1, c["frequency"].value()), iterations=100, contrast=1.0, invert=False)
-        return SourceDescriptor("mandelbrot", parameters=parameters.__dict__.copy(), algorithm="smooth_escape_time", algorithm_version="1")
+            return SourceDescriptor(
+                source_type,
+                parameters=parameters,
+                algorithm=algorithm,
+                algorithm_version="1",
+                seed=parameters.get("seed"),
+            )
+        parameters = MandelbrotParameters(
+            zoom=max(0.1, c["frequency"].value()), iterations=100, contrast=1.0, invert=False
+        )
+        return SourceDescriptor(
+            "mandelbrot", parameters=parameters.__dict__.copy(), algorithm="smooth_escape_time", algorithm_version="1"
+        )
 
     def _update_composition_state(self) -> None:
         c = self.composition_controls
@@ -804,10 +1289,18 @@ class ImagePanel(QWidget):
             "inverted": c["secondary_invert"].isChecked(),
         }
         self.state.secondary_source_descriptor = self._secondary_descriptor().to_dict() if enabled else None
-        self.state.mask_source_descriptor = SourceDescriptor(
-            "radial_mask",
-            parameters={"inner_radius": max(0.0, c["mask_radius"].value() - c["mask_feather"].value()), "outer_radius": c["mask_radius"].value(), "invert": c["mask_invert"].isChecked()},
-        ).to_dict() if enabled and c["mask_enabled"].isChecked() else None
+        self.state.mask_source_descriptor = (
+            SourceDescriptor(
+                "radial_mask",
+                parameters={
+                    "inner_radius": max(0.0, c["mask_radius"].value() - c["mask_feather"].value()),
+                    "outer_radius": c["mask_radius"].value(),
+                    "invert": c["mask_invert"].isChecked(),
+                },
+            ).to_dict()
+            if enabled and c["mask_enabled"].isChecked()
+            else None
+        )
 
     def _composition_changed(self, *args) -> None:
         if not self.is_procedural and self.state.source_image is None:
@@ -825,75 +1318,387 @@ class ImagePanel(QWidget):
         c = self.procedural_controls
         if self.source_mode.currentIndex() == 1:
             parameters = NoiseParameters(
-                seed=c["noise_seed"].value(), base_frequency=c["noise_frequency"].value(), octaves=c["noise_octaves"].value(),
-                persistence=c["noise_persistence"].value(), lacunarity=c["noise_lacunarity"].value(), amplitude=c["noise_amplitude"].value(),
-                normalization=c["noise_normalization"].currentText().lower(), tileable=c["noise_tileable"].isChecked(),
+                seed=c["noise_seed"].value(),
+                base_frequency=c["noise_frequency"].value(),
+                octaves=c["noise_octaves"].value(),
+                persistence=c["noise_persistence"].value(),
+                lacunarity=c["noise_lacunarity"].value(),
+                amplitude=c["noise_amplitude"].value(),
+                normalization=c["noise_normalization"].currentText().lower(),
+                tileable=c["noise_tileable"].isChecked(),
             )
-            return SourceDescriptor("fractal_noise", parameters=parameters.__dict__.copy(), algorithm="value_fbm", algorithm_version="1", seed=parameters.seed)
+            return SourceDescriptor(
+                "fractal_noise",
+                parameters=parameters.__dict__.copy(),
+                algorithm="value_fbm",
+                algorithm_version="1",
+                seed=parameters.seed,
+            )
         if self.source_mode.currentIndex() == 2:
             parameters = WaveParameters(
-                mode=c["wave_mode"].currentText().lower(), frequency_x=c["wave_frequency_x"].value(), frequency_y=c["wave_frequency_y"].value(),
-                amplitude_x=c["wave_amplitude_x"].value(), amplitude_y=c["wave_amplitude_y"].value(), output_amplitude=c["wave_output_amplitude"].value(),
+                mode=c["wave_mode"].currentText().lower(),
+                frequency_x=c["wave_frequency_x"].value(),
+                frequency_y=c["wave_frequency_y"].value(),
+                amplitude_x=c["wave_amplitude_x"].value(),
+                amplitude_y=c["wave_amplitude_y"].value(),
+                output_amplitude=c["wave_output_amplitude"].value(),
             )
-            return SourceDescriptor("wave_interference", parameters=parameters.__dict__.copy(), algorithm="wave_interference", algorithm_version="1")
+            return SourceDescriptor(
+                "wave_interference",
+                parameters=parameters.__dict__.copy(),
+                algorithm="wave_interference",
+                algorithm_version="1",
+            )
         if self.source_mode.currentIndex() == 3:
             parameters = MandelbrotParameters(
-            center_real=c["mandelbrot_center_real"].value(), center_imaginary=c["mandelbrot_center_imaginary"].value(),
-            zoom=c["mandelbrot_zoom"].value(), iterations=c["mandelbrot_iterations"].value(), contrast=c["mandelbrot_contrast"].value(), invert=c["mandelbrot_invert"].isChecked(),
+                center_real=c["mandelbrot_center_real"].value(),
+                center_imaginary=c["mandelbrot_center_imaginary"].value(),
+                zoom=c["mandelbrot_zoom"].value(),
+                iterations=c["mandelbrot_iterations"].value(),
+                contrast=c["mandelbrot_contrast"].value(),
+                invert=c["mandelbrot_invert"].isChecked(),
             )
-            return SourceDescriptor("mandelbrot", parameters=parameters.__dict__.copy(), algorithm="smooth_escape_time", algorithm_version="1")
+            return SourceDescriptor(
+                "mandelbrot",
+                parameters=parameters.__dict__.copy(),
+                algorithm="smooth_escape_time",
+                algorithm_version="1",
+            )
         if self.source_mode.currentIndex() == 4:
-            return SourceDescriptor("voronoi", parameters={"seed": c["voronoi_seed"].value(), "cell_density": c["voronoi_density"].value(), "jitter": c["voronoi_jitter"].value(), "mode": c["voronoi_mode"].currentText().lower(), "edge_width": 0.15, "normalization": "auto"}, algorithm="voronoi", algorithm_version="1", seed=c["voronoi_seed"].value())
+            return SourceDescriptor(
+                "voronoi",
+                parameters={
+                    "seed": c["voronoi_seed"].value(),
+                    "cell_density": c["voronoi_density"].value(),
+                    "jitter": c["voronoi_jitter"].value(),
+                    "mode": c["voronoi_mode"].currentText().lower(),
+                    "edge_width": 0.15,
+                    "normalization": "auto",
+                },
+                algorithm="voronoi",
+                algorithm_version="1",
+                seed=c["voronoi_seed"].value(),
+            )
         if self.source_mode.currentIndex() == 5:
-            return SourceDescriptor("ridged_noise", parameters={"seed": c["ridged_seed"].value(), "base_frequency": c["ridged_frequency"].value(), "octaves": c["ridged_octaves"].value(), "persistence": 0.5, "lacunarity": 2.0, "sharpness": c["ridged_sharpness"].value()}, algorithm="ridged_fbm", algorithm_version="1", seed=c["ridged_seed"].value())
+            return SourceDescriptor(
+                "ridged_noise",
+                parameters={
+                    "seed": c["ridged_seed"].value(),
+                    "base_frequency": c["ridged_frequency"].value(),
+                    "octaves": c["ridged_octaves"].value(),
+                    "persistence": 0.5,
+                    "lacunarity": 2.0,
+                    "sharpness": c["ridged_sharpness"].value(),
+                },
+                algorithm="ridged_fbm",
+                algorithm_version="1",
+                seed=c["ridged_seed"].value(),
+            )
         if self.source_mode.currentIndex() == 6:
-            return SourceDescriptor("warped_noise", parameters={"seed": c["warped_seed"].value(), "base_frequency": c["warped_frequency"].value(), "warp_frequency": c["warped_warp_frequency"].value(), "warp_strength": c["warped_strength"].value(), "octaves": c["warped_octaves"].value(), "persistence": 0.5, "lacunarity": 2.0}, algorithm="domain_warped_fbm", algorithm_version="1", seed=c["warped_seed"].value())
+            return SourceDescriptor(
+                "warped_noise",
+                parameters={
+                    "seed": c["warped_seed"].value(),
+                    "base_frequency": c["warped_frequency"].value(),
+                    "warp_frequency": c["warped_warp_frequency"].value(),
+                    "warp_strength": c["warped_strength"].value(),
+                    "octaves": c["warped_octaves"].value(),
+                    "persistence": 0.5,
+                    "lacunarity": 2.0,
+                },
+                algorithm="domain_warped_fbm",
+                algorithm_version="1",
+                seed=c["warped_seed"].value(),
+            )
         if self.source_mode.currentIndex() == 7:
-            return SourceDescriptor("sdf", parameters={"shape": c["sdf_shape"].currentText().lower(), "radius": c["sdf_radius"].value(), "width": c["sdf_width"].value(), "height": c["sdf_height"].value(), "repeats_x": c["sdf_repeats_x"].value(), "repeats_y": c["sdf_repeats_y"].value(), "edge_softness": c["sdf_softness"].value(), "invert": c["sdf_invert"].isChecked(), "boolean_shape": c["sdf_boolean_shape"].currentText().lower(), "boolean_operation": c["sdf_boolean_operation"].currentText().lower(), "boolean_offset_x": c["sdf_boolean_offset_x"].value(), "boolean_offset_y": c["sdf_boolean_offset_y"].value()}, algorithm=f"sdf_{c['sdf_shape'].currentText().lower()}", algorithm_version="1")
+            return SourceDescriptor(
+                "sdf",
+                parameters={
+                    "shape": c["sdf_shape"].currentText().lower(),
+                    "radius": c["sdf_radius"].value(),
+                    "width": c["sdf_width"].value(),
+                    "height": c["sdf_height"].value(),
+                    "repeats_x": c["sdf_repeats_x"].value(),
+                    "repeats_y": c["sdf_repeats_y"].value(),
+                    "edge_softness": c["sdf_softness"].value(),
+                    "invert": c["sdf_invert"].isChecked(),
+                    "boolean_shape": c["sdf_boolean_shape"].currentText().lower(),
+                    "boolean_operation": c["sdf_boolean_operation"].currentText().lower(),
+                    "boolean_offset_x": c["sdf_boolean_offset_x"].value(),
+                    "boolean_offset_y": c["sdf_boolean_offset_y"].value(),
+                },
+                algorithm=f"sdf_{c['sdf_shape'].currentText().lower()}",
+                algorithm_version="1",
+            )
         if self.source_mode.currentIndex() == 24:
-            parameters = self.state.source_descriptor.get("parameters", {}) if self.state.source_descriptor.get("type") == "qfractalnow_config" else {}
-            return SourceDescriptor("qfractalnow_config", parameters={"filename": parameters.get("filename", ""), "config_text": parameters.get("config_text", "")}, algorithm="fractalnow", algorithm_version="1")
+            parameters = (
+                self.state.source_descriptor.get("parameters", {})
+                if self.state.source_descriptor.get("type") == "qfractalnow_config"
+                else {}
+            )
+            return SourceDescriptor(
+                "qfractalnow_config",
+                parameters={
+                    "filename": parameters.get("filename", ""),
+                    "config_text": parameters.get("config_text", ""),
+                },
+                algorithm="fractalnow",
+                algorithm_version="1",
+            )
         if self.source_mode.currentIndex() == 19:
-            parameters = {"m": c["superformula_m"].value(), "n1": c["superformula_n1"].value(), "n2": c["superformula_n2"].value(), "n3": c["superformula_n3"].value(), "scale": c["superformula_scale"].value(), "edge_softness": c["superformula_edge_softness"].value()}
-            return SourceDescriptor("superformula", parameters=parameters, algorithm="superformula", algorithm_version="1")
+            parameters = {
+                "m": c["superformula_m"].value(),
+                "n1": c["superformula_n1"].value(),
+                "n2": c["superformula_n2"].value(),
+                "n3": c["superformula_n3"].value(),
+                "scale": c["superformula_scale"].value(),
+                "edge_softness": c["superformula_edge_softness"].value(),
+            }
+            return SourceDescriptor(
+                "superformula", parameters=parameters, algorithm="superformula", algorithm_version="1"
+            )
         if self.source_mode.currentIndex() == 20:
-            parameters = {"seed": c["gaussian_seed"].value(), "count": c["gaussian_count"].value(), "width": c["gaussian_width"].value(), "height": c["gaussian_height"].value(), "crater": c["gaussian_crater"].isChecked()}
-            return SourceDescriptor("gaussian_peaks", parameters=parameters, algorithm="gaussian_clusters", algorithm_version="1", seed=parameters["seed"])
+            parameters = {
+                "seed": c["gaussian_seed"].value(),
+                "count": c["gaussian_count"].value(),
+                "width": c["gaussian_width"].value(),
+                "height": c["gaussian_height"].value(),
+                "crater": c["gaussian_crater"].isChecked(),
+            }
+            return SourceDescriptor(
+                "gaussian_peaks",
+                parameters=parameters,
+                algorithm="gaussian_clusters",
+                algorithm_version="1",
+                seed=parameters["seed"],
+            )
         if self.source_mode.currentIndex() == 21:
-            parameters = {"center_real": c["julia_center_real"].value(), "center_imaginary": c["julia_center_imaginary"].value(), "constant_real": c["julia_constant_real"].value(), "constant_imaginary": c["julia_constant_imaginary"].value(), "zoom": c["julia_zoom"].value(), "iterations": c["julia_iterations"].value(), "contrast": c["julia_contrast"].value(), "invert": c["julia_invert"].isChecked()}
-            return SourceDescriptor("julia", parameters=parameters, algorithm="julia_escape_time", algorithm_version="1")
+            parameters = {
+                "center_real": c["julia_center_real"].value(),
+                "center_imaginary": c["julia_center_imaginary"].value(),
+                "constant_real": c["julia_constant_real"].value(),
+                "constant_imaginary": c["julia_constant_imaginary"].value(),
+                "zoom": c["julia_zoom"].value(),
+                "iterations": c["julia_iterations"].value(),
+                "contrast": c["julia_contrast"].value(),
+                "invert": c["julia_invert"].isChecked(),
+            }
+            return SourceDescriptor(
+                "julia", parameters=parameters, algorithm="julia_escape_time", algorithm_version="1"
+            )
         if self.source_mode.currentIndex() == 22:
-            parameters = {"frequency_a": c["moire_frequency_a"].value(), "frequency_b": c["moire_frequency_b"].value(), "angle_a": c["moire_angle_a"].value(), "angle_b": c["moire_angle_b"].value(), "phase_a": c["moire_phase_a"].value(), "phase_b": c["moire_phase_b"].value(), "radial": c["moire_radial"].isChecked()}
-            return SourceDescriptor("moire", parameters=parameters, algorithm="dual_interference", algorithm_version="1")
+            parameters = {
+                "frequency_a": c["moire_frequency_a"].value(),
+                "frequency_b": c["moire_frequency_b"].value(),
+                "angle_a": c["moire_angle_a"].value(),
+                "angle_b": c["moire_angle_b"].value(),
+                "phase_a": c["moire_phase_a"].value(),
+                "phase_b": c["moire_phase_b"].value(),
+                "radial": c["moire_radial"].isChecked(),
+            }
+            return SourceDescriptor(
+                "moire", parameters=parameters, algorithm="dual_interference", algorithm_version="1"
+            )
         if self.source_mode.currentIndex() == 23:
-            parameters = {"seed": c["gabor_seed"].value(), "frequency": c["gabor_frequency"].value(), "orientation": c["gabor_orientation"].value(), "sigma": c["gabor_sigma"].value(), "components": c["gabor_components"].value()}
-            return SourceDescriptor("gabor", parameters=parameters, algorithm="gabor_bank", algorithm_version="1", seed=parameters["seed"])
+            parameters = {
+                "seed": c["gabor_seed"].value(),
+                "frequency": c["gabor_frequency"].value(),
+                "orientation": c["gabor_orientation"].value(),
+                "sigma": c["gabor_sigma"].value(),
+                "components": c["gabor_components"].value(),
+            }
+            return SourceDescriptor(
+                "gabor", parameters=parameters, algorithm="gabor_bank", algorithm_version="1", seed=parameters["seed"]
+            )
         defaults = {
-            8: ("chladni", {"mode_x": c["chladni_mode_x"].value(), "mode_y": c["chladni_mode_y"].value(), "phase": c["chladni_phase"].value(), "threshold": 0.0, "line_width": c["chladni_line_width"].value()}, "chladni_modes"),
-            9: ("spectral", {"seed": c["spectral_seed"].value(), "components": c["spectral_components"].value(), "minimum_frequency": c["spectral_min_frequency"].value(), "maximum_frequency": c["spectral_max_frequency"].value(), "anisotropy": 1.0, "amplitude_falloff": 1.0}, "random_fourier"),
-            10: ("reaction_diffusion", {"seed": c["reaction_seed"].value(), "iterations": c["reaction_iterations"].value(), "feed": c["reaction_feed"].value(), "kill": c["reaction_kill"].value(), "diffusion_a": 1.0, "diffusion_b": 0.5}, "gray_scott"),
-            11: ("phyllotaxis", {"count": c["phyllotaxis_count"].value(), "divergence_degrees": c["phyllotaxis_divergence"].value(), "growth": c["phyllotaxis_growth"].value(), "point_radius": c["phyllotaxis_radius"].value(), "invert": False}, "golden_angle"),
-            12: ("cellular_automata", {"seed": c["cellular_seed"].value(), "iterations": c["cellular_iterations"].value(), "initial_density": c["cellular_density"].value(), "birth_limit": c["cellular_birth"].value(), "survival_limit": c["cellular_survival"].value()}, "life_neighbors"),
-            13: ("flow_field", {"frequency": c["flow_frequency"].value(), "swirl": c["flow_swirl"].value(), "radial": False, "bands": c["flow_bands"].value()}, "flow_bands"),
-            14: ("erosion", {"seed": c["erosion_seed"].value(), "iterations": c["erosion_iterations"].value(), "strength": c["erosion_strength"].value(), "evaporation": c["erosion_evaporation"].value()}, "bounded_erosion"),
-            15: ("lsystem", {"seed": c["lsystem_seed"].value(), "iterations": c["lsystem_iterations"].value(), "branch_angle_degrees": c["lsystem_angle"].value(), "length": c["lsystem_length"].value(), "length_reduction": c["lsystem_reduction"].value(), "thickness": 0.025, "branch_probability": 0.85}, "branching_growth"),
-            16: ("cracks", {"seed": c["crack_seed"].value(), "cracks": c["crack_count"].value(), "steps": c["crack_steps"].value(), "step_length": c["crack_step_length"].value(), "branch_probability": 0.08, "thickness": c["crack_thickness"].value()}, "random_walk_cracks"),
-            17: ("penrose", {"seed": c["penrose_seed"].value(), "scale": c["penrose_scale"].value(), "line_width": c["penrose_line_width"].value(), "rotation": c["penrose_rotation"].value()}, "golden_interference"),
-            18: ("truchet", {"seed": c["truchet_seed"].value(), "scale": c["truchet_scale"].value(), "line_width": c["truchet_line_width"].value(), "rotation": 0.0}, "diagonal_tiles"),
-            19: ("superformula", {"m": 5.0, "n1": .3, "n2": 1.0, "n3": 1.0, "scale": .35, "edge_softness": .05}, "superformula"),
-            20: ("gaussian_peaks", {"seed": 0, "count": 8, "width": .12, "height": 1.0, "crater": False}, "gaussian_clusters"),
-            21: ("julia", {"center_real": 0.0, "center_imaginary": 0.0, "constant_real": -.7, "constant_imaginary": .27015, "zoom": 1.0, "iterations": 100, "contrast": 1.0, "invert": False}, "julia_escape_time"),
-            22: ("moire", {"frequency_a": 8.0, "frequency_b": 8.5, "angle_a": 0.0, "angle_b": .35, "phase_a": 0.0, "phase_b": 0.0, "radial": False}, "dual_interference"),
-            23: ("gabor", {"seed": 0, "frequency": 12.0, "orientation": 0.0, "sigma": .08, "components": 4}, "gabor_bank"),
+            8: (
+                "chladni",
+                {
+                    "mode_x": c["chladni_mode_x"].value(),
+                    "mode_y": c["chladni_mode_y"].value(),
+                    "phase": c["chladni_phase"].value(),
+                    "threshold": 0.0,
+                    "line_width": c["chladni_line_width"].value(),
+                },
+                "chladni_modes",
+            ),
+            9: (
+                "spectral",
+                {
+                    "seed": c["spectral_seed"].value(),
+                    "components": c["spectral_components"].value(),
+                    "minimum_frequency": c["spectral_min_frequency"].value(),
+                    "maximum_frequency": c["spectral_max_frequency"].value(),
+                    "anisotropy": 1.0,
+                    "amplitude_falloff": 1.0,
+                },
+                "random_fourier",
+            ),
+            10: (
+                "reaction_diffusion",
+                {
+                    "seed": c["reaction_seed"].value(),
+                    "iterations": c["reaction_iterations"].value(),
+                    "feed": c["reaction_feed"].value(),
+                    "kill": c["reaction_kill"].value(),
+                    "diffusion_a": 1.0,
+                    "diffusion_b": 0.5,
+                },
+                "gray_scott",
+            ),
+            11: (
+                "phyllotaxis",
+                {
+                    "count": c["phyllotaxis_count"].value(),
+                    "divergence_degrees": c["phyllotaxis_divergence"].value(),
+                    "growth": c["phyllotaxis_growth"].value(),
+                    "point_radius": c["phyllotaxis_radius"].value(),
+                    "invert": False,
+                },
+                "golden_angle",
+            ),
+            12: (
+                "cellular_automata",
+                {
+                    "seed": c["cellular_seed"].value(),
+                    "iterations": c["cellular_iterations"].value(),
+                    "initial_density": c["cellular_density"].value(),
+                    "birth_limit": c["cellular_birth"].value(),
+                    "survival_limit": c["cellular_survival"].value(),
+                },
+                "life_neighbors",
+            ),
+            13: (
+                "flow_field",
+                {
+                    "frequency": c["flow_frequency"].value(),
+                    "swirl": c["flow_swirl"].value(),
+                    "radial": False,
+                    "bands": c["flow_bands"].value(),
+                },
+                "flow_bands",
+            ),
+            14: (
+                "erosion",
+                {
+                    "seed": c["erosion_seed"].value(),
+                    "iterations": c["erosion_iterations"].value(),
+                    "strength": c["erosion_strength"].value(),
+                    "evaporation": c["erosion_evaporation"].value(),
+                },
+                "bounded_erosion",
+            ),
+            15: (
+                "lsystem",
+                {
+                    "seed": c["lsystem_seed"].value(),
+                    "iterations": c["lsystem_iterations"].value(),
+                    "branch_angle_degrees": c["lsystem_angle"].value(),
+                    "length": c["lsystem_length"].value(),
+                    "length_reduction": c["lsystem_reduction"].value(),
+                    "thickness": 0.025,
+                    "branch_probability": 0.85,
+                },
+                "branching_growth",
+            ),
+            16: (
+                "cracks",
+                {
+                    "seed": c["crack_seed"].value(),
+                    "cracks": c["crack_count"].value(),
+                    "steps": c["crack_steps"].value(),
+                    "step_length": c["crack_step_length"].value(),
+                    "branch_probability": 0.08,
+                    "thickness": c["crack_thickness"].value(),
+                },
+                "random_walk_cracks",
+            ),
+            17: (
+                "penrose",
+                {
+                    "seed": c["penrose_seed"].value(),
+                    "scale": c["penrose_scale"].value(),
+                    "line_width": c["penrose_line_width"].value(),
+                    "rotation": c["penrose_rotation"].value(),
+                },
+                "golden_interference",
+            ),
+            18: (
+                "truchet",
+                {
+                    "seed": c["truchet_seed"].value(),
+                    "scale": c["truchet_scale"].value(),
+                    "line_width": c["truchet_line_width"].value(),
+                    "rotation": 0.0,
+                },
+                "diagonal_tiles",
+            ),
+            19: (
+                "superformula",
+                {"m": 5.0, "n1": 0.3, "n2": 1.0, "n3": 1.0, "scale": 0.35, "edge_softness": 0.05},
+                "superformula",
+            ),
+            20: (
+                "gaussian_peaks",
+                {"seed": 0, "count": 8, "width": 0.12, "height": 1.0, "crater": False},
+                "gaussian_clusters",
+            ),
+            21: (
+                "julia",
+                {
+                    "center_real": 0.0,
+                    "center_imaginary": 0.0,
+                    "constant_real": -0.7,
+                    "constant_imaginary": 0.27015,
+                    "zoom": 1.0,
+                    "iterations": 100,
+                    "contrast": 1.0,
+                    "invert": False,
+                },
+                "julia_escape_time",
+            ),
+            22: (
+                "moire",
+                {
+                    "frequency_a": 8.0,
+                    "frequency_b": 8.5,
+                    "angle_a": 0.0,
+                    "angle_b": 0.35,
+                    "phase_a": 0.0,
+                    "phase_b": 0.0,
+                    "radial": False,
+                },
+                "dual_interference",
+            ),
+            23: (
+                "gabor",
+                {"seed": 0, "frequency": 12.0, "orientation": 0.0, "sigma": 0.08, "components": 4},
+                "gabor_bank",
+            ),
         }
         source_type, parameters, algorithm = defaults[self.source_mode.currentIndex()]
-        return SourceDescriptor(source_type, parameters=parameters, algorithm=algorithm, algorithm_version="1", seed=parameters.get("seed"))
+        return SourceDescriptor(
+            source_type, parameters=parameters, algorithm=algorithm, algorithm_version="1", seed=parameters.get("seed")
+        )
 
     def _randomize_source(self) -> None:
         if not self.is_procedural:
             return
         rng = np.random.default_rng()
-        for name in ("noise_seed", "voronoi_seed", "ridged_seed", "warped_seed", "spectral_seed", "reaction_seed", "cellular_seed", "erosion_seed", "lsystem_seed", "crack_seed", "penrose_seed", "truchet_seed"):
+        for name in (
+            "noise_seed",
+            "voronoi_seed",
+            "ridged_seed",
+            "warped_seed",
+            "spectral_seed",
+            "reaction_seed",
+            "cellular_seed",
+            "erosion_seed",
+            "lsystem_seed",
+            "crack_seed",
+            "penrose_seed",
+            "truchet_seed",
+        ):
             if name in self.procedural_controls:
                 control = self.procedural_controls[name]
                 control.setValue(int(rng.integers(-2_147_483_648, 2_147_483_647)))
@@ -903,20 +1708,65 @@ class ImagePanel(QWidget):
         if not self.is_procedural:
             return
         defaults = {
-            "noise_seed": 0, "noise_frequency": 2.0, "noise_octaves": 6, "noise_persistence": 0.5, "noise_lacunarity": 2.0, "noise_amplitude": 1.0,
-            "voronoi_seed": 0, "voronoi_density": 8.0, "voronoi_jitter": 1.0,
-            "ridged_seed": 0, "ridged_frequency": 2.0, "ridged_octaves": 6, "ridged_sharpness": 2.0,
-            "warped_seed": 0, "warped_frequency": 2.0, "warped_warp_frequency": 2.0, "warped_strength": 0.25, "warped_octaves": 5,
-            "spectral_seed": 0, "spectral_components": 12, "spectral_min_frequency": 1.0, "spectral_max_frequency": 12.0,
-            "reaction_seed": 0, "reaction_iterations": 300, "reaction_feed": 0.055, "reaction_kill": 0.062,
-            "phyllotaxis_count": 500, "phyllotaxis_divergence": 137.5, "phyllotaxis_growth": 0.018, "phyllotaxis_radius": 0.025,
-            "cellular_seed": 0, "cellular_iterations": 10, "cellular_density": 0.45, "cellular_birth": 4, "cellular_survival": 4,
-            "flow_frequency": 4.0, "flow_swirl": 1.0, "flow_bands": 8,
-            "erosion_seed": 0, "erosion_iterations": 50, "erosion_strength": 0.25, "erosion_evaporation": 0.1,
-            "lsystem_seed": 0, "lsystem_iterations": 4, "lsystem_angle": 25.0, "lsystem_length": 0.18, "lsystem_reduction": 0.7,
-            "crack_seed": 0, "crack_count": 12, "crack_steps": 80, "crack_step_length": 0.02, "crack_thickness": 0.01,
-            "penrose_seed": 0, "penrose_scale": 8.0, "penrose_line_width": 0.18, "penrose_rotation": 0.0,
-            "truchet_seed": 0, "truchet_scale": 8.0, "truchet_line_width": 0.18,
+            "noise_seed": 0,
+            "noise_frequency": 2.0,
+            "noise_octaves": 6,
+            "noise_persistence": 0.5,
+            "noise_lacunarity": 2.0,
+            "noise_amplitude": 1.0,
+            "voronoi_seed": 0,
+            "voronoi_density": 8.0,
+            "voronoi_jitter": 1.0,
+            "ridged_seed": 0,
+            "ridged_frequency": 2.0,
+            "ridged_octaves": 6,
+            "ridged_sharpness": 2.0,
+            "warped_seed": 0,
+            "warped_frequency": 2.0,
+            "warped_warp_frequency": 2.0,
+            "warped_strength": 0.25,
+            "warped_octaves": 5,
+            "spectral_seed": 0,
+            "spectral_components": 12,
+            "spectral_min_frequency": 1.0,
+            "spectral_max_frequency": 12.0,
+            "reaction_seed": 0,
+            "reaction_iterations": 300,
+            "reaction_feed": 0.055,
+            "reaction_kill": 0.062,
+            "phyllotaxis_count": 500,
+            "phyllotaxis_divergence": 137.5,
+            "phyllotaxis_growth": 0.018,
+            "phyllotaxis_radius": 0.025,
+            "cellular_seed": 0,
+            "cellular_iterations": 10,
+            "cellular_density": 0.45,
+            "cellular_birth": 4,
+            "cellular_survival": 4,
+            "flow_frequency": 4.0,
+            "flow_swirl": 1.0,
+            "flow_bands": 8,
+            "erosion_seed": 0,
+            "erosion_iterations": 50,
+            "erosion_strength": 0.25,
+            "erosion_evaporation": 0.1,
+            "lsystem_seed": 0,
+            "lsystem_iterations": 4,
+            "lsystem_angle": 25.0,
+            "lsystem_length": 0.18,
+            "lsystem_reduction": 0.7,
+            "crack_seed": 0,
+            "crack_count": 12,
+            "crack_steps": 80,
+            "crack_step_length": 0.02,
+            "crack_thickness": 0.01,
+            "penrose_seed": 0,
+            "penrose_scale": 8.0,
+            "penrose_line_width": 0.18,
+            "penrose_rotation": 0.0,
+            "truchet_seed": 0,
+            "truchet_scale": 8.0,
+            "truchet_line_width": 0.18,
         }
         for name, value in defaults.items():
             if name in self.procedural_controls:
@@ -934,7 +1784,19 @@ class ImagePanel(QWidget):
         self.load_button.setVisible(not procedural)
         QTimer.singleShot(0, self._fit_source_section)
         self.composition_controls["box"].setEnabled(procedural or self.state.source_image is not None)
-        for widget in (self.grayscale_button, self.invert_button, self.threshold_enabled, self.linear_light, self.curve_interpolation, self.reset_button, *self.crop_controls, self.resize_enabled, self.resize_width, self.resize_height, *self.controls.values()):
+        for widget in (
+            self.grayscale_button,
+            self.invert_button,
+            self.threshold_enabled,
+            self.linear_light,
+            self.curve_interpolation,
+            self.reset_button,
+            *self.crop_controls,
+            self.resize_enabled,
+            self.resize_width,
+            self.resize_height,
+            *self.controls.values(),
+        ):
             widget.setEnabled(not procedural)
         if procedural:
             if index == 24 and self.state.source_descriptor.get("type") != "qfractalnow_config":
@@ -1008,11 +1870,17 @@ class ImagePanel(QWidget):
                     controls[f"mandelbrot_{name}"].setValue(float(value))
                 elif name == "invert" and "mandelbrot_invert" in controls:
                     controls["mandelbrot_invert"].setChecked(bool(value))
-                elif name in {"seed", "cell_density", "jitter", "edge_width"} and f"voronoi_{name if name != 'cell_density' else 'density'}" in controls:
+                elif (
+                    name in {"seed", "cell_density", "jitter", "edge_width"}
+                    and f"voronoi_{name if name != 'cell_density' else 'density'}" in controls
+                ):
                     controls[f"voronoi_{name if name != 'cell_density' else 'density'}"].setValue(float(value))
                 elif name == "mode" and "voronoi_mode" in controls:
                     controls["voronoi_mode"].setCurrentText(str(value).title())
-                elif name in {"base_frequency", "octaves", "sharpness"} and f"ridged_{name if name != 'base_frequency' else 'frequency'}" in controls:
+                elif (
+                    name in {"base_frequency", "octaves", "sharpness"}
+                    and f"ridged_{name if name != 'base_frequency' else 'frequency'}" in controls
+                ):
                     controls[f"ridged_{name if name != 'base_frequency' else 'frequency'}"].setValue(float(value))
                 elif name in {"warp_frequency", "warp_strength"} and f"warped_{name}" in controls:
                     controls[f"warped_{name}"].setValue(float(value))
@@ -1022,7 +1890,10 @@ class ImagePanel(QWidget):
                     controls["warped_seed"].setValue(int(value))
                 elif name in {"shape"} and "sdf_shape" in controls:
                     controls["sdf_shape"].setCurrentText(str(value).title())
-                elif name in {"radius", "width", "height", "edge_softness"} and f"sdf_{name if name != 'edge_softness' else 'softness'}" in controls:
+                elif (
+                    name in {"radius", "width", "height", "edge_softness"}
+                    and f"sdf_{name if name != 'edge_softness' else 'softness'}" in controls
+                ):
                     controls[f"sdf_{name if name != 'edge_softness' else 'softness'}"].setValue(float(value))
                 elif name in {"repeats_x", "repeats_y"} and f"sdf_{name}" in controls:
                     controls[f"sdf_{name}"].setValue(int(value))
@@ -1054,7 +1925,9 @@ class ImagePanel(QWidget):
                 controls["sdf_softness"].setValue(float(parameters.get("edge_softness", 0.05)))
                 controls["sdf_invert"].setChecked(bool(parameters.get("invert", False)))
                 controls["sdf_boolean_shape"].setCurrentText(str(parameters.get("boolean_shape", "none")).title())
-                controls["sdf_boolean_operation"].setCurrentText(str(parameters.get("boolean_operation", "union")).title())
+                controls["sdf_boolean_operation"].setCurrentText(
+                    str(parameters.get("boolean_operation", "union")).title()
+                )
                 controls["sdf_boolean_offset_x"].setValue(float(parameters.get("boolean_offset_x", 0.0)))
                 controls["sdf_boolean_offset_y"].setValue(float(parameters.get("boolean_offset_y", 0.0)))
         finally:
@@ -1076,7 +1949,16 @@ class ImagePanel(QWidget):
             controls["operation"].setCurrentText(str(settings.get("operation", "blend")).title())
             controls["amount"].setValue(float(settings.get("amount", 0.5)))
             source_type = descriptor.get("type")
-            source_label = "Primary source" if descriptor == self.state.source_descriptor else {"fractal_noise": "Fractal noise", "wave_interference": "Wave interference", "mandelbrot": "Mandelbrot", "heightmap": "Imported heightmap"}.get(source_type, "Fractal noise")
+            source_label = (
+                "Primary source"
+                if descriptor == self.state.source_descriptor
+                else {
+                    "fractal_noise": "Fractal noise",
+                    "wave_interference": "Wave interference",
+                    "mandelbrot": "Mandelbrot",
+                    "heightmap": "Imported heightmap",
+                }.get(source_type, "Fractal noise")
+            )
             controls["source"].setCurrentText(source_label)
             if "seed" in parameters:
                 controls["seed"].setValue(int(parameters["seed"]))
@@ -1110,7 +1992,8 @@ class ImagePanel(QWidget):
     def dragEnterEvent(self, event) -> None:
         """Accept drops containing at least one supported image file."""
         if any(
-            url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+            url.isLocalFile()
+            and Path(url.toLocalFile()).suffix.lower() in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
             for url in event.mimeData().urls()
         ):
             event.acceptProposedAction()
@@ -1130,14 +2013,14 @@ class ImagePanel(QWidget):
         event.ignore()
 
     def _choose_image(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Open Image", "", "Images (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Open Image", "", "Images (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)")
         if path:
             self.load_path(path)
 
     def _choose_qfractal_config(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Open QFractalNow Configuration", "", "QFractalNow config (*.config);;All files (*)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open QFractalNow Configuration", "", "QFractalNow config (*.config);;All files (*)"
+        )
         if not path:
             return
         try:
@@ -1145,7 +2028,12 @@ class ImagePanel(QWidget):
         except (OSError, UnicodeDecodeError) as error:
             self.error_occurred.emit(f"Could not read QFractalNow config: {error}")
             return
-        descriptor = SourceDescriptor("qfractalnow_config", parameters={"filename": Path(path).name, "config_text": config_text}, algorithm="fractalnow", algorithm_version="1")
+        descriptor = SourceDescriptor(
+            "qfractalnow_config",
+            parameters={"filename": Path(path).name, "config_text": config_text},
+            algorithm="fractalnow",
+            algorithm_version="1",
+        )
         self.state.source_type = descriptor.source_type
         self.state.source_descriptor = descriptor.to_dict()
         self.state.pipeline_snapshot = None
@@ -1186,21 +2074,34 @@ class ImagePanel(QWidget):
             self._external_import_worker = None
 
     def _restore_controls(self) -> None:
-        defaults = {"Black point": 0.0, "Gamma": 1.0, "White point": 1.0,
-                    "Output black": 0.0, "Output white": 1.0, "Brightness": 0.0,
-                    "Contrast": 1.0, "Blur": 0.0, "Sharpen": 0.0, "Threshold": 0.5}
+        defaults = {
+            "Black point": 0.0,
+            "Gamma": 1.0,
+            "White point": 1.0,
+            "Output black": 0.0,
+            "Output white": 1.0,
+            "Brightness": 0.0,
+            "Contrast": 1.0,
+            "Blur": 0.0,
+            "Sharpen": 0.0,
+            "Threshold": 0.5,
+        }
         for name, default in defaults.items():
             control = self.controls[name]
             control.blockSignals(True)
             control.setValue(float(self.state.adjustment_settings.get(name, default)))
             control.blockSignals(False)
-        for widget, value in ((self.threshold_enabled, bool(self.state.adjustment_settings.get("threshold_enabled", False))),
-                              (self.linear_light, bool(self.state.adjustment_settings.get("linear_light", False)))):
+        for widget, value in (
+            (self.threshold_enabled, bool(self.state.adjustment_settings.get("threshold_enabled", False))),
+            (self.linear_light, bool(self.state.adjustment_settings.get("linear_light", False))),
+        ):
             widget.blockSignals(True)
             widget.setChecked(value)
             widget.blockSignals(False)
         self.curve_interpolation.blockSignals(True)
-        self.curve_interpolation.setCurrentText("Smoothstep" if self.state.adjustment_settings.get("Curve interpolation") == "smoothstep" else "Linear")
+        self.curve_interpolation.setCurrentText(
+            "Smoothstep" if self.state.adjustment_settings.get("Curve interpolation") == "smoothstep" else "Linear"
+        )
         self.curve_interpolation.blockSignals(False)
         self.curve_editor.points = list(self.state.curve_points)
         self.curve_editor.update()
@@ -1222,7 +2123,32 @@ class ImagePanel(QWidget):
     def refresh_from_state(self) -> None:
         """Refresh the preview and controls after project loading."""
         if self.state.source_type != "image":
-            index = {"fractal_noise": 1, "wave_interference": 2, "mandelbrot": 3, "voronoi": 4, "ridged_noise": 5, "warped_noise": 6, "sdf": 7, "chladni": 8, "spectral": 9, "reaction_diffusion": 10, "phyllotaxis": 11, "cellular_automata": 12, "flow_field": 13, "erosion": 14, "lsystem": 15, "cracks": 16, "penrose": 17, "truchet": 18, "superformula": 19, "gaussian_peaks": 20, "julia": 21, "moire": 22, "gabor": 23, "qfractalnow_config": 24}.get(self.state.source_type, 0)
+            index = {
+                "fractal_noise": 1,
+                "wave_interference": 2,
+                "mandelbrot": 3,
+                "voronoi": 4,
+                "ridged_noise": 5,
+                "warped_noise": 6,
+                "sdf": 7,
+                "chladni": 8,
+                "spectral": 9,
+                "reaction_diffusion": 10,
+                "phyllotaxis": 11,
+                "cellular_automata": 12,
+                "flow_field": 13,
+                "erosion": 14,
+                "lsystem": 15,
+                "cracks": 16,
+                "penrose": 17,
+                "truchet": 18,
+                "superformula": 19,
+                "gaussian_peaks": 20,
+                "julia": 21,
+                "moire": 22,
+                "gabor": 23,
+                "qfractalnow_config": 24,
+            }.get(self.state.source_type, 0)
             self._restore_procedural_controls(self.state.source_descriptor)
             self._restore_composition_controls()
             self.source_mode.blockSignals(True)
@@ -1232,7 +2158,9 @@ class ImagePanel(QWidget):
             self._procedural_preview = None
             self.info.setText(f"Procedural source: {self.state.source_type}")
             if self.state.source_type == "qfractalnow_config":
-                self.qfractal_status.setText(f"Loaded {self.state.source_descriptor.get('parameters', {}).get('filename', 'embedded config')}; embedded in this project")
+                self.qfractal_status.setText(
+                    f"Loaded {self.state.source_descriptor.get('parameters', {}).get('filename', 'embedded config')}; embedded in this project"
+                )
             self._update_provenance()
             return
         if self.state.source_image is None:
@@ -1247,7 +2175,9 @@ class ImagePanel(QWidget):
         self.state.grayscale_image = None
         self._show_pixels(self.state.source_image)
         if self.state.source_path is not None:
-            self.info.setText(f"{self.state.source_path.name}\n{self.state.image_width} × {self.state.image_height} px · {self.state.image_bit_depth}-bit")
+            self.info.setText(
+                f"{self.state.source_path.name}\n{self.state.image_width} × {self.state.image_height} px · {self.state.image_bit_depth}-bit"
+            )
         self._refresh_adjustments(mark_dirty=False)
         self._update_provenance()
 
@@ -1282,7 +2212,9 @@ class ImagePanel(QWidget):
         self.preview_availability_changed.emit(True)
         self.info.setText(f"{loaded.path.name}\n{loaded.width} × {loaded.height} px · {loaded.bit_depth}-bit")
         geometry_default = self.state.crop_margins == (0, 0, 0, 0) and self.state.image_resize is None
-        self.state.grayscale_image = grayscale if geometry_default and linear_light == self.linear_light.isChecked() else None
+        self.state.grayscale_image = (
+            grayscale if geometry_default and linear_light == self.linear_light.isChecked() else None
+        )
         self.image_loaded.emit(str(loaded.path))
         self._refresh_adjustments()
 
@@ -1355,7 +2287,15 @@ class ImagePanel(QWidget):
         if mark_dirty:
             self.state.dirty = True
             self.parameters_changed.emit()
-        self._pending_adjustments = (generation, self.state.source_image, self.state.grayscale_image, settings, points, self.state.crop_margins, self.state.image_resize)
+        self._pending_adjustments = (
+            generation,
+            self.state.source_image,
+            self.state.grayscale_image,
+            settings,
+            points,
+            self.state.crop_margins,
+            self.state.image_resize,
+        )
         self._adjustment_timer.start()
 
     def _launch_adjustments(self) -> None:
@@ -1363,7 +2303,17 @@ class ImagePanel(QWidget):
             return
         generation, source, grayscale, settings, points, margins, resize = self._pending_adjustments
         self._pending_adjustments = None
-        worker = FunctionWorker(_process_adjustments, source, grayscale, settings, points, self._adjustment_cache, margins, resize, inject_control=True)
+        worker = FunctionWorker(
+            _process_adjustments,
+            source,
+            grayscale,
+            settings,
+            points,
+            self._adjustment_cache,
+            margins,
+            resize,
+            inject_control=True,
+        )
         self._adjustment_workers[generation] = worker
         worker.signals.finished.connect(lambda image, token=generation: self._adjustments_finished(token, image))
         worker.signals.failed.connect(lambda message, token=generation: self._adjustments_failed(token, message))
@@ -1400,13 +2350,17 @@ class ImagePanel(QWidget):
         height, width = pixels.shape[:2]
         scale = min(1.0, 1024 / max(height, width))
         if scale < 1.0:
-            pixels = cv2.resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale))), interpolation=cv2.INTER_AREA)
+            pixels = cv2.resize(
+                pixels, (max(1, round(width * scale)), max(1, round(height * scale))), interpolation=cv2.INTER_AREA
+            )
         if pixels.dtype == np.uint16:
             pixels = (pixels.astype(np.float32) / 257.0).clip(0, 255).astype(np.uint8)
         elif pixels.dtype != np.uint8:
             raise ValueError(f"Preview requires 8-bit or 16-bit pixels; got {pixels.dtype}")
         if pixels.ndim == 2:
-            image = QImage(pixels.data, pixels.shape[1], pixels.shape[0], pixels.strides[0], QImage.Format.Format_Grayscale8)
+            image = QImage(
+                pixels.data, pixels.shape[1], pixels.shape[0], pixels.strides[0], QImage.Format.Format_Grayscale8
+            )
         elif pixels.shape[2] == 4:
             rgba = cv2.cvtColor(pixels, cv2.COLOR_BGRA2RGBA)
             image = QImage(rgba.data, rgba.shape[1], rgba.shape[0], rgba.strides[0], QImage.Format.Format_RGBA8888)
@@ -1417,13 +2371,19 @@ class ImagePanel(QWidget):
         # wrap its buffer directly; QPixmap.fromImage converts immediately. The
         # extra full-size copy here was only defensive and doubled preview
         # memory for large images.
-        self.preview.setPixmap(QPixmap.fromImage(image).scaled(self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        self.preview.setPixmap(
+            QPixmap.fromImage(image).scaled(
+                self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
+        )
 
     def _show_normalized(self, image: np.ndarray) -> None:
         height, width = image.shape
         scale = min(1.0, 1024 / max(height, width))
         if scale < 1.0:
-            image = cv2.resize(image, (max(1, round(width * scale)), max(1, round(height * scale))), interpolation=cv2.INTER_AREA)
+            image = cv2.resize(
+                image, (max(1, round(width * scale)), max(1, round(height * scale))), interpolation=cv2.INTER_AREA
+            )
         pixels = np.clip(image * 255.0, 0, 255).astype(np.uint8)
         self._show_pixels(pixels)
 

@@ -85,18 +85,34 @@ def export_mesh_task(
     if progress_callback:
         progress_callback(10, "Preparing heightfield")
     heightfield = generate_physical_heightfield(
-        image, dimensions, (width, height), inverted, smoothing_sigma, edge_falloff,
-        mapping_gamma, noise_amplitude, noise_frequency, noise_seed,
-        mapping_curve_points, edge_falloff_mode, options=height_options,
+        image,
+        dimensions,
+        (width, height),
+        inverted,
+        smoothing_sigma,
+        edge_falloff,
+        mapping_gamma,
+        noise_amplitude,
+        noise_frequency,
+        noise_seed,
+        mapping_curve_points,
+        edge_falloff_mode,
+        options=height_options,
     )
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(45, "Heightfield ready")
     container = container_settings or ContainerSettings()
-    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode)
+    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(
+        heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode
+    )
     mesh = generate_solid_mesh(
-        heightfield, mesh_width, mesh_depth, base_thickness_mm,
-        relief_mode, cancel_check=cancel_check,
+        heightfield,
+        mesh_width,
+        mesh_depth,
+        base_thickness_mm,
+        relief_mode,
+        cancel_check=cancel_check,
     )
     _check_cancel(cancel_check)
     mesh = orient_for_print(mesh)
@@ -142,9 +158,19 @@ def export_heightmap_task(
     if progress_callback:
         progress_callback(10, "Preparing heightfield")
     heightfield = generate_physical_heightfield(
-        image, dimensions, (width, height), inverted, smoothing_sigma, edge_falloff,
-        mapping_gamma, noise_amplitude, noise_frequency, noise_seed,
-        mapping_curve_points, edge_falloff_mode, options=height_options,
+        image,
+        dimensions,
+        (width, height),
+        inverted,
+        smoothing_sigma,
+        edge_falloff,
+        mapping_gamma,
+        noise_amplitude,
+        noise_frequency,
+        noise_seed,
+        mapping_curve_points,
+        edge_falloff_mode,
+        options=height_options,
     )
     if relief_mode == "negative":
         heightfield = -heightfield
@@ -183,12 +209,16 @@ def export_procedural_mesh_task(
     )
     if progress_callback:
         progress_callback(10, "Generating procedural export field")
-    result = evaluate_serialized_pipeline(snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check)
+    result = evaluate_serialized_pipeline(
+        snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check
+    )
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(45, "Heightfield ready")
     container = container_settings or ContainerSettings()
-    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(result.physical_heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode)
+    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(
+        result.physical_heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode
+    )
     mesh = generate_solid_mesh(
         heightfield,
         mesh_width,
@@ -229,7 +259,9 @@ def export_procedural_heightmap_task(
     width, height = _validate_resolution(resolution, budget=budget)
     if progress_callback:
         progress_callback(10, "Generating procedural export field")
-    result = evaluate_serialized_pipeline(snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check)
+    result = evaluate_serialized_pipeline(
+        snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check
+    )
     heightfield = -result.physical_heightfield if relief_mode == "negative" else result.physical_heightfield
     _check_cancel(cancel_check)
     if progress_callback:
@@ -269,7 +301,9 @@ def analyze_procedural_export_task(
     )
     _check_cancel(cancel_check)
     display = -result.physical_heightfield if relief_mode == "negative" else result.physical_heightfield
-    metrics = analyze_heightfield(display, width_mm, depth_mm, base_thickness_mm, "positive", profile=profile, cancel_check=cancel_check)
+    metrics = analyze_heightfield(
+        display, width_mm, depth_mm, base_thickness_mm, "positive", profile=profile, cancel_check=cancel_check
+    )
     if progress_callback:
         progress_callback(100, "Final export analysis ready")
     return metrics
@@ -319,7 +353,15 @@ def analyze_image_export_task(
     )
     _check_cancel(cancel_check)
     display = -heightfield if relief_mode == "negative" else heightfield
-    metrics = analyze_heightfield(display, dimensions.width_mm, dimensions.depth_mm, base_thickness_mm, "positive", profile=profile, cancel_check=cancel_check)
+    metrics = analyze_heightfield(
+        display,
+        dimensions.width_mm,
+        dimensions.depth_mm,
+        base_thickness_mm,
+        "positive",
+        profile=profile,
+        cancel_check=cancel_check,
+    )
     if progress_callback:
         progress_callback(100, "Final export analysis ready")
     return metrics
