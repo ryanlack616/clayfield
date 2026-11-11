@@ -46,9 +46,9 @@ Do not restate contracts in the task list.
 
 | File | What it is |
 |---|---|
-| [../CONTRIBUTING.md](../legacy-v2/CONTRIBUTING.md) | Setup, conventions, definition of done |
-| [../SECURITY.md](../legacy-v2/SECURITY.md) | Disclosure and security scope |
-| [../PRIVACY.md](../legacy-v2/PRIVACY.md) | Local-only / no-telemetry statement |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Setup, conventions, definition of done |
+| [../legacy-v2/SECURITY.md](../legacy-v2/SECURITY.md) | Disclosure and security scope |
+| [../legacy-v2/PRIVACY.md](../legacy-v2/PRIVACY.md) | Local-only / no-telemetry statement |
 | [../NOTICE](../NOTICE) | Third-party attribution record |
 | [../LICENSE](../LICENSE) | MIT license |
 

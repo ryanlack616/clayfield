@@ -7,10 +7,14 @@ contingency, not commitments.
 
 | Area | Estimate |
 |---|---|
-| mesh-forge core (C0–C8b) | ~20–26 person-weeks |
+| mesh-forge core (C0–C8b) | ~20–26 planning; 18–28 conservative (per-phase sum) |
 | ClayField on mesh-forge (D0–D8) | ~22–28 person-weeks |
 | Overlap (core phases reused) | roughly 6–10 weeks saved |
-| Contingency | +20–30% |
+| **Combined, after overlap** | **~32–48 person-weeks** (42–54 minus 6–10) |
+| Contingency | +20–30% → ~38–62 person-weeks |
+
+The combined figure is the only number that should be quoted to anyone outside
+the project; the per-area ranges are for sequencing, not for commitments.
 
 Highest-risk, highest-effort items: **sculpting interactivity (D4)** and
 **large-mesh streaming export (D5)**. Do not run them alongside major UI churn.

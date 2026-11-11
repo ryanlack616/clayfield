@@ -249,7 +249,7 @@ bundles are built for the build machine's architecture and libc baseline.
 ## Release Process
 
 Update the version in `pyproject.toml` and `src/clayfield/__init__.py`, add
-release notes to `CHANGELOG.md`, run the full test suite, build a fresh wheel,
+release notes to `../legacy-v2/CHANGELOG.md`, run the full test suite, build a fresh wheel,
 and run the PyInstaller self-test before publishing a release.
 
 For a source archive from the repository root:

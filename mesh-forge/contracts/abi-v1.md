@@ -9,7 +9,7 @@ the boundary — strings travel as `(ptr: u32, len: u32)` into the same memory.
 
 ## Version numbers
 
-`contracts/version.json` holds all four. They move independently.
+`version.json` in this directory holds all four. They move independently.
 
 | Number | Meaning | Bumped when |
 |---|---|---|
@@ -39,7 +39,7 @@ the boundary — strings travel as `(ptr: u32, len: u32)` into the same memory.
 
 Total 52 bytes, padded to 56.
 
-### `OpDescriptor` (array element, 24 bytes)
+### `OpDescriptor` (array element, 28 bytes; 4-byte aligned)
 
 | Offset | Type | Field |
 |---|---|---|

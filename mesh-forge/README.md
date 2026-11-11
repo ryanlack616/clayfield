@@ -292,7 +292,7 @@ math:        (none)
 buffers:     math
 geometry:    math, buffers
 document:    math, buffers
-render:      math, buffers, geometry
+render:      math, buffers, geometry, document (types only: SceneSnapshot/DrawItem)
 viewport-react: math, buffers, geometry, render
 export:      math, buffers, geometry
 transport:   math, buffers
@@ -307,8 +307,12 @@ Enforced in CI:
 - Rust `cargo tree` / `cargo deny`: `mesh-forge-core` never depends on a domain
   crate.
 - Forbidden-domain-terms lint in core (`relief`, `heightfield`, `sculpt`,
-  `fabrication`) except tests/fixtures. STL and 3MF are generic mesh formats, not
-  domain terms, so they stay in `@mesh-forge/export`.
+  `fabrication`) except `contracts/` and tests/fixtures. `contracts/types.ts`
+  declares the app-side branded wrappers to write the boundary down; the lint
+  must not flag that file. STL and 3MF are generic mesh formats, not domain
+  terms, so they stay in `@mesh-forge/export`.
+- `render` may import `document` **types only** (`SceneSnapshot`, `DrawItem`);
+  no runtime values. A type-only import is not a runtime dependency edge.
 - "Core" means `mesh-forge-core`, `mesh-forge-wasm`, and the `@mesh-forge/*`
   packages. The lint applies to all of them.
 - Core capability manifest exposes only generic capabilities.
@@ -345,8 +349,9 @@ ClayField D8. C8a is a partial freeze: C8b is the full-stack reuse proof and may
 only require additive changes to the C8a subset. C8b depends on C4–C7; it is
 independent of ClayField, not of the core.
 
-**Effort:** ~20–26 person-weeks with 20–30% contingency. Per-phase estimates
-(planning figures, not commitments):
+**Effort:** ~20–26 person-weeks planning figure; the per-phase table below sums
+to 18–28, which is the conservative bound. Add 20–30% contingency → ~24–34.
+Per-phase estimates (planning figures, not commitments):
 
 | Phase | Weeks | Phase | Weeks |
 |---|---|---|---|
@@ -357,8 +362,10 @@ independent of ClayField, not of the core.
 | C8a | 1–2 | C8b | 2–3 |
 
 C4–C7 are sequential for a solo developer; "parallel" is not a schedule. The
-sum (18–28) brackets the total, so the critical path is checkable: C1–C3 and
-C4–C7 are the long poles, and C8b is off the critical path.
+per-phase sum (18–28) is the conservative bound and brackets the 20–26 planning
+figure, so the critical path is checkable: C1–C3 and C4–C7 are the long poles.
+C8b runs in parallel with ClayField D3–D7, but D8 waits on it, so C8b is on the
+critical path whenever `C4–C7 + C8b` outlasts `D3–D7`.
 
 ---
 
@@ -397,7 +404,7 @@ trigger) is [`../docs/planning/delivery-and-risks.md`](../docs/planning/delivery
 | WASM boundary bloat | JSON per dab, full-array copies | Bulk buffers, zero-copy views, handle arena, dirty rects |
 | Renderer coupling | App state in renderer | `SceneSnapshot` only; registries for domain plugins |
 | Undo memory | Full-array snapshots | Patch/blob commands; byte cap |
-| SAB races | Stale results, torn reads | Generation tokens; single-writer; seqlock; deterministic tests |
+| SAB races | Stale results, torn reads | Generation tokens; single-writer; double-buffer swap; deterministic tests |
 | API freeze too late | ClayField pins/fork | C8a freeze before D0 |
 | Repo coupling | Deep imports hide coupling | Packed-package test; separate workspace groups |
 
@@ -433,8 +440,8 @@ Personal-use baseline: keep ceremony low but make decisions durable.
 - WASM: minimize `unsafe`, `cargo-geiger`, fuzz decoders, bounds checks.
 - Supply chain: committed lockfiles, `cargo audit`/`cargo deny`, dependency
   review, secrets scanning.
-- Privacy: no telemetry by default (see `../PRIVACY.md`). Any opt-in reporting must
-  redact project content.
+- Privacy: no telemetry by default (see `../legacy-v2/PRIVACY.md`). Any opt-in
+  reporting must redact project content.
 - Security tests are required at C3 (worker messages), C6 (archives), and in the
   C8b reuse proof.
 
@@ -490,7 +497,7 @@ Personal-use baseline: keep ceremony low but make decisions durable.
 
 ## 23. Delivery and ownership
 
-- Solo, part-time. Estimates are ranges with 20–30% contingency.
+- Solo, part-time. Estimates are ranges before 20–30% contingency.
 - Critical path: C0 → C1–C3 → C8a → consumer D0–D2 → C4–C7 → consumer D3–D7 →
   C8b → consumer D8 (hardening).
 - Risk register lives with the consumer plan; core risks are the boundary leaks,

@@ -14,14 +14,20 @@ CI drift check compares against.
 
 1. **C1 compiles `types.ts`.** "Taxonomy types compile" means `tsc --noEmit`
    over this file exits 0. Until that passes, C1 is not done.
-2. **C8a freezes the subset named in `version.json`.** Everything else stays
-   mutable.
+2. **C8a freezes the subset named in `version.json`.** That list is C1–C3 only —
+   the capability taxonomy, document/undo, and transport/ABI types ClayField
+   consumes. C4–C7 types are named in `deferredToC8b` and are frozen at C8b,
+   not at C8a. Everything not in either list stays mutable.
 3. **After C8a, changes to the frozen subset are additive only** — new optional
    fields, new union members — plus a minor version bump and an ADR. Never
    rename or remove without a major bump.
 4. **`api-report.md` is generated, never edited.** The CI drift check re-runs
    the generator and fails if the output differs from the committed file.
-5. **No domain terms.** The forbidden-terms lint applies here too.
+5. **No domain terms**, with one written exception: `types.ts` declares
+   `NormalizedField` and `Heightfield` as branded wrappers over the unitless
+   `Field2D`, purely to write the core/app boundary down. The forbidden-terms
+   lint skips `contracts/` for that reason; it still applies everywhere else in
+   core.
 
 ## Why this directory exists
 

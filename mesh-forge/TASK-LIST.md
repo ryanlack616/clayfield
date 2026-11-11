@@ -13,6 +13,8 @@ Rule: design changes go in the plan; status changes go here.
 ## Decisions (blocking)
 
 ### Before C0
+Decided 2026-11-11; answers in README §0. Reopen only by superseding §0 with a
+new date plus an ADR.
 - [x] MF-1 Repo topology (one monorepo, two workspace groups; packed mesh-lab)
 - [x] MF-2 Core license + own `LICENSE` + `NOTICE`
 - [x] MF-3 Name/namespace availability (verified 2026-11-11) (`@mesh-forge`, `mesh-forge-core`, crates.io)
@@ -33,7 +35,7 @@ Refs: README §0, §2, §12, §13, §16
 - [x] dependency-cruiser boundaries (11 edge rules, verified by injection); forbidden-domain-terms lint in CI
 - [x] CI skeleton (`ci.yml`); branch protection still needs GitHub settings
 - [x] ADR folder + template in place; first ADR still to write
-- [ ] **Exit:** empty packages build; boundaries enforced; MF-1–MF-7 decided
+- [x] **Exit:** empty packages build; boundaries enforced; MF-1–MF-7 decided
 
 ### C1 — Primitives + taxonomy
 Refs: README §3, §4, §5, §14
@@ -113,4 +115,6 @@ Refs: README §13, §12
 
 ## Done log
 
+- 2026-11-11 — MF-1…MF-7 accepted (C0 decision gate satisfied). Contracts
+  split into a 56-type C8a subset plus 15 types deferred to C8b.
 - (append completed phases with date and notable decisions)

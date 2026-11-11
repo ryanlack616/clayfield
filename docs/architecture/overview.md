@@ -53,18 +53,10 @@ field. Sculpt offsets live in the app payload, not in a core `Layer`.
 
 ## Contract taxonomy
 
-| Contract | Responsibility |
-|---|---|
-| `SourceAdapter` / `Importer` | host bytes or file → `ImageBuffer` / `Field2D` / `MeshBuffers` |
-| `Operation` | field→field or mesh→mesh **batch transform** (pipeline stage only) |
-| `Query` | ray pick, sample, measure (not a pipeline stage) |
-| `Exporter` | terminal export via `ExportSink` |
-| `Analyzer` | metrics and warnings |
-| `Pipeline` | ordered transforms only, cancellable/budgeted |
-| `Command` | undo unit; patches or blob refs; interactive edits such as a sculpt stroke |
-
-`Command` is the undo contract, not a capability contract. The six capability
-contracts are the six rows above it.
+Authoritative table: [`../../mesh-forge/README.md` §4](../../mesh-forge/README.md).
+Six capability contracts (`SourceAdapter`/`Importer`, `Operation`, `Query`,
+`Exporter`, `Analyzer`, `Pipeline`), plus `Command` for undo. `Command` is the
+undo contract, not a capability contract.
 
 `OperationSpec` is a linear stack of `OperationInstance`. `Query`, `Exporter`,
 `Analyzer`, and interactive `Command`s are invoked explicitly, never placed in
@@ -72,25 +64,18 @@ the pipeline stack.
 
 ## Package dependency graph
 
-```
-math:            (none)
-buffers:         math
-geometry:        math, buffers
-document:        math, buffers
-render:          math, buffers, geometry
-viewport-react:  math, buffers, geometry, render
-export:          math, buffers, geometry
-transport:       math, buffers
-persistence:     math, buffers, document
-wasm-host:       mesh-forge-core, mesh-forge-wasm
-ui:              React, Radix
-```
+Authoritative table: [`../../mesh-forge/README.md` §12](../../mesh-forge/README.md).
+The one non-obvious edge: `render` imports `document` **types only**
+(`SceneSnapshot`, `DrawItem`), never runtime values.
 
 Enforced by dependency-cruiser, package `exports` maps, `cargo tree`/`cargo deny`,
 and a forbidden-terms lint. "Core" means the Rust crates and all `@mesh-forge/*`
 packages. STL/3MF are generic mesh formats, not domain terms.
 
 ## Phase sequence
+
+Summary only; authoritative: [`../../mesh-forge/ROADMAP.md`](../../mesh-forge/ROADMAP.md)
+and [`../../clayfield-web/ROADMAP.md`](../../clayfield-web/ROADMAP.md).
 
 ```
 C0 → C1–C3 → C8a (partial freeze) → D0–D2

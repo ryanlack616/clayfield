@@ -317,7 +317,8 @@ trigger) is [`../docs/planning/delivery-and-risks.md`](../docs/planning/delivery
   JSON schema + size, worker message validation.
 - CSP/COOP/COEP/CORP/HSTS/SRI configured at the static host; `wasm-unsafe-eval`
   scoped for WASM compilation.
-- No telemetry by default; local-only guarantee documented in `../PRIVACY.md`.
+- No telemetry by default; local-only guarantee documented in
+  `../legacy-v2/PRIVACY.md`.
 - v4 import is an untrusted-input path: validate members, hashes, and the NPZ
   parser.
 - Security acceptance criteria in D0 (image budgets), D6 (archives/migration),
@@ -377,7 +378,7 @@ trigger) is [`../docs/planning/delivery-and-risks.md`](../docs/planning/delivery
 
 - Effort, critical path, feature-parity matrix, risk register, and rollout:
   `../docs/planning/delivery-and-risks.md`.
-- Solo, part-time; ranges with 20–30% contingency.
+- Solo, part-time; ranges before 20–30% contingency.
 - Locked cut list for v1; additions require an ADR and a parity-matrix update.
 - Staged rollout if published: personal → private preview → small beta → public.
 - Desktop is not sunset until web parity and stability; keep it as the fixture

@@ -51,8 +51,8 @@ D0 cannot start until C8a partially freezes the consumed contracts. See
 
 ## Effort
 
-~22–28 person-weeks with 20–30% contingency (solo, part-time), minus 6–10 weeks
-of overlap with the core. See
+~22–28 person-weeks before 20–30% contingency (solo, part-time), minus 6–10
+weeks of overlap with the core. See
 [../docs/planning/delivery-and-risks.md](../docs/planning/delivery-and-risks.md).
 
 ## Scope guardrails
