@@ -18,4 +18,4 @@ change ships.
 
 ---
 
-Part of the project docs. Index: [docs/README.md](docs/README.md).
+Part of the project docs. Index: [docs/README.md](../docs/README.md).

@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+    paths:
+      - 'mesh-forge/**'
+      - 'clayfield-web/**'
+      - 'docs/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'mesh-forge/**'
+      - 'clayfield-web/**'
+      - 'docs/**'
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mesh-forge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: mesh-forge/pnpm-lock.yaml
+      - run: pnpm install --no-frozen-lockfile
+      - name: typecheck + build (empty packages must compile)
+        run: pnpm build
+      - name: contract types compile
+        run: pnpm exec tsc --noEmit --strict --target ES2022 --lib ES2022,DOM contracts/types.ts
+      - name: boundary lint
+        run: pnpm lint:boundaries
+      - name: forbidden-terms lint (core only)
+        run: |
+          if grep -rniE '\b(relief|heightfield|sculpt|fabrication)\b' \
+               --include='*.ts' --include='*.rs' \
+               packages crates | grep -v '/tests/' | grep -v '/fixtures/'; then
+            echo "::error::domain term found in core"
+            exit 1
+          fi
+      - name: pack check
+        run: pnpm -r pack --pack-destination /tmp/mf-pack
+
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mesh-forge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - run: cargo check --workspace
+      - run: cargo test --workspace
+      - name: wasm build smoke
+        run: cargo check -p mesh-forge-wasm --target wasm32-unknown-unknown

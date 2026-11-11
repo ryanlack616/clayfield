@@ -1,0 +1,23 @@
+{
+  "name": "@mesh-forge/wasm-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WASM loader, memory views, handle arena, ABI handshake, command encode/decode",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@mesh-forge/math": "workspace:*",
+    "@mesh-forge/buffers": "workspace:*"
+  }
+}

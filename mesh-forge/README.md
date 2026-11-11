@@ -13,15 +13,16 @@ folded in below; the most important is the **operation taxonomy** (see §4).
 
 ---
 
-## 0. Decisions needed before C0
+## 0. Decisions — accepted 2026-11-11
 
-These are open and block a clean start. Recommended answers are given.
+All seven are decided. C0's exit criterion "MF-1–MF-7 decided" is satisfied.
+Change one only by superseding it here with a new date and an ADR.
 
-| # | Decision | Recommendation |
+| # | Decision | Accepted answer |
 |---|---|---|
 | MF-1 | Repo topology: one monorepo or two repos? | One monorepo rooted at `clayfield/`: `mesh-forge/` (core), `clayfield-web/` (consumer), `docs/` (shared). Inside `mesh-forge/`, `packages/` for `@mesh-forge/*` and `apps/` for `mesh-lab`; mesh-lab consumes **packed** public packages, not workspace source. |
 | MF-2 | Core license + third-party notices | MIT (matches current repo) with its own `LICENSE` and a `NOTICE` listing gl-matrix, zip.js, Radix, React, and Rust crate licenses. |
-| MF-3 | Name availability | Verify `@mesh-forge` npm scope, `mesh-forge-core`/`mesh-forge-wasm` on crates.io, and the domain before imports are baked in. |
+| MF-3 | Name availability | Verified 2026-11-11: `@mesh-forge` npm scope unclaimed; `mesh-forge`, `mesh-forge-core`, `mesh-forge-wasm` free on crates.io. Recheck the domain before public launch. |
 | MF-4 | Publishing model | Private 0.x tarballs at C8a; public npm only after C8b. Semver policy applies from C8a. |
 | MF-5 | Units model | Core buffers are unitless; apps define branded wrappers (see §5). |
 | MF-6 | SIMD determinism policy | Golden fixtures run against both SIMD and scalar builds; per-op tolerances documented (see §11). |

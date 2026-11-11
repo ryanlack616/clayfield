@@ -49,9 +49,9 @@ P0 blockers are closed and every unavailable external validation item is either
 completed or explicitly accepted as a documented release exception.
 
 The daily execution board is
-[`V2-MASTER-TASK-LIST.md`](../V2-MASTER-TASK-LIST.md). The full specification and
+[`V2-MASTER-TASK-LIST.md`](../legacy-v2/V2-MASTER-TASK-LIST.md). The full specification and
 release-blocker register are in
-[`V2-MASTER-PLAN.md`](../V2-MASTER-PLAN.md).
+[`V2-MASTER-PLAN.md`](../legacy-v2/V2-MASTER-PLAN.md).
 
 ---
 

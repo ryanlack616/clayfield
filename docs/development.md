@@ -68,11 +68,11 @@ Before V2 release work is considered complete:
 8. Verify fresh wheel, bundle, packaged self-test, and OpenGL self-test paths.
 
 The authoritative task status and release blockers are maintained in
-[`V2-MASTER-PLAN.md`](../V2-MASTER-PLAN.md), Sections 21 and 22.
+[`V2-MASTER-PLAN.md`](../legacy-v2/V2-MASTER-PLAN.md), Sections 21 and 22.
 The concise daily execution board is
-[`V2-MASTER-TASK-LIST.md`](../V2-MASTER-TASK-LIST.md).
+[`V2-MASTER-TASK-LIST.md`](../legacy-v2/V2-MASTER-TASK-LIST.md).
 The single completion roadmap is
-[`V2-CANONICAL-ROADMAP.md`](../V2-CANONICAL-ROADMAP.md).
+[`V2-CANONICAL-ROADMAP.md`](../legacy-v2/V2-CANONICAL-ROADMAP.md).
 The V1 rollback procedure is in [`v1_restore.md`](v1_restore.md).
 
 ## Sculpting subsystem

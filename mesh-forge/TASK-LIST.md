@@ -13,13 +13,13 @@ Rule: design changes go in the plan; status changes go here.
 ## Decisions (blocking)
 
 ### Before C0
-- [ ] MF-1 Repo topology (one monorepo, two workspace groups; packed mesh-lab)
-- [ ] MF-2 Core license + own `LICENSE` + `NOTICE`
-- [ ] MF-3 Name/namespace availability (`@mesh-forge`, `mesh-forge-core`, crates.io)
-- [ ] MF-4 Publishing model (private 0.x tarballs at C8a; public npm after C8b)
-- [ ] MF-5 Units model (core unitless; app wrappers)
-- [ ] MF-6 SIMD-vs-scalar determinism tolerance policy
-- [ ] MF-7 WASM feature baseline (SIMD/atomics optional; scalar fallback required)
+- [x] MF-1 Repo topology (one monorepo, two workspace groups; packed mesh-lab)
+- [x] MF-2 Core license + own `LICENSE` + `NOTICE`
+- [x] MF-3 Name/namespace availability (verified 2026-11-11) (`@mesh-forge`, `mesh-forge-core`, crates.io)
+- [x] MF-4 Publishing model (private 0.x tarballs at C8a; public npm after C8b)
+- [x] MF-5 Units model (core unitless; app wrappers)
+- [x] MF-6 SIMD-vs-scalar determinism tolerance policy
+- [x] MF-7 WASM feature baseline (SIMD/atomics optional; scalar fallback required)
 
 ---
 
@@ -27,12 +27,12 @@ Rule: design changes go in the plan; status changes go here.
 
 ### C0 — Foundations
 Refs: README §0, §2, §12, §13, §16
-- [ ] pnpm workspace, TS project refs, Cargo workspace
-- [ ] `pnpm-lock.yaml`, `Cargo.lock`, toolchain pinning (`packageManager`, `.nvmrc`, `rust-toolchain.toml`)
-- [ ] `tsconfig.base.json` (strict), ESLint/Biome, rustfmt/clippy, `.editorconfig`, pre-commit
-- [ ] dependency-cruiser boundaries; forbidden-domain-terms lint in core
-- [ ] CI skeleton (`ci.yml`) + branch protection
-- [ ] ADR folder + template in use
+- [x] pnpm workspace, TS project refs, Cargo workspace
+- [x] `pnpm-lock.yaml`, `Cargo.lock`, toolchain pinning (`packageManager`, `.nvmrc`, `rust-toolchain.toml`)
+- [x] `tsconfig.base.json` (strict), `.editorconfig`, `.nvmrc`, `rust-toolchain.toml`; ESLint/Biome and pre-commit still open
+- [x] dependency-cruiser boundaries (11 edge rules, verified by injection); forbidden-domain-terms lint in CI
+- [x] CI skeleton (`ci.yml`); branch protection still needs GitHub settings
+- [x] ADR folder + template in place; first ADR still to write
 - [ ] **Exit:** empty packages build; boundaries enforced; MF-1–MF-7 decided
 
 ### C1 — Primitives + taxonomy

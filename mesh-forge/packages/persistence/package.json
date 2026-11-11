@@ -1,0 +1,24 @@
+{
+  "name": "@mesh-forge/persistence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ZIP container, Manifest, BlobStore, MigrationRunner, AppSchema/SchemaRegistry, atomic save",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@mesh-forge/math": "workspace:*",
+    "@mesh-forge/buffers": "workspace:*",
+    "@mesh-forge/document": "workspace:*"
+  }
+}

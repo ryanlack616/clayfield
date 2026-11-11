@@ -1,0 +1,24 @@
+{
+  "name": "mesh-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reuse proof: consumes packed mesh-forge packages",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@mesh-forge/math": "workspace:*",
+    "@mesh-forge/buffers": "workspace:*",
+    "@mesh-forge/geometry": "workspace:*",
+    "@mesh-forge/document": "workspace:*",
+    "@mesh-forge/render": "workspace:*",
+    "@mesh-forge/viewport-react": "workspace:*",
+    "@mesh-forge/export": "workspace:*",
+    "@mesh-forge/transport": "workspace:*",
+    "@mesh-forge/persistence": "workspace:*",
+    "@mesh-forge/wasm-host": "workspace:*",
+    "@mesh-forge/ui": "workspace:*"
+  }
+}

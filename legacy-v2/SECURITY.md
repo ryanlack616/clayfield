@@ -24,7 +24,7 @@ Only the latest release is supported.
 - **Untrusted input:** project archives (`.clayfield`), images, and the planned
   web app's ZIP/image/worker inputs are treated as untrusted. Archive limits,
   image decode budgets, and input validation are required (see
-  [docs/security/threat-model.md](docs/security/threat-model.md)).
+  [docs/security/threat-model.md](../docs/security/threat-model.md)).
 - **No secrets:** the repo contains no credentials. If that changes, use a secret
   manager and never commit keys.
 - **Dependencies:** run `cargo audit`/`npm audit` equivalents and review
@@ -35,4 +35,4 @@ Do not report issues in third-party dependencies here; report them upstream.
 
 ---
 
-Part of the project docs. Index: [docs/README.md](docs/README.md).
+Part of the project docs. Index: [docs/README.md](../docs/README.md).

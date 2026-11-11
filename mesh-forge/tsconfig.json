@@ -1,0 +1,44 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/math"
+    },
+    {
+      "path": "packages/buffers"
+    },
+    {
+      "path": "packages/geometry"
+    },
+    {
+      "path": "packages/document"
+    },
+    {
+      "path": "packages/render"
+    },
+    {
+      "path": "packages/viewport-react"
+    },
+    {
+      "path": "packages/export"
+    },
+    {
+      "path": "packages/transport"
+    },
+    {
+      "path": "packages/persistence"
+    },
+    {
+      "path": "packages/wasm-host"
+    },
+    {
+      "path": "packages/ui"
+    },
+    {
+      "path": "contracts"
+    },
+    {
+      "path": "apps/mesh-lab"
+    }
+  ]
+}

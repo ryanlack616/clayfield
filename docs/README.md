@@ -46,9 +46,9 @@ Do not restate contracts in the task list.
 
 | File | What it is |
 |---|---|
-| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Setup, conventions, definition of done |
-| [../SECURITY.md](../SECURITY.md) | Disclosure and security scope |
-| [../PRIVACY.md](../PRIVACY.md) | Local-only / no-telemetry statement |
+| [../CONTRIBUTING.md](../legacy-v2/CONTRIBUTING.md) | Setup, conventions, definition of done |
+| [../SECURITY.md](../legacy-v2/SECURITY.md) | Disclosure and security scope |
+| [../PRIVACY.md](../legacy-v2/PRIVACY.md) | Local-only / no-telemetry statement |
 | [../NOTICE](../NOTICE) | Third-party attribution record |
 | [../LICENSE](../LICENSE) | MIT license |
 
@@ -62,9 +62,10 @@ Do not restate contracts in the task list.
 | [v1_restore.md](v1_restore.md) | v1 restore notes |
 | [V2-ACCEPTANCE-REPORT.md](V2-ACCEPTANCE-REPORT.md) | V2 acceptance state |
 
-The desktop roadmap/task lists live at the repo root (`roadmap.md`,
-`V2-MASTER-PLAN.md`, `V2-BUILD-TASK-LIST.md`, `V2-MASTER-TASK-LIST.md`,
-`V2-CANONICAL-ROADMAP.md`).
+The desktop roadmap/task lists moved to [`../legacy-v2/`](../legacy-v2/):
+`roadmap.md`, `V2-MASTER-PLAN.md`, `V2-BUILD-TASK-LIST.md`,
+`V2-MASTER-TASK-LIST.md`, `V2-CANONICAL-ROADMAP.md`. The web builds are the
+active track; the desktop app is retained as V2 history.
 
 ## Suggested reading order
 

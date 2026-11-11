@@ -1,0 +1,22 @@
+{
+  "name": "@mesh-forge/buffers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ImageBuffer, Field2D/FieldView, MeshBuffers/MeshView, validation, resample",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@mesh-forge/math": "workspace:*"
+  }
+}

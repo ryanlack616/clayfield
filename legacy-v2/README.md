@@ -155,10 +155,10 @@ git archive --format=tar.gz --prefix=clayfield-2.0.0/ HEAD \
 
 ## Documentation
 
-- [docs/README.md](docs/README.md) — documentation index
-- [mesh-forge/README.md](mesh-forge/README.md) — reusable core plan ([roadmap](mesh-forge/ROADMAP.md), [task list](mesh-forge/TASK-LIST.md))
-- [clayfield-web/README.md](clayfield-web/README.md) — web app plan ([roadmap](clayfield-web/ROADMAP.md), [task list](clayfield-web/TASK-LIST.md))
+- [docs/README.md](../docs/README.md) — documentation index
+- [mesh-forge/README.md](../mesh-forge/README.md) — reusable core plan ([roadmap](../mesh-forge/ROADMAP.md), [task list](../mesh-forge/TASK-LIST.md))
+- [clayfield-web/README.md](../clayfield-web/README.md) — web app plan ([roadmap](../clayfield-web/ROADMAP.md), [task list](../clayfield-web/TASK-LIST.md))
 
 ## License
 
-See [LICENSE](LICENSE).
+See [LICENSE](../LICENSE).

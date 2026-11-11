@@ -1,0 +1,24 @@
+{
+  "name": "@mesh-forge/export",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Exporter/ExportFormat/ExportJob, ExportSink, format registry, validation hooks, STL + 3MF",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@mesh-forge/math": "workspace:*",
+    "@mesh-forge/buffers": "workspace:*",
+    "@mesh-forge/geometry": "workspace:*"
+  }
+}

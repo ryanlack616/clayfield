@@ -10,7 +10,7 @@ The executable V2 checklist is maintained in
 in order and closed through their gates before moving to release hardening.
 
 The current local acceptance state is summarized in
-[docs/V2-ACCEPTANCE-REPORT.md](docs/V2-ACCEPTANCE-REPORT.md).
+[docs/V2-ACCEPTANCE-REPORT.md](../docs/V2-ACCEPTANCE-REPORT.md).
 
 The clean canonical master list is
 [V2-MASTER-TASK-LIST.md](V2-MASTER-TASK-LIST.md). Use it for day-to-day status
@@ -24,11 +24,11 @@ Post-V2 generator expansion is tracked in
 [V2-PATTERN-SOURCES-PLAN.md](V2-PATTERN-SOURCES-PLAN.md).
 
 The planned client-side web rewrite is split into two builds:
-[mesh-forge/README.md](mesh-forge/README.md) (reusable core; see its
-[roadmap](mesh-forge/ROADMAP.md) and [task list](mesh-forge/TASK-LIST.md)) and
-[clayfield-web/README.md](clayfield-web/README.md) (the app on that core; see its
-[roadmap](clayfield-web/ROADMAP.md) and [task list](clayfield-web/TASK-LIST.md)).
-All docs: [docs/README.md](docs/README.md).
+[mesh-forge/README.md](../mesh-forge/README.md) (reusable core; see its
+[roadmap](../mesh-forge/ROADMAP.md) and [task list](../mesh-forge/TASK-LIST.md)) and
+[clayfield-web/README.md](../clayfield-web/README.md) (the app on that core; see its
+[roadmap](../clayfield-web/ROADMAP.md) and [task list](../clayfield-web/TASK-LIST.md)).
+All docs: [docs/README.md](../docs/README.md).
 
 V2 is organized into six manageable build batches: baseline/contracts, field
 engine, pipeline/fabrication, persistence/workers, product UI/external imports,
@@ -135,6 +135,6 @@ the master document: first-class deterministic sources, field composition,
 fixed-range physical mapping, fabrication warnings, procedural project
 persistence, external heightmap/mask interchange, and production hardening.
 
-See [development.md](docs/development.md) for test and release commands. The
+See [development.md](../docs/development.md) for test and release commands. The
 original batch checklist is preserved in [roadmap-history.md](roadmap-history.md);
 the full product specification remains in [CLAYFIELD-handoff.md](CLAYFIELD-handoff.md).

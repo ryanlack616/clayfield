@@ -3,7 +3,7 @@
 This is primarily a personal project, so keep process light. The goal is that
 future-you (or a collaborator) can pick it up quickly and trust the results.
 
-Docs index: [docs/README.md](docs/README.md).
+Docs index: [docs/README.md](../docs/README.md).
 
 ## Current repo (Python desktop app)
 
@@ -15,16 +15,16 @@ python -m venv .venv
 .venv/bin/ruff format --check .
 ```
 
-Optional checks are documented in [docs/development.md](docs/development.md).
+Optional checks are documented in [docs/development.md](../docs/development.md).
 
 ## Planned web work
 
 The web rewrite is split into two builds:
 
-- [mesh-forge/README.md](mesh-forge/README.md) — reusable core
-  ([roadmap](mesh-forge/ROADMAP.md), [task list](mesh-forge/TASK-LIST.md))
-- [clayfield-web/README.md](clayfield-web/README.md) — ClayField on the core
-  ([roadmap](clayfield-web/ROADMAP.md), [task list](clayfield-web/TASK-LIST.md))
+- [mesh-forge/README.md](../mesh-forge/README.md) — reusable core
+  ([roadmap](../mesh-forge/ROADMAP.md), [task list](../mesh-forge/TASK-LIST.md))
+- [clayfield-web/README.md](../clayfield-web/README.md) — ClayField on the core
+  ([roadmap](../clayfield-web/ROADMAP.md), [task list](../clayfield-web/TASK-LIST.md))
 
 When that work starts, the monorepo baseline (toolchain pinning, lockfiles,
 lint/format config, CI) is defined in mesh-forge/README.md §16 and the
@@ -39,7 +39,7 @@ lint/format config, CI) is defined in mesh-forge/README.md §16 and the
   directly to `main` for small changes.
 - **Formatting/lint:** `ruff` is the gate for Python. Do not hand-format around it.
 - **Docs:** update the relevant plan or guide when behavior or architecture
-  changes. Record durable decisions as ADRs in [docs/adr](docs/adr).
+  changes. Record durable decisions as ADRs in [docs/adr](../docs/adr).
 - **No secrets** in the repo. No telemetry or network calls without an explicit
   decision and a privacy note.
 
