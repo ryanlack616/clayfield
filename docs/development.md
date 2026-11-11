@@ -123,6 +123,25 @@ regenerated and discards it when the grid shape changes. `EditLedger` in
 `app/history.py` orders parameter snapshots and sculpt strokes so mixed undo and
 redo follow the order the user made them.
 
+*The brush owns the left button, so the camera needs other gestures.* While
+sculpt mode is on, left-drag paints and right-drag orbits; middle-drag pans in
+both modes. An earlier version routed only the left button to the brush and left
+right-drag unhandled, which made it impossible to rotate the model mid-stroke.
+The brush controls are a floating overlay parented to the viewport, so they
+follow the compose overlay's pattern: a `×` in the header hides them and a
+checkable `View → Sculpt Brush` action (`Ctrl+B`) shows them again. The panel's
+own height comes from its layout, which runs after the parent's `resizeEvent`, so
+`Viewport.resized` reports the final size and the overlay positions itself from
+that signal after calling `adjustSize()`. Positioning from the parent's resize
+event alone left the panel at a stale height and floating mid-canvas.
+
+*Dirty state needs a tolerance.* A stroke is undone by subtracting the same
+displacement it added, so a perfect round trip lands within float32 rounding
+rather than exactly on the saved values. `_sculpt_changed` compares against the
+saved layer with `atol=1e-5` mm (ten nanometres) after a fast exact check, so
+undoing a stroke back onto the saved layer clears the title marker instead of
+leaving the document marked as changed.
+
 ## Numerical compatibility policy
 
 Same-stack deterministic generators should match reference fixtures within

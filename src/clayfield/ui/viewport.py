@@ -58,6 +58,10 @@ class Viewport(QOpenGLWidget):
     sculpt_pressed = Signal(float, float)
     sculpt_moved = Signal(float, float)
     sculpt_released = Signal()
+    # Canvas overlays are positioned from the viewport's size. A parent's
+    # resizeEvent runs before its children are laid out, so the viewport reports
+    # its own resize once the new geometry is final.
+    resized = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -114,6 +118,7 @@ class Viewport(QOpenGLWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self.axis_gizmo.move(self.width() - self.axis_gizmo.width() - 12, 12)
+        self.resized.emit()
 
     def initializeGL(self) -> None:
         self.context().aboutToBeDestroyed.connect(self._cleanup_gpu_resources)
@@ -404,6 +409,15 @@ class Viewport(QOpenGLWidget):
                 self.sculpt_pressed.emit(hit.x_mm, hit.z_mm)
                 self.setCursor(Qt.CursorShape.ClosedHandCursor)
                 return
+        if self.sculpt_mode and event.button() in (Qt.MouseButton.RightButton, Qt.MouseButton.MiddleButton):
+            # The left button belongs to the brush while the layer is edited, so
+            # the camera stays reachable: right-drag orbits and middle-drag pans.
+            # Without this the user cannot rotate the model mid-sculpt.
+            self.last_position = event.position()
+            self._drag_button = event.button()
+            self._set_brush_hit(None)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            return
         if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
             self.last_position = event.position()
             self._drag_button = event.button()
@@ -417,11 +431,15 @@ class Viewport(QOpenGLWidget):
                 if hit is not None:
                     self.sculpt_moved.emit(hit.x_mm, hit.z_mm)
                 return
-            if self.last_position is not None and self._drag_button == Qt.MouseButton.MiddleButton:
-                # The left button belongs to the brush in sculpt mode, so panning
-                # stays available on the middle button while the layer is edited.
+            if self.last_position is not None and self._drag_button in (
+                Qt.MouseButton.MiddleButton,
+                Qt.MouseButton.RightButton,
+            ):
                 delta = event.position() - self.last_position
-                self.camera.pan(delta.x(), delta.y(), self.height())
+                if self._drag_button == Qt.MouseButton.RightButton:
+                    self.camera.orbit(delta.x(), delta.y())
+                else:
+                    self.camera.pan(delta.x(), delta.y(), self.height())
                 self.last_position = event.position()
                 self.update()
                 return
@@ -444,10 +462,10 @@ class Viewport(QOpenGLWidget):
             self.sculpt_released.emit()
             self.setCursor(Qt.CursorShape.CrossCursor)
             return
-        if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
+        if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton):
             self.last_position = None
             self._drag_button = None
-            self.unsetCursor()
+            self.setCursor(Qt.CursorShape.CrossCursor if self.sculpt_mode else Qt.CursorShape.ArrowCursor)
 
     def wheelEvent(self, event) -> None:
         self.camera.zoom(event.angleDelta().y() / 120)

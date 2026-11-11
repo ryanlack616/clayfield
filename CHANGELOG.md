@@ -32,7 +32,18 @@
   orders parameter snapshots and sculpt strokes chronologically, so mixed edits
   undo and redo in the order they were made.
 - Track sculpt changes against the last saved layer so a parameter undo cannot
-  mark saved sculpt work clean.
+  mark saved sculpt work clean. The comparison allows float32 rounding, so
+  undoing a stroke back onto the saved layer clears the dirty marker instead of
+  leaving the title marked as changed.
+- Add a close button to the sculpt overlay and a `View → Sculpt Brush` toggle
+  (`Ctrl+B`), so the brush controls can be dismissed instead of covering the
+  canvas permanently. Right-drag orbits while the brush owns the left button.
+- Anchor the sculpt overlay from the viewport's own resize event and settle its
+  layout height first; it previously kept a position computed from the parent's
+  stale viewport size and floated mid-canvas.
+- Guard the sculpt layer against a shape mismatch on press, so a layer from a
+  different grid is discarded with a status message instead of raising inside
+  the stroke session.
 
 ## V2 development status
 

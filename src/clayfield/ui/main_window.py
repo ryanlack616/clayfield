@@ -202,11 +202,41 @@ class MainWindow(QMainWindow):
         self.image_panel.composition_requested.connect(self._set_compose_overlay)
 
         self.sculpt_panel = SculptPanel(self.viewport)
-        self.sculpt_panel.sculpt_toggled.connect(self.viewport.set_sculpt_mode)
+        self.sculpt_panel.sculpt_toggled.connect(self._set_sculpt_enabled)
         self.sculpt_panel.settings_changed.connect(self._sculpt_settings_changed)
+        self.sculpt_panel.closed.connect(lambda: self._set_sculpt_panel_visible(False))
         self.viewport.sculpt_pressed.connect(self._sculpt_pressed)
         self.viewport.sculpt_moved.connect(self._sculpt_moved)
         self.viewport.sculpt_released.connect(self._sculpt_released)
+        # A parent's resizeEvent runs before its children are laid out, so the
+        # viewport reports its own size once that size is final. Without this the
+        # bottom-anchored brush panel keeps the position it had before the resize.
+        self.viewport.resized.connect(self._position_canvas_overlays)
+        self._position_canvas_overlays()
+
+    def _set_sculpt_enabled(self, enabled: bool) -> None:
+        """Route the brush mode through the panel and the viewport.
+
+        The panel's combo and the View menu are two views of the same state, so
+        the change is mirrored into both without re-emitting either signal.
+        """
+        enabled = bool(enabled)
+        self.sculpt_panel.set_enabled(enabled)
+        self.viewport.set_sculpt_mode(enabled)
+
+    def _set_sculpt_panel_visible(self, visible: bool) -> None:
+        """Show or hide the brush overlay; hiding it also disables the brush."""
+        visible = bool(visible)
+        # isHidden() reports the explicit show/hide flag; isVisible() also goes
+        # false while an ancestor is hidden, which would skip the update.
+        if self.sculpt_panel.isHidden() == visible:
+            self.sculpt_panel.setVisible(visible)
+        if self.sculpt_action.isChecked() != visible:
+            self.sculpt_action.blockSignals(True)
+            self.sculpt_action.setChecked(visible)
+            self.sculpt_action.blockSignals(False)
+        if not visible:
+            self._set_sculpt_enabled(False)
         self._position_canvas_overlays()
 
     def _set_compose_overlay(self, visible: bool) -> None:
@@ -231,7 +261,10 @@ class MainWindow(QMainWindow):
             )
         if hasattr(self, "sculpt_panel"):
             # Anchor the brush controls to the bottom-left corner so they never
-            # cover the preview or compose overlays in the top corners.
+            # cover the preview or compose overlays in the top corners. The
+            # panel's height comes from its layout, which runs after the parent's
+            # resize event, so settle the size before measuring the bottom edge.
+            self.sculpt_panel.adjustSize()
             self.sculpt_panel.move(margin, max(margin, self.viewport.height() - self.sculpt_panel.height() - margin))
 
     def resizeEvent(self, event) -> None:
@@ -299,6 +332,12 @@ class MainWindow(QMainWindow):
         self.gpu_preview_action.setCheckable(True)
         self.gpu_preview_action.setChecked(True)
         self.gpu_preview_action.toggled.connect(self._set_gpu_preview)
+        self.sculpt_action = view_menu.addAction("Sculpt Brush")
+        self.sculpt_action.setCheckable(True)
+        self.sculpt_action.setChecked(True)
+        self.sculpt_action.setShortcut("Ctrl+B")
+        self.sculpt_action.setToolTip("Show the sculpt brush controls over the viewport")
+        self.sculpt_action.toggled.connect(self._set_sculpt_panel_visible)
         color = view_menu.addAction("Surface Color…")
         color.triggered.connect(self._choose_surface_color)
         light = view_menu.addAction("Lighting Direction…")
@@ -1223,13 +1262,24 @@ class MainWindow(QMainWindow):
         self._update_title()
 
     def _sculpt_changed(self) -> bool:
-        """Return whether the sculpt layer differs from the last saved state."""
+        """Return whether the sculpt layer differs from the last saved state.
+
+        A stroke is undone by subtracting the same displacement it added, so a
+        perfect round trip lands within float32 rounding rather than exactly on
+        the saved values. The comparison allows that epsilon: 1e-5 mm is ten
+        nanometres, far below anything the viewport or an export can resolve, so
+        a difference that small means the document was not really edited.
+        """
         offsets = self.state.sculpt_offsets
         if offsets is None:
             return False
         if self._sculpt_clean is None:
             return True
-        return not np.array_equal(offsets, self._sculpt_clean)
+        if offsets.shape != self._sculpt_clean.shape:
+            return True
+        if np.array_equal(offsets, self._sculpt_clean):
+            return False
+        return not bool(np.allclose(offsets, self._sculpt_clean, rtol=0.0, atol=1e-5))
 
     def _remember_sculpt_clean(self) -> None:
         """Snapshot the sculpt layer as the saved state."""
@@ -1300,6 +1350,12 @@ class MainWindow(QMainWindow):
         final = self.state.physical_heightfield
         if final is None:
             return
+        offsets = self.state.sculpt_offsets
+        base = self.state.sculpt_base
+        if offsets is not None and (offsets.shape != final.shape or (base is not None and base.shape != final.shape)):
+            # A layer from a different grid would either raise inside the session
+            # or be applied to unrelated geometry. Drop it and start clean.
+            self._clear_sculpt_layer("Sculpt layer discarded: heightfield shape changed")
         if self.state.sculpt_base is None or self.state.sculpt_offsets is None:
             # The base is the evaluated field before any sculpt. The displacement
             # layer starts at zero so ``final == base + offsets`` from the outset.
@@ -1371,7 +1427,10 @@ class MainWindow(QMainWindow):
             return
         apply_stroke(heightfield, offsets, stroke, forward=forward)
         self._revision += 1
-        self.state.dirty = True
+        # Undoing a stroke back to the saved layer leaves the document clean, so
+        # the flag is recomputed rather than forced. A plain ``True`` here kept
+        # the title marked dirty and asked to save an unchanged project.
+        self.state.dirty = self._sculpt_changed() or self.history.is_dirty
         self._refresh_sculpt_display()
         self._update_history_actions()
         self._update_title()

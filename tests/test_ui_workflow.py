@@ -10,8 +10,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import cv2
 import numpy as np
 import pytest
-from PySide6.QtCore import QSettings
-from PySide6.QtGui import QPalette
+from PySide6.QtCore import QEvent, QPointF, QSettings, Qt
+from PySide6.QtGui import QMouseEvent, QPalette
 from PySide6.QtWidgets import QApplication, QDialog, QSlider, QToolButton
 
 from clayfield.app.project_io import load_project, save_project
@@ -751,3 +751,112 @@ def test_viewport_picks_the_surface_under_the_pointer(window):
     assert hit is not None
     assert hit.x_mm == pytest.approx(0.0, abs=1.0)
     assert hit.z_mm == pytest.approx(0.0, abs=1.0)
+
+
+def _mouse_event(kind, x, y, button, buttons):
+    position = QPointF(float(x), float(y))
+    return QMouseEvent(kind, position, position, button, buttons, Qt.KeyboardModifier.NoModifier)
+
+
+def test_sculpt_mode_right_drag_orbits_the_camera(window):
+    """The left button belongs to the brush, so the camera needs another gesture."""
+    win, app = window
+    win.viewport.resize(800, 600)
+    win.viewport.set_heightfield(np.zeros((41, 41), dtype=np.float32), 100.0, 100.0)
+    win.sculpt_panel.enable.setCurrentText("On")
+    orbits: list[tuple[float, float]] = []
+    original = win.viewport.camera.orbit
+    win.viewport.camera.orbit = lambda dx, dy: orbits.append((dx, dy))
+    try:
+        win.viewport.mousePressEvent(
+            _mouse_event(QEvent.Type.MouseButtonPress, 120, 120, Qt.MouseButton.RightButton, Qt.MouseButton.RightButton)
+        )
+        win.viewport.mouseMoveEvent(
+            _mouse_event(QEvent.Type.MouseMove, 150, 140, Qt.MouseButton.NoButton, Qt.MouseButton.RightButton)
+        )
+        win.viewport.mouseReleaseEvent(
+            _mouse_event(QEvent.Type.MouseButtonRelease, 150, 140, Qt.MouseButton.RightButton, Qt.MouseButton.NoButton)
+        )
+    finally:
+        win.viewport.camera.orbit = original
+    assert orbits, "right-drag must orbit while the brush owns the left button"
+    assert not win.viewport._sculpting
+
+
+def test_sculpt_undo_returns_the_document_to_the_saved_state(window):
+    """Undoing the last stroke onto a saved layer must clear the dirty marker."""
+    win, app = window
+    _install_sculpt_field(win)
+    win.sculpt_panel.radius.setValue(15.0)
+    win.sculpt_panel.enable.setCurrentText("On")
+    win.viewport.sculpt_pressed.emit(0.0, 0.0)
+    win.viewport.sculpt_moved.emit(20.0, 0.0)
+    win.viewport.sculpt_released.emit()
+    assert win.state.dirty
+    # Simulate a save: the sculpted layer and the parameter stack become clean.
+    win.state.dirty = False
+    win.history.record(win.state)
+    win.history.mark_clean()
+    win._remember_sculpt_clean()
+    win._update_title()
+    # A second stroke is an unsaved change on top of the saved layer.
+    win.viewport.sculpt_pressed.emit(-10.0, 0.0)
+    win.viewport.sculpt_moved.emit(10.0, 5.0)
+    win.viewport.sculpt_released.emit()
+    assert win.state.dirty
+    assert win.undo_action.isEnabled()
+    win._undo()
+    assert not win._sculpt_changed()
+    assert not win.state.dirty
+    assert "*" not in win.windowTitle()
+
+
+def test_sculpt_panel_close_hides_the_controls_and_disables_the_brush(window):
+    win, app = window
+    win.sculpt_panel.enable.setCurrentText("On")
+    assert win.viewport.sculpt_mode
+    win.sculpt_panel.close_button.click()
+    assert win.sculpt_panel.isHidden()
+    assert not win.viewport.sculpt_mode
+    assert not win.sculpt_action.isChecked()
+    # The View menu is the way back, and it restores the panel without silently
+    # re-arming the brush.
+    win.sculpt_action.setChecked(True)
+    assert not win.sculpt_panel.isHidden()
+    assert not win.viewport.sculpt_mode
+    assert not win.sculpt_panel.enabled
+
+
+def test_sculpt_panel_set_enabled_does_not_reemit_the_toggle(window):
+    win, app = window
+    events: list[bool] = []
+    win.sculpt_panel.sculpt_toggled.connect(events.append)
+    win.sculpt_panel.set_enabled(True)
+    assert win.sculpt_panel.enabled
+    assert events == []
+    win.sculpt_panel.set_enabled(False)
+    assert not win.sculpt_panel.enabled
+    assert events == []
+
+
+def test_brush_panel_repositions_when_the_viewport_reports_its_own_resize(window):
+    """The parent's resizeEvent runs before layout, so the panel needs its own cue.
+
+    A position computed from the parent's stale viewport size leaves the panel
+    floating mid-canvas. The viewport reports its final size instead, and that
+    signal must move the bottom-anchored overlay to the corner.
+    """
+    win, app = window
+    win.resize(1200, 800)
+    app.processEvents()
+    viewport = win.viewport
+    panel = win.sculpt_panel
+    panel.move(12, 12)  # stand in for a position computed before the layout
+    viewport.resized.emit()
+    assert panel.x() == 12
+    assert panel.y() == max(12, viewport.height() - panel.height() - 12)
+    win.resize(900, 620)
+    app.processEvents()
+    for _ in range(3):
+        app.processEvents()
+    assert panel.y() == max(12, viewport.height() - panel.height() - 12)
