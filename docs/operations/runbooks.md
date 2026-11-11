@@ -49,4 +49,4 @@ recent error codes — **never** project content or images. Redact by default.
 
 ---
 
-Part of the web build docs. Index: [docs/README.md](../README.md).
+Part of the shared docs. Index: [docs/README.md](../README.md).

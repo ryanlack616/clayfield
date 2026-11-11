@@ -1,9 +1,13 @@
 # Architecture overview
 
-Data-flow and boundary reference for the two web builds. Design lives in
+Data-flow and boundary reference for the web track. Design lives in
 [`../../mesh-forge/README.md`](../../mesh-forge/README.md) and
 [`../../clayfield-web/README.md`](../../clayfield-web/README.md); this page is the
 map, not the contract.
+
+The active product is the desktop app (`../../src/`, `../../main.py`,
+`../../docs-v3-build/`). This page covers the parallel web track only; it is not
+the desktop architecture.
 
 ## Repo topology
 

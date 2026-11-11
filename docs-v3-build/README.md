@@ -1,8 +1,8 @@
 # Clayfield — GUI Handoff Package
 
-**Status:** Design specification ready for repository audit and implementation planning  
-**Product:** Clayfield, single-image-to-3D-relief desktop application  
-**UI framework direction:** Preserve the existing PySide6 / Qt 6 application and QOpenGLWidget viewport unless the repository audit proves a specific component must change.
+**Status:** Phase 0 repository audit complete; implementation planning next  
+**Product:** Clayfield, single-image-to-3D-relief desktop application — the active product (ADR-0002)  
+**UI framework direction:** Preserve the PySide6 / Qt 6 viewport, image pipeline, mask data model, and Trimesh export path. The audit proves the current window shell must be rebuilt, so Phase 1 replaces the splitter layout rather than restyling it.
 
 ## Package contents
 
@@ -12,6 +12,7 @@
 | `VISUAL_DESIGN.md` | Visual identity, design tokens, component styling, iconography, and visual states |
 | `IMPLEMENTATION_ROADMAP.md` | Ordered engineering phases, dependencies, risks, and acceptance gates |
 | `TASK_LIST.md` | Actionable implementation checklist with completion criteria |
+| `REPOSITORY_AUDIT.md` | Phase 0 read-only audit: verified paths, facts, gaps, risks |
 
 ## Product definition
 
@@ -55,4 +56,9 @@ If an implementation constraint conflicts with this specification, document the 
 
 ## First action for the coding agent
 
-Perform a read-only repository audit. Identify the application entry point, main window, dock widgets, viewport, image pipeline, heightfield/mesh representations, undo/redo, settings persistence, export path, tests, and dependencies. Produce a concise audit report with exact paths and verified facts before editing files.
+**Done.** The read-only repository audit is complete and recorded in
+[`REPOSITORY_AUDIT.md`](REPOSITORY_AUDIT.md): entry point, main window, docks,
+viewport, image pipeline, heightfield/mesh representations, undo/redo, settings
+persistence, export path, tests, and dependencies. Phase 0 is closed in
+[`TASK_LIST.md`](TASK_LIST.md). Start Phase 1 from the verified facts in the audit;
+do not re-derive them.

@@ -215,8 +215,6 @@ pipeline, the mask data model, the export path, and the undo ledger; build the
 dock/tab shell, the mask editor, the scale-aware analyzer, and mask-driven cleanup
 as new. Do not attempt to retrofit the v3 layout onto the current splitter.
 
-Before Phase 1 starts, decide the direction conflict recorded in
-`docs/adr/0001-v4-projects-read-only.md`: the repo's committed README calls the web
-build active and desktop v2 legacy, while this package redesigns the desktop app.
-The audit does not resolve that; it only establishes that the desktop app is worth
-preserving.
+The direction conflict this audit surfaced is now decided: ADR-0002 makes desktop
+V3 the active product and the web builds a parallel track. Phase 1 can start
+against verified facts. ADR-0001 stays scoped to the web track.

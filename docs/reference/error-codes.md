@@ -77,4 +77,4 @@ Rules:
 
 ---
 
-Part of the web build docs. Index: [docs/README.md](../README.md).
+Part of the shared docs. Index: [docs/README.md](../README.md).

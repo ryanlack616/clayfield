@@ -69,10 +69,10 @@ disabled without redeploying.
 
 ## Desktop sunset
 
-No decision yet. The desktop app is the reference implementation and fixture
-source; keep it running until the web app reaches parity and the web app has been
-stable for a while. Do not remove desktop docs or tests prematurely.
+No longer a sunset path. ADR-0002 makes desktop V3 the active product and the web
+track parallel, so the desktop app is not being retired. The web track keeps this
+parity matrix for its own scope; the desktop app stays the product.
 
 ---
 
-Part of the web build docs. Index: [docs/README.md](../README.md).
+Part of the web track docs. Index: [docs/README.md](../README.md).
