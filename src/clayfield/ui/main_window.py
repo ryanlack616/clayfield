@@ -6,11 +6,12 @@ from copy import copy, deepcopy
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import QSettings, QThreadPool, QTimer
+from PySide6.QtCore import QSettings, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QColorDialog,
     QDialog,
+    QDockWidget,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -20,7 +21,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QScrollArea,
-    QSplitter,
     QStatusBar,
     QToolButton,
     QVBoxLayout,
@@ -117,7 +117,7 @@ class MainWindow(QMainWindow):
         self._autosave_timer.timeout.connect(self._autosave)
         self._autosave_timer.start()
         self.setWindowTitle("ClayField — Untitled")
-        self.resize(1280, 820)
+        self.resize(1600, 1000)
         self.setStatusBar(QStatusBar(self))
         self.export_progress = QProgressBar(self)
         self.export_progress.setRange(0, 100)
@@ -147,26 +147,33 @@ class MainWindow(QMainWindow):
         self.terrain_panel.parameters_changed.connect(self._mark_dirty)
         self.terrain_panel.parameters_changed.connect(self._rebuild_heightfield)
         self.terrain_panel.parameters_changed.connect(self.image_panel._update_provenance)
-        splitter = QSplitter()
+        # The two side panels are docks, not splitter panes. A QSplitter cannot
+        # float, tab or hide a pane, and those are the behaviours the shell is
+        # being rebuilt for. The viewport is created once above and stays the
+        # central widget, so the rendering path is not recreated by the move.
         image_scroll = QScrollArea()
         image_scroll.setWidgetResizable(True)
         image_scroll.setWidget(self.image_panel)
         terrain_scroll = QScrollArea()
         terrain_scroll.setWidgetResizable(True)
         terrain_scroll.setWidget(self.terrain_panel)
-        # A scroll area's minimum width is small, so the splitter will squeeze a
+        # A scroll area's minimum width is small, so a dock will squeeze a
         # sidebar narrower than its own layout needs. That produced a horizontal
         # scrollbar across the bottom of both panels, clipping the widest
         # controls by a few pixels. Holding each scroll area at its content's
-        # hint keeps the splitter from shrinking below it, so the panels never
+        # hint keeps the docks from shrinking below it, so the panels never
         # scroll sideways.
         for scroll, panel in ((image_scroll, self.image_panel), (terrain_scroll, self.terrain_panel)):
             scroll.setMinimumWidth(panel.sizeHint().width())
-        splitter.addWidget(image_scroll)
-        splitter.addWidget(self.viewport)
-        splitter.addWidget(terrain_scroll)
-        splitter.setStretchFactor(1, 1)
-        self.setCentralWidget(splitter)
+        self.source_dock = self._make_dock("Source", "sourceDock", image_scroll)
+        self.settings_dock = self._make_dock("Settings", "settingsDock", terrain_scroll)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.source_dock)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.settings_dock)
+        self.setCentralWidget(self.viewport)
+        # Nesting has to be on for one dock to be tabbed onto another; without it
+        # Qt only lets a dock move to an edge, so "tabifiable" would be a claim.
+        self.setDockNestingEnabled(True)
+        self._restore_dock_layout()
         self._build_menus()
         self._offer_recovery()
         self.statusBar().showMessage("Ready — ClayField")
@@ -293,6 +300,59 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         self._position_canvas_overlays()
 
+    def _make_dock(self, title: str, object_name: str, widget) -> QDockWidget:
+        """Build a movable, floatable, closable dock with a stable object name."""
+        dock = QDockWidget(title, self)
+        dock.setObjectName(object_name)
+        dock.setWidget(widget)
+        dock.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable
+        )
+        return dock
+
+    def _apply_default_dock_layout(self) -> None:
+        """Source on the left, settings on the right, viewport in the centre.
+
+        Each dock is removed before being re-added so a tabbed or floated dock
+        is un-tabbed as well as re-docked; ``addDockWidget`` alone leaves a
+        tabbed dock in its tab group.
+        """
+        for dock in (self.source_dock, self.settings_dock):
+            self.removeDockWidget(dock)
+            dock.setFloating(False)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.source_dock)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.settings_dock)
+        for dock in (self.source_dock, self.settings_dock):
+            dock.setVisible(True)
+        self.resizeDocks([self.source_dock], [260], Qt.Orientation.Horizontal)
+        self.resizeDocks([self.settings_dock], [360], Qt.Orientation.Horizontal)
+
+    def _restore_dock_layout(self) -> None:
+        """Restore the saved arrangement, or the default when there is none.
+
+        ``saveState`` returns a versioned byte blob, so a layout written by a
+        different Qt build is rejected instead of half-restoring a stale
+        arrangement.
+        """
+        saved = self._settings.value("dock_layout")
+        if saved and self.restoreState(saved):
+            return
+        self._apply_default_dock_layout()
+
+    def _save_dock_layout(self) -> None:
+        self._settings.setValue("dock_layout", self.saveState())
+
+    def _reset_layout(self) -> None:
+        """Put the docks back where they started and forget the saved arrangement."""
+        self._apply_default_dock_layout()
+        self._save_dock_layout()
+        self.statusBar().showMessage("Layout reset to default")
+
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu("File")
         for label, callback in (
@@ -383,6 +443,13 @@ class MainWindow(QMainWindow):
         compose = view_menu.addAction("Compose…")
         compose.setToolTip("Show the secondary field and mask controls")
         compose.triggered.connect(lambda: self.image_panel.set_compose_expanded(True))
+        # The docks are closable, so each one's own toggle action is how a closed
+        # dock comes back without resetting the whole arrangement.
+        for dock in (self.source_dock, self.settings_dock):
+            view_menu.addAction(dock.toggleViewAction())
+        reset_layout = view_menu.addAction("Reset Layout")
+        reset_layout.setToolTip("Restore the default source-left / settings-right arrangement")
+        reset_layout.triggered.connect(self._reset_layout)
         operation_menu = self.menuBar().addMenu("Operations")
         cancel = operation_menu.addAction("Cancel Current Operation")
         cancel.triggered.connect(self._cancel_current_operation)
@@ -1605,6 +1672,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         if self._confirm_project_change():
+            self._save_dock_layout()
             self._revision += 1
             self._autosave_timer.stop()
             event.accept()
