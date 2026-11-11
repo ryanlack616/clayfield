@@ -70,12 +70,12 @@ Do not restate contracts in the task list.
 | [../NOTICE](../NOTICE) | Third-party attribution record |
 | [../LICENSE](../LICENSE) | MIT license |
 
-## Desktop docs (v2 history)
+## Desktop docs
 
 | Doc | What it covers |
 |---|---|
 | [development.md](development.md) | Desktop install, lint, test, release |
-| [user_guide.md](user_guide.md) | Desktop user guide |
+| [user_guide.md](user_guide.md) | Desktop user guide (v2-era; v3 workflow differs) |
 | [print_validation.md](print_validation.md) | Print QA / slicer check |
 | [v1_restore.md](v1_restore.md) | v1 restore notes |
 | [V2-ACCEPTANCE-REPORT.md](V2-ACCEPTANCE-REPORT.md) | V2 acceptance state |
