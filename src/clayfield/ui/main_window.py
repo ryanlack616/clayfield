@@ -321,10 +321,12 @@ class MainWindow(QMainWindow):
         grid.setCheckable(True)
         grid.setChecked(True)
         grid.toggled.connect(self.viewport.set_grid_visible)
-        dark_theme = view_menu.addAction("Dark Theme")
-        dark_theme.setCheckable(True)
-        dark_theme.setChecked(True)
-        dark_theme.toggled.connect(self._set_dark_theme)
+        # The theme comes from the saved settings, so the check mark has to match
+        # the palette that __init__ already applied instead of assuming dark.
+        self.dark_theme_action = view_menu.addAction("Dark Theme")
+        self.dark_theme_action.setCheckable(True)
+        self.dark_theme_action.setChecked(bool(self._settings.value("dark_theme", False, type=bool)))
+        self.dark_theme_action.toggled.connect(self._set_dark_theme)
         height_coloring = view_menu.addAction("Height Coloring")
         height_coloring.setCheckable(True)
         height_coloring.toggled.connect(self.viewport.set_height_coloring)
@@ -1186,8 +1188,14 @@ class MainWindow(QMainWindow):
             self.viewport.update()
 
     def _set_dark_theme(self, enabled: bool) -> None:
+        enabled = bool(enabled)
         apply_theme(enabled)
         self._settings.setValue("dark_theme", enabled)
+        if self.dark_theme_action.isChecked() != enabled:
+            # Programmatic theme changes must not re-enter through the action.
+            self.dark_theme_action.blockSignals(True)
+            self.dark_theme_action.setChecked(enabled)
+            self.dark_theme_action.blockSignals(False)
 
     def _set_gpu_preview(self, enabled: bool) -> None:
         self.viewport.gpu_adjustments_enabled = enabled

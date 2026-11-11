@@ -753,6 +753,18 @@ def test_viewport_picks_the_surface_under_the_pointer(window):
     assert hit.z_mm == pytest.approx(0.0, abs=1.0)
 
 
+def test_dark_theme_action_matches_the_applied_palette(window):
+    """A hardcoded check mark contradicted the light palette on a fresh install."""
+    win, app = window
+    assert win._settings.value("dark_theme", False, type=bool) is False
+    assert not win.dark_theme_action.isChecked()
+    win.dark_theme_action.setChecked(True)
+    assert app.palette().color(QPalette.ColorRole.Window).name() == "#25292e"
+    assert win._settings.value("dark_theme", type=bool)
+    win.dark_theme_action.setChecked(False)
+    assert not win.dark_theme_action.isChecked()
+
+
 def _mouse_event(kind, x, y, button, buttons):
     position = QPointF(float(x), float(y))
     return QMouseEvent(kind, position, position, button, buttons, Qt.KeyboardModifier.NoModifier)

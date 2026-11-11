@@ -44,6 +44,9 @@
 - Guard the sculpt layer against a shape mismatch on press, so a layer from a
   different grid is discarded with a status message instead of raising inside
   the stroke session.
+- Read the `View → Dark Theme` check mark from the saved setting instead of
+  hardcoding it on. A fresh install starts with the light palette, so the menu
+  used to claim a theme the window was not using.
 
 ## V2 development status
 
