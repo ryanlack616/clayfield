@@ -1,6 +1,5 @@
 """Tests for closed relief mesh generation and validation."""
 
-
 import numpy as np
 import pytest
 

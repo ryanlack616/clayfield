@@ -1,10 +1,9 @@
-"""Cooperative cancellation shared by GUI workers and CPU processing."""
+"""Backward-compatible re-export of the shared cancellation primitive.
 
+The implementation lives in :mod:`clayfield.core.cancellation` so leaf modules
+do not import the application layer. New code should import from there.
+"""
 
-class WorkerCancelled(Exception):
-    """Raised when a background operation is cancelled."""
+from clayfield.core.cancellation import WorkerCancelled, check_cancelled
 
-
-def check_cancelled(cancel_check) -> None:
-    if cancel_check is not None and cancel_check():
-        raise WorkerCancelled()
+__all__ = ["WorkerCancelled", "check_cancelled"]

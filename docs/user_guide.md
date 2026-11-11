@@ -19,9 +19,10 @@
    and offset affect the physical mapping. Smoothing, edge falloff, and
    reproducible multi-octave noise have independent strength controls.
 4. Orbit with left drag, pan with middle drag, and zoom with the wheel. The View
-   menu contains camera presets, fit, wireframe, height coloring, lighting and
-   surface color, grid visibility, orthographic projection, and a dark theme.
-   Undo/redo and portable adjustment/terrain presets are in the Edit menu.
+   menu contains camera presets, fit, wireframe, height coloring and its colour
+   ramp, lighting and surface color, grid visibility, orthographic projection,
+   and a dark theme. Undo/redo and portable adjustment/terrain presets are in the
+   Edit menu.
 5. Choose original, adjusted, or final-heightmap preview from **PROCESS**; save a `.clayfield`
    project or export STL, 3MF, or a PNG/TIFF heightmap. The export dialog shows
    dimensions, an estimated minimum wall, and sampled mesh validation.
@@ -59,16 +60,77 @@ headless `fractalnow` command to regenerate them at preview and export
 resolution. Install FractalNow and ensure `fractalnow` is on `PATH` before
 opening a project that contains a QFractalNow source.
 
+Composition — a secondary heightmap, mask, or the operation that combines them —
+lives in a floating overlay rather than in the left panel. Open it with
+**View → Compose…** and close it with the overlay's `×` button. The controls are
+unavailable until a primary source exists.
+
 External image tools may generate or process a heightmap or mask. Export the
 result as an image, then use ClayField's **Import Secondary Heightmap** or
 **Import Mask** controls. ClayField validates and processes the imported data
 deterministically before physical mapping and export. ClayField does not
 include an in-app external image-generation service.
 
+## Sculpting
+
+The sculpt panel is a floating overlay in the bottom-left corner of the 3D
+viewport. It starts hidden so the canvas stays clear. Open it from
+`View → Sculpt Brush` (`Ctrl+B`): the panel appears and the brush is armed in the
+same step, so left drags immediately smooth the surface. While the brush is armed,
+middle drag still pans, right drag still orbits, and the wheel still zooms. A ring
+follows the pointer across the surface and shows the real-world brush radius at
+the point it will edit.
+
+The panel's `×` closes it and disarms the brush; `Ctrl+B` opens it again. Set the
+`Brush` row to `Off` to park the brush without closing the panel. The brush
+smooths the surface and does not raise or lower it.
+
+- **Radius** is in millimetres. Start near 5 % of the model width.
+- **Strength** scales how much each dab moves the surface, from 0 to 1.
+- **Falloff** shapes the influence from the brush centre to its edge: linear,
+  smoothstep, gaussian, or constant. Every curve reaches zero at the radius, so a
+  dab never edits outside the ring.
+- **Algorithm** chooses the smoothing kernel:
+  - *Laplacian* averages each cell toward its four neighbours. It is the fastest
+    and removes fine noise, but repeated passes shrink peaks.
+  - *Taubin* alternates a positive and a negative Laplacian pass. It removes the
+    same noise with noticeably less shrinkage.
+  - *Bilateral* weights neighbours by both distance and height difference. It
+    preserves crests and step edges that the other kernels round off.
+
+Dabs are spaced by arc length along the pointer path, so dragging quickly applies
+the same total smoothing as dragging slowly. The spacing is 15 % of the brush
+diameter by default.
+
+Each press-drag-release sequence is one undo step. The Edit menu walks parameter
+edits and sculpt strokes in the order they happened, so undoing a sculpt stroke
+after a terrain change reverses the stroke first. The sculpt layer is saved inside
+the `.clayfield` project and survives terrain parameter changes: the procedural
+base is regenerated and the displacement layer is reapplied on top. A change that
+alters the heightfield resolution cannot be mapped onto the new grid, so the layer
+is discarded and the status bar reports it. Loading a new source image also clears
+the layer, because the surface it was painted on no longer exists. Exports always
+read the sculpted surface.
+
 For digital print QA, run `benchmarks/print_qa.py` with
 `CLAYFIELD_PRUSA_SLICER` set. It generates both mesh formats, records slicer
 dimensions/manifold status, and produces G-code. Physical printing still needs
 to be performed on the target printer.
+
+## Viewport shading
+
+The viewport opens with **Height Coloring** on and the construction grid hidden.
+Height coloring mixes two colours across the model's height range: the low colour
+at the minimum height and the high colour at the maximum. Open
+`View → Height Colors…` to change either end; the dialog previews the resulting
+ramp before you accept it. Choosing a ramp switches height coloring back on if it
+was off.
+
+Turn height coloring off to see the flat **Surface Color**, and switch **Show
+Grid** on when you need a size reference under the model. Picking a colour in
+`View → Surface Color…` switches height coloring off so you can see the flat
+colour you just chose. Neither setting changes the geometry or the export; they
+only change how the viewport draws it.
 
 ## Troubleshooting
 

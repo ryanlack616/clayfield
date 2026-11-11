@@ -5,8 +5,31 @@ Install Python 3.12 or newer and run:
 ```sh
 python -m venv .venv
 .venv/bin/pip install -e '.[test,bundle]'
-PYTHONPATH=.:src .venv/bin/pytest -q
+.venv/bin/pytest -q
 ```
+
+`pyproject.toml` sets `pythonpath = ["src"]`, so a separate `PYTHONPATH` prefix
+is only needed when invoking a pytest outside the project. With uv, use
+`uv run --extra test python -m pytest -q` so the project environment (and its
+test extra) is used.
+
+## Linting and formatting
+
+`ruff` is the lint and format gate, installed by the `dev` extra:
+
+```sh
+.venv/bin/pip install -e '.[dev,test]'
+.venv/bin/ruff check .          # lint; expected to report no findings
+.venv/bin/ruff format --check . # format check without rewriting files
+.venv/bin/ruff format .         # apply formatting
+```
+
+With uv, use `uv run --extra dev ruff check .` and
+`uv run --extra dev ruff format .`. Configuration lives in `pyproject.toml`:
+`line-length = 120`, rules `E`, `F`, `I`, `UP`, `B`, with `E501` ignored because
+the codebase deliberately uses long explanatory comments and docstrings. The two
+PyOpenGL modules are exempt from `F403`/`F405` because the library's public API
+is conventionally star-imported.
 
 The normal tests use Qt's offscreen platform and skip integration tests that
 need external programs or a real OpenGL context. To run the additional checks:
@@ -52,6 +75,111 @@ The single completion roadmap is
 [`V2-CANONICAL-ROADMAP.md`](../V2-CANONICAL-ROADMAP.md).
 The V1 rollback procedure is in [`v1_restore.md`](v1_restore.md).
 
+## Sculpting subsystem
+
+`src/clayfield/sculpt/` holds the interactive mesh-editing foundation. ClayField
+does not keep a triangle mesh in the interactive path: `generate_solid_mesh`
+builds the closed solid on demand for STL/3MF export. The authoritative geometry
+is the CPU heightfield, so the brush paints a displacement into that grid and
+export still reads one surface.
+
+Coordinate convention, shared with the viewport and `terrain/heightfield.py`:
+
+- `heightfield[row, column]` is millimetres above the base plane.
+- `row` increases with `+z`; `column` increases with `+x`.
+- `x` spans `[-width_mm / 2, +width_mm / 2]`, `z` spans `[-depth_mm / 2, +depth_mm / 2]`.
+- The viewport renders in `mm / 20` units, so a ray produced in viewport units
+  must have its origin scaled by 20 before intersecting a heightfield in mm.
+
+Module responsibilities:
+
+| Module | Responsibility |
+| --- | --- |
+| `brush.py` | Validated brush settings and falloff/algorithm names |
+| `falloff.py` | Linear, smoothstep, gaussian, constant influence curves |
+| `brush_query.py` | Rectangular footprint with zero-weight stencil margin |
+| `stroke.py` | Arc-length dab spacing between pointer samples |
+| `surface_picking.py` | Screen ray, heightfield intersection, bilinear sampling |
+| `smooth_laplacian.py` | Four-neighbour Laplacian kernel |
+| `smooth_taubin.py` | Alternating lambda/mu passes |
+| `smooth_bilateral.py` | Distance and height-difference weighted average |
+| `session.py` | One press-drag-release stroke over the heightfield and layer |
+| `history.py` | Bounded stroke stack and in-place before/after restore |
+
+Two design points are worth keeping in mind when extending this.
+
+*The smoothing kernels are grid specializations, not mesh operators.* The handoff
+specification describes cotangent-weighted Laplacian smoothing for irregular
+triangle meshes. ClayField's interactive surface is a regular grid, where the
+cotangent weights collapse to a constant four-neighbour stencil. The kernels are
+written against that stencil; the interfaces take a block plus per-cell weights,
+so a triangle-mesh backend can replace them without changing `session.py`.
+
+*The sculpt layer is a displacement, not a replacement.* `state.sculpt_base` holds
+the evaluated procedural field and `state.sculpt_offsets` holds the per-cell
+displacement, with `state.physical_heightfield == sculpt_base + sculpt_offsets`
+whenever a layer exists. `_apply_sculpt_layer` reapplies the layer when the base is
+regenerated and discards it when the grid shape changes. `EditLedger` in
+`app/history.py` orders parameter snapshots and sculpt strokes so mixed undo and
+redo follow the order the user made them.
+
+*The brush owns the left button, so the camera needs other gestures.* While
+sculpt mode is on, left-drag paints and right-drag orbits; middle-drag pans in
+both modes. An earlier version routed only the left button to the brush and left
+right-drag unhandled, which made it impossible to rotate the model mid-stroke.
+The brush controls are a floating overlay parented to the viewport, so they
+follow the compose overlay's pattern: a `×` in the header hides them and a
+checkable `View → Sculpt Brush` action (`Ctrl+B`) shows them again. The overlay
+starts hidden, because a fresh launch has no geometry to edit and a 250 px card
+in the corner is dead weight; `_set_sculpt_panel_visible` arms the brush when the
+menu opens the panel and disarms it when the panel closes, so one gesture starts
+sculpting. The panel's `Brush` combo remains a second view of the armed state and
+can disarm while the panel stays open. The panel's own height comes from its
+layout, which runs after the parent's `resizeEvent`, so
+`Viewport.resized` reports the final size and the overlay positions itself from
+that signal after calling `adjustSize()`. Positioning from the parent's resize
+event alone left the panel at a stale height and floating mid-canvas.
+
+*Composition is an overlay, not a sidebar section.* The compose controls used to
+be a `COMPOSE ▸` toolbutton at the bottom of the left panel, below a stretch and
+therefore below the fold of a short window. The controls were already parented to
+a floating overlay, so the sidebar toggle only duplicated the overlay's own close
+button and cost a row in the scroll area. The overlay is now the only presentation:
+`View → Compose…` opens it and its `×` closes it. `ImagePanel.set_compose_expanded`
+holds the state and emits `composition_requested`, so a project restore that had
+composition enabled reopens the overlay without needing a widget to check. Do not
+add a second toggle in the sidebar without removing the menu entry — two entry
+points drift out of sync.
+
+*Dirty state needs a tolerance.* A stroke is undone by subtracting the same
+displacement it added, so a perfect round trip lands within float32 rounding
+rather than exactly on the saved values. `_sculpt_changed` compares against the
+saved layer with `atol=1e-5` mm (ten nanometres) after a fast exact check, so
+undoing a stroke back onto the saved layer clears the title marker instead of
+leaving the document marked as changed.
+
+## Viewport rendering
+
+`src/clayfield/resources/test_grid.vert` and `test_grid.frag` draw both the grid
+and the terrain surface in one program. `paintGL` selects the path per draw call
+by setting the `height_coloring` and `lit_surface` uniforms; the grid is unlit and
+never height-coloured, so it stays readable under any ramp.
+
+*Height coloring uses two colours.* The fragment shader mixes `height_low_color`
+at `height_min` to `height_high_color` at `height_max`, both as `vec3` in 0.0-1.0.
+`Viewport.set_height_colors` validates the pair (three finite channels each, all
+within range) and rejects anything else, because a bad triple would only surface
+as a black or blown-out surface after a GPU upload. `HeightColorDialog` in
+`ui/height_colors.py` edits the pair and returns it; the window applies it on
+accept. It never touches the viewport, so it runs without a GL context.
+
+*The default view hides construction aids.* The grid starts hidden and height
+coloring starts on. The View menu reads both check marks from the viewport's
+current state instead of hardcoding them, so the menu cannot claim a mode the
+renderer is not using — the same failure the Dark Theme check mark had. Heights
+cross into the shader as `height_min_mm / 20.0`; `surface_height` is already in
+viewport units, so the comparison happens in one space.
+
 ## Numerical compatibility policy
 
 Same-stack deterministic generators should match reference fixtures within
@@ -66,13 +194,13 @@ compatibility decision.
 
 Current local hardening observations:
 
-- The current suite passes `181 passed, 7 skipped`.
+- The current suite passes `250 passed, 7 skipped`.
 - `clayfield --self-test` passes.
 - A wheel builds successfully and installs/imports in a clean temporary Python
   environment.
 - Full 1024 x 1024 mesh validation can peak around 3.5 GiB on this host. The
-  exporter now uses a conservative 20x working-set estimate and may reject
-  1024² exports; prefer 512² or lower until the target machine is profiled.
+  exporter uses a measured 7x working-set factor; 1024² and 4096² exports fit
+  the default budget, and 8192² is rejected.
 - No live ComfyUI endpoint, PrusaSlicer executable, 7-Zip-compatible command,
   additional GPU/OS target, or physical printer is configured in this
   environment.

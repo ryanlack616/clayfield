@@ -4,21 +4,18 @@ from __future__ import annotations
 
 from numbers import Integral, Real
 
-from clayfield.app.cancellation import WorkerCancelled
+from clayfield.core.cancellation import WorkerCancelled
 from clayfield.export.heightmap import export_heightmap
 from clayfield.export.orientation import orient_for_print
 from clayfield.export.stl import export_stl
 from clayfield.export.three_mf import export_3mf
 from clayfield.field.persistence import PipelineSnapshot
 from clayfield.field.workflow import evaluate_serialized_pipeline
-from clayfield.geometry.estimates import estimate_solid_mesh, recommended_resolution
-from clayfield.geometry.mesh_generator import generate_solid_mesh
 from clayfield.geometry.container import ContainerSettings, prepare_container_heightfield
-from clayfield.terrain.heightfield import PhysicalDimensions, generate_physical_heightfield
+from clayfield.geometry.mesh_generator import generate_solid_mesh
+from clayfield.resource_budget import DEFAULT_BUDGET, preflight_heightfield, preflight_mesh_export
 from clayfield.terrain.fabrication import FabricationMetrics, analyze_heightfield
-
-
-MAX_ESTIMATED_WORKING_BYTES = 2 * 1024 * 1024 * 1024
+from clayfield.terrain.heightfield import generate_physical_heightfield
 
 
 def _check_cancel(cancel_check) -> None:
@@ -26,20 +23,32 @@ def _check_cancel(cancel_check) -> None:
         raise WorkerCancelled()
 
 
-def _validate_resolution(resolution):
+def _validate_resolution(resolution, budget=None):
     if not isinstance(resolution, (tuple, list)) or len(resolution) != 2:
         raise ValueError("Export resolution must contain width and height")
     validated = []
     for value in resolution:
         if isinstance(value, bool) or not isinstance(value, (Integral, Real)):
             raise ValueError("Export resolution dimensions must be integer values")
-        numeric = float(value)
-        if not numeric.is_integer():
-            raise ValueError("Export resolution dimensions must be integer values")
+        # Integral values are converted with int(), not float(): a very large
+        # Python int overflows float() (OverflowError) before the per-axis
+        # ceiling can reject it, and OverflowError is not a ValueError.
+        if isinstance(value, Integral):
+            numeric = int(value)
+        else:
+            numeric = float(value)
+            if not numeric.is_integer():
+                raise ValueError("Export resolution dimensions must be integer values")
+            numeric = int(numeric)
         if numeric < 2:
             raise ValueError("Export resolution dimensions must be at least 2")
-        validated.append(int(numeric))
-    return tuple(validated)
+        validated.append(numeric)
+    width, height = validated
+    # Shared decoded-memory preflight. This rejects impossible allocations
+    # before generate_physical_heightfield or a mesh is constructed. It is a
+    # resource budget, not a 2048/4096 fabrication-resolution cap.
+    preflight_heightfield(height, width, budget=budget or DEFAULT_BUDGET)
+    return width, height
 
 
 def export_mesh_task(
@@ -63,31 +72,47 @@ def export_mesh_task(
     progress_callback=None,
     height_options=None,
     container_settings=None,
+    budget=None,
 ):
     _check_cancel(cancel_check)
-    width, height = _validate_resolution(resolution)
-    estimate = estimate_solid_mesh(height, width)
-    if estimate.working_bytes > MAX_ESTIMATED_WORKING_BYTES:
-        suggested_rows, suggested_columns = recommended_resolution(estimate.rows, estimate.columns, 8_000_000)
-        raise ValueError(
-            f"Mesh export requires approximately {estimate.working_mebibytes:.0f} MiB; "
-            f"reduce export resolution to approximately {suggested_columns} × {suggested_rows} or lower before continuing"
-        )
+    width, height = _validate_resolution(resolution, budget=budget)
+    preflight_mesh_export(
+        height,
+        width,
+        budget=budget or DEFAULT_BUDGET,
+        container=container_settings is not None,
+    )
     if progress_callback:
         progress_callback(10, "Preparing heightfield")
     heightfield = generate_physical_heightfield(
-        image, dimensions, (width, height), inverted, smoothing_sigma, edge_falloff,
-        mapping_gamma, noise_amplitude, noise_frequency, noise_seed,
-        mapping_curve_points, edge_falloff_mode, options=height_options,
+        image,
+        dimensions,
+        (width, height),
+        inverted,
+        smoothing_sigma,
+        edge_falloff,
+        mapping_gamma,
+        noise_amplitude,
+        noise_frequency,
+        noise_seed,
+        mapping_curve_points,
+        edge_falloff_mode,
+        options=height_options,
     )
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(45, "Heightfield ready")
     container = container_settings or ContainerSettings()
-    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode)
+    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(
+        heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode
+    )
     mesh = generate_solid_mesh(
-        heightfield, mesh_width, mesh_depth, base_thickness_mm,
-        relief_mode, cancel_check=cancel_check,
+        heightfield,
+        mesh_width,
+        mesh_depth,
+        base_thickness_mm,
+        relief_mode,
+        cancel_check=cancel_check,
     )
     _check_cancel(cancel_check)
     mesh = orient_for_print(mesh)
@@ -124,24 +149,35 @@ def export_heightmap_task(
     progress_callback=None,
     relief_mode="positive",
     height_options=None,
+    budget=None,
 ):
-    width, height = _validate_resolution(resolution)
+    width, height = _validate_resolution(resolution, budget=budget)
     if relief_mode not in {"positive", "negative"}:
         raise ValueError("Relief mode must be positive or negative")
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(10, "Preparing heightfield")
     heightfield = generate_physical_heightfield(
-        image, dimensions, (width, height), inverted, smoothing_sigma, edge_falloff,
-        mapping_gamma, noise_amplitude, noise_frequency, noise_seed,
-        mapping_curve_points, edge_falloff_mode, options=height_options,
+        image,
+        dimensions,
+        (width, height),
+        inverted,
+        smoothing_sigma,
+        edge_falloff,
+        mapping_gamma,
+        noise_amplitude,
+        noise_frequency,
+        noise_seed,
+        mapping_curve_points,
+        edge_falloff_mode,
+        options=height_options,
     )
     if relief_mode == "negative":
         heightfield = -heightfield
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(85, "Writing heightmap")
-    output = export_heightmap(heightfield, path, bit_depth, cancel_check=cancel_check)
+    output = export_heightmap(heightfield, path, bit_depth, budget=budget, cancel_check=cancel_check)
     if progress_callback:
         progress_callback(100, "Export complete")
     return output
@@ -160,25 +196,29 @@ def export_procedural_mesh_task(
     container_settings=None,
     cancel_check=None,
     progress_callback=None,
+    budget=None,
 ):
     """Regenerate a procedural field at export resolution and write a solid."""
     _check_cancel(cancel_check)
-    width, height = _validate_resolution(resolution)
-    estimate = estimate_solid_mesh(height, width)
-    if estimate.working_bytes > MAX_ESTIMATED_WORKING_BYTES:
-        suggested_rows, suggested_columns = recommended_resolution(estimate.rows, estimate.columns, 8_000_000)
-        raise ValueError(
-            f"Mesh export requires approximately {estimate.working_mebibytes:.0f} MiB; "
-            f"reduce export resolution to approximately {suggested_columns} × {suggested_rows} or lower before continuing"
-        )
+    width, height = _validate_resolution(resolution, budget=budget)
+    preflight_mesh_export(
+        height,
+        width,
+        budget=budget or DEFAULT_BUDGET,
+        container=container_settings is not None,
+    )
     if progress_callback:
         progress_callback(10, "Generating procedural export field")
-    result = evaluate_serialized_pipeline(snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check)
+    result = evaluate_serialized_pipeline(
+        snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check
+    )
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(45, "Heightfield ready")
     container = container_settings or ContainerSettings()
-    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(result.physical_heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode)
+    heightfield, mesh_width, mesh_depth = prepare_container_heightfield(
+        result.physical_heightfield, dimensions.width_mm, dimensions.depth_mm, container, relief_mode=relief_mode
+    )
     mesh = generate_solid_mesh(
         heightfield,
         mesh_width,
@@ -212,18 +252,21 @@ def export_procedural_heightmap_task(
     relief_mode="positive",
     cancel_check=None,
     progress_callback=None,
+    budget=None,
 ):
     """Regenerate a procedural field at export resolution and write a heightmap."""
     _check_cancel(cancel_check)
-    width, height = _validate_resolution(resolution)
+    width, height = _validate_resolution(resolution, budget=budget)
     if progress_callback:
         progress_callback(10, "Generating procedural export field")
-    result = evaluate_serialized_pipeline(snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check)
+    result = evaluate_serialized_pipeline(
+        snapshot, (height, width), external_fields=external_fields, cancel_check=cancel_check
+    )
     heightfield = -result.physical_heightfield if relief_mode == "negative" else result.physical_heightfield
     _check_cancel(cancel_check)
     if progress_callback:
         progress_callback(85, "Writing heightmap")
-    output = export_heightmap(heightfield, path, bit_depth, cancel_check=cancel_check)
+    output = export_heightmap(heightfield, path, bit_depth, budget=budget, cancel_check=cancel_check)
     if progress_callback:
         progress_callback(100, "Export complete")
     return output
@@ -242,10 +285,11 @@ def analyze_procedural_export_task(
     profile=None,
     cancel_check=None,
     progress_callback=None,
+    budget=None,
 ) -> FabricationMetrics:
     """Analyze the exact regenerated field selected for procedural export."""
     _check_cancel(cancel_check)
-    width, height = _validate_resolution(resolution)
+    width, height = _validate_resolution(resolution, budget=budget)
     if progress_callback:
         progress_callback(15, "Generating final export field")
     result = evaluate_serialized_pipeline(
@@ -257,7 +301,9 @@ def analyze_procedural_export_task(
     )
     _check_cancel(cancel_check)
     display = -result.physical_heightfield if relief_mode == "negative" else result.physical_heightfield
-    metrics = analyze_heightfield(display, width_mm, depth_mm, base_thickness_mm, "positive", profile=profile, cancel_check=cancel_check)
+    metrics = analyze_heightfield(
+        display, width_mm, depth_mm, base_thickness_mm, "positive", profile=profile, cancel_check=cancel_check
+    )
     if progress_callback:
         progress_callback(100, "Final export analysis ready")
     return metrics
@@ -283,10 +329,11 @@ def analyze_image_export_task(
     profile=None,
     cancel_check=None,
     progress_callback=None,
+    budget=None,
 ) -> FabricationMetrics:
     """Analyze the exact regenerated field used by the V1 image export path."""
     _check_cancel(cancel_check)
-    width, height = _validate_resolution(resolution)
+    width, height = _validate_resolution(resolution, budget=budget)
     if progress_callback:
         progress_callback(15, "Generating final image export field")
     heightfield = generate_physical_heightfield(
@@ -306,7 +353,15 @@ def analyze_image_export_task(
     )
     _check_cancel(cancel_check)
     display = -heightfield if relief_mode == "negative" else heightfield
-    metrics = analyze_heightfield(display, dimensions.width_mm, dimensions.depth_mm, base_thickness_mm, "positive", profile=profile, cancel_check=cancel_check)
+    metrics = analyze_heightfield(
+        display,
+        dimensions.width_mm,
+        dimensions.depth_mm,
+        base_thickness_mm,
+        "positive",
+        profile=profile,
+        cancel_check=cancel_check,
+    )
     if progress_callback:
         progress_callback(100, "Final export analysis ready")
     return metrics

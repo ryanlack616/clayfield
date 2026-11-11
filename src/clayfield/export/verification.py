@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
-import xml.etree.ElementTree as ET
 
+import cv2
 import numpy as np
 import trimesh
-from clayfield.app.cancellation import check_cancelled
 
+from clayfield.core.cancellation import check_cancelled
 from clayfield.export.stl import ExportError
 from clayfield.geometry.mesh_generator import SolidMesh
 
@@ -39,6 +40,21 @@ def verify_stl_export(path: str | Path, expected: SolidMesh, *, cancel_check=Non
         raise ExportError("Written STL bounds do not match the source mesh")
 
 
+def verify_heightmap_export(path: str | Path, expected: np.ndarray, *, cancel_check=None) -> None:
+    """Reopen an exported heightmap and verify its pixel shape and dtype."""
+    check_cancelled(cancel_check)
+    try:
+        loaded = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    except cv2.error as error:
+        raise ExportError(f"Written heightmap could not be reopened: {error}") from error
+    if loaded is None:
+        raise ExportError("Written heightmap could not be reopened")
+    if loaded.shape != expected.shape:
+        raise ExportError(f"Written heightmap shape {loaded.shape} does not match the source {expected.shape}")
+    if loaded.dtype != expected.dtype:
+        raise ExportError(f"Written heightmap dtype {loaded.dtype} does not match the source {expected.dtype}")
+
+
 def verify_3mf_export(path: str | Path, expected: SolidMesh, *, cancel_check=None) -> None:
     """Reopen a 3MF package and verify its required model payload."""
     try:
@@ -52,7 +68,9 @@ def verify_3mf_export(path: str | Path, expected: SolidMesh, *, cancel_check=Non
             with archive.open("3D/3dmodel.model") as model:
                 for event, element in ET.iterparse(model, events=("start", "end")):
                     if event == "start":
-                        if not stack and (element.tag != f"{{{MODEL_NS}}}model" or element.attrib.get("unit") != "millimeter"):
+                        if not stack and (
+                            element.tag != f"{{{MODEL_NS}}}model" or element.attrib.get("unit") != "millimeter"
+                        ):
                             raise ExportError("Written 3MF has invalid model metadata")
                         stack.append(element)
                     else:

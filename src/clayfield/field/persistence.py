@@ -2,17 +2,44 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
-from copy import deepcopy
 import hashlib
 import json
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from clayfield.field.processing import FieldProcessingSettings
 from clayfield.terrain.mapping import MappingSettings
 
-
-SOURCE_TYPES = {"image", "heightmap", "qfractalnow_config", "fractal_noise", "wave_interference", "mandelbrot", "voronoi", "ridged_noise", "warped_noise", "sdf", "chladni", "spectral", "reaction_diffusion", "phyllotaxis", "cellular_automata", "flow_field", "erosion", "lsystem", "cracks", "penrose", "truchet", "superformula", "gaussian_peaks", "julia", "moire", "gabor", "radial_mask"}
+SOURCE_TYPES = {
+    "image",
+    "heightmap",
+    "qfractalnow_config",
+    "fractal_noise",
+    "wave_interference",
+    "mandelbrot",
+    "voronoi",
+    "ridged_noise",
+    "warped_noise",
+    "sdf",
+    "chladni",
+    "spectral",
+    "reaction_diffusion",
+    "phyllotaxis",
+    "cellular_automata",
+    "flow_field",
+    "erosion",
+    "lsystem",
+    "cracks",
+    "penrose",
+    "truchet",
+    "superformula",
+    "gaussian_peaks",
+    "julia",
+    "moire",
+    "gabor",
+    "radial_mask",
+}
 SUPPORTED_ALGORITHM_VERSIONS = {
     "processing": {"1"},
     "mapping": {"1"},
@@ -42,7 +69,36 @@ class SourceDescriptor:
             raise ValueError("Source parameters must be an object")
         if self.seed is not None and (isinstance(self.seed, bool) or not isinstance(self.seed, int)):
             raise ValueError("Source seed must be an integer or None")
-        if self.source_type in {"qfractalnow_config", "fractal_noise", "wave_interference", "mandelbrot", "voronoi", "ridged_noise", "warped_noise", "sdf", "chladni", "spectral", "reaction_diffusion", "phyllotaxis", "cellular_automata", "flow_field", "erosion", "lsystem", "cracks", "penrose", "truchet", "superformula", "gaussian_peaks", "julia", "moire", "gabor"} and not self.algorithm:
+        if (
+            self.source_type
+            in {
+                "qfractalnow_config",
+                "fractal_noise",
+                "wave_interference",
+                "mandelbrot",
+                "voronoi",
+                "ridged_noise",
+                "warped_noise",
+                "sdf",
+                "chladni",
+                "spectral",
+                "reaction_diffusion",
+                "phyllotaxis",
+                "cellular_automata",
+                "flow_field",
+                "erosion",
+                "lsystem",
+                "cracks",
+                "penrose",
+                "truchet",
+                "superformula",
+                "gaussian_peaks",
+                "julia",
+                "moire",
+                "gabor",
+            }
+            and not self.algorithm
+        ):
             raise ValueError("Procedural sources require an algorithm identifier")
         if self.algorithm_version is not None and not self.algorithm_version:
             raise ValueError("Source algorithm version cannot be empty")
@@ -60,7 +116,7 @@ class SourceDescriptor:
         }
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "SourceDescriptor":
+    def from_dict(cls, value: dict[str, Any]) -> SourceDescriptor:
         if not isinstance(value, dict):
             raise ValueError("Source descriptor must be an object")
         descriptor = cls(
@@ -87,18 +143,23 @@ class PipelineSnapshot:
     secondary_source: SourceDescriptor | None = None
     mask_source: SourceDescriptor | None = None
     composition: dict[str, Any] = field(default_factory=dict)
-    algorithm_versions: dict[str, str] = field(default_factory=lambda: {
-        "processing": "1",
-        "mapping": "1",
-        "fabrication_analysis": "1",
-        "external_import": "1",
-    })
+    algorithm_versions: dict[str, str] = field(
+        default_factory=lambda: {
+            "processing": "1",
+            "mapping": "1",
+            "fabrication_analysis": "1",
+            "external_import": "1",
+        }
+    )
     schema_version: int = 1
 
     def validate(self) -> None:
         if self.schema_version != 1:
             raise ValueError(f"Unsupported pipeline snapshot schema: {self.schema_version}")
-        if not isinstance(self.algorithm_versions, dict) or any(not isinstance(key, str) or not isinstance(value, str) or not value for key, value in self.algorithm_versions.items()):
+        if not isinstance(self.algorithm_versions, dict) or any(
+            not isinstance(key, str) or not isinstance(value, str) or not value
+            for key, value in self.algorithm_versions.items()
+        ):
             raise ValueError("Pipeline algorithm versions must be non-empty strings")
         for key, supported in SUPPORTED_ALGORITHM_VERSIONS.items():
             if self.algorithm_versions.get(key, "1") not in supported:
@@ -160,7 +221,7 @@ class PipelineSnapshot:
         mask_source: SourceDescriptor | None = None,
         composition: dict[str, Any] | None = None,
         algorithm_versions: dict[str, str] | None = None,
-    ) -> "PipelineSnapshot":
+    ) -> PipelineSnapshot:
         snapshot = cls(
             source=source,
             processing=asdict(processing or FieldProcessingSettings()),
@@ -169,18 +230,21 @@ class PipelineSnapshot:
             secondary_source=secondary_source,
             mask_source=mask_source,
             composition=deepcopy(composition or {}),
-            algorithm_versions=deepcopy(algorithm_versions or {
-                "processing": "1",
-                "mapping": "1",
-                "fabrication_analysis": "1",
-                "external_import": "1",
-            }),
+            algorithm_versions=deepcopy(
+                algorithm_versions
+                or {
+                    "processing": "1",
+                    "mapping": "1",
+                    "fabrication_analysis": "1",
+                    "external_import": "1",
+                }
+            ),
         )
         snapshot.validate()
         return snapshot
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "PipelineSnapshot":
+    def from_dict(cls, value: dict[str, Any]) -> PipelineSnapshot:
         if not isinstance(value, dict):
             raise ValueError("Pipeline snapshot must be an object")
         processing = deepcopy(value.get("processing", {}))
@@ -211,12 +275,17 @@ class PipelineSnapshot:
             secondary_source=SourceDescriptor.from_dict(secondary_value) if secondary_value is not None else None,
             mask_source=SourceDescriptor.from_dict(mask_value) if mask_value is not None else None,
             composition=deepcopy(value.get("composition", {})),
-            algorithm_versions=deepcopy(value.get("algorithm_versions", {
-                "processing": "1",
-                "mapping": "1",
-                "fabrication_analysis": "1",
-                "external_import": "1",
-            })),
+            algorithm_versions=deepcopy(
+                value.get(
+                    "algorithm_versions",
+                    {
+                        "processing": "1",
+                        "mapping": "1",
+                        "fabrication_analysis": "1",
+                        "external_import": "1",
+                    },
+                )
+            ),
         )
         snapshot.validate()
         return snapshot

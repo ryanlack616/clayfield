@@ -26,9 +26,17 @@ class Probe(QOpenGLWidget):
             points = [(0.0, 0.0), (0.35, 0.2), (0.8, 0.95), (1.0, 1.0)]
             cases = [
                 {},
-                {"Black point": 0.12, "White point": 0.85, "Gamma": 1.4,
-                 "Output black": 0.04, "Output white": 0.9, "Brightness": 0.1,
-                 "Contrast": 1.3, "inverted": True, "Curve interpolation": "smoothstep"},
+                {
+                    "Black point": 0.12,
+                    "White point": 0.85,
+                    "Gamma": 1.4,
+                    "Output black": 0.04,
+                    "Output white": 0.9,
+                    "Brightness": 0.1,
+                    "Contrast": 1.3,
+                    "inverted": True,
+                    "Curve interpolation": "smoothstep",
+                },
                 {"threshold_enabled": True, "Threshold": 0.5, "inverted": True},
                 {"Blur": 1.2},
                 {"Sharpen": 1.1},
@@ -44,7 +52,12 @@ class Probe(QOpenGLWidget):
                     np.testing.assert_allclose(actual, expected, atol=0.001, rtol=0)
                 tiny = np.array([[0.0, 0.2, 1.0], [0.8, 0.5, 0.1]], dtype=np.float32)
                 settings = {"Blur": 2.0, "Sharpen": 1.0}
-                np.testing.assert_allclose(pipeline.process(tiny, settings, points), apply_adjustments(tiny, settings, points), atol=0.001, rtol=0)
+                np.testing.assert_allclose(
+                    pipeline.process(tiny, settings, points),
+                    apply_adjustments(tiny, settings, points),
+                    atol=0.001,
+                    rtol=0,
+                )
                 print("GPU and CPU image adjustments agree within 0.001", flush=True)
                 self.passed = True
             finally:

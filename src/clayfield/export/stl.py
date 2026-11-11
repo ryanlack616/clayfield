@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.geometry.mesh_generator import SolidMesh
 from clayfield.geometry.validation import validate_mesh
 
@@ -43,7 +43,7 @@ def export_stl(mesh: SolidMesh, path: str | Path, *, cancel_check=None) -> Path:
             record_type = np.dtype([("normal", "<f4", (3,)), ("vertices", "<f4", (3, 3)), ("attribute", "<u2")])
             for start in range(0, len(mesh.faces), 65536):
                 check_cancelled(cancel_check)
-                triangles = np.asarray(mesh.vertices[mesh.faces[start:start + 65536]], dtype=np.float32)
+                triangles = np.asarray(mesh.vertices[mesh.faces[start : start + 65536]], dtype=np.float32)
                 normals = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
                 lengths = np.linalg.norm(normals, axis=1)
                 normals /= np.maximum(lengths[:, None], np.finfo(np.float32).tiny)
@@ -53,6 +53,7 @@ def export_stl(mesh: SolidMesh, path: str | Path, *, cancel_check=None) -> Path:
                 temporary.write(records.tobytes())
         check_cancelled(cancel_check)
         from clayfield.export.verification import verify_stl_export
+
         verify_stl_export(temporary_path, mesh, cancel_check=cancel_check)
         check_cancelled(cancel_check)
         os.replace(temporary_path, output)

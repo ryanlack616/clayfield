@@ -26,8 +26,8 @@ def generate_calibration_panels(output: Path, size: int = 256) -> list[Path]:
     rows, columns = size, size
     feature = np.zeros((rows, columns), dtype=np.float32)
     for width in (1, 2, 4, 8, 16):
-        start = sum((1, 2, 4, 8, 16)[:(width.bit_length() - 1)]) * 2
-        feature[:, start:start + width] = 5.0
+        start = sum((1, 2, 4, 8, 16)[: (width.bit_length() - 1)]) * 2
+        feature[:, start : start + width] = 5.0
     _write(generate_solid_mesh(feature, 100.0, 40.0, 3.0), output, "calibration-feature-width")
 
     slope = np.repeat(np.linspace(0.0, 5.0, columns, dtype=np.float32)[None, :], rows, axis=0)

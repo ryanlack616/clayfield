@@ -6,13 +6,12 @@ import os
 import shutil
 import subprocess
 import tempfile
-import time
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.field.model import FieldMetadata, NormalizedField
 from clayfield.image.grayscale import to_grayscale
 
@@ -39,15 +38,34 @@ def render_qfractalnow_config(
         config_path = root / "source.config"
         output_path = root / "render.ppm"
         config_path.write_text(config_text, encoding="utf-8")
-        command = [executable, "-q", "-c", os.fspath(config_path), "-x", str(columns), "-y", str(rows), "-o", os.fspath(output_path)]
+        command = [
+            executable,
+            "-q",
+            "-c",
+            os.fspath(config_path),
+            "-x",
+            str(columns),
+            "-y",
+            str(rows),
+            "-o",
+            os.fspath(output_path),
+        ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
-            while process.poll() is None:
+            # Drain the pipes while waiting. The previous loop only poll()ed,
+            # so a renderer that wrote more than the ~64 KiB pipe buffer would
+            # block on write and never exit, and the loop would spin until the
+            # user cancelled. communicate(timeout=...) reads both pipes and
+            # keeps the output across retries, so a chatty child cannot deadlock.
+            stdout = stderr = ""
+            while True:
                 check_cancelled(cancel_check)
-                if progress_callback:
-                    progress_callback(50, "Rendering QFractalNow source")
-                time.sleep(0.1)
-            stdout, stderr = process.communicate()
+                try:
+                    stdout, stderr = process.communicate(timeout=1.0)
+                    break
+                except subprocess.TimeoutExpired:
+                    if progress_callback:
+                        progress_callback(50, "Rendering QFractalNow source")
             if process.returncode != 0:
                 detail = (stderr or stdout).strip()
                 raise RuntimeError(f"QFractalNow render failed{': ' + detail if detail else ''}")
@@ -60,7 +78,9 @@ def render_qfractalnow_config(
                 values = cv2.resize(values, (columns, rows), interpolation=cv2.INTER_AREA)
             if progress_callback:
                 progress_callback(100, "QFractalNow source ready")
-            return NormalizedField(np.asarray(values, dtype=np.float32), FieldMetadata("qfractalnow_config", "fractalnow", "1"))
+            return NormalizedField(
+                np.asarray(values, dtype=np.float32), FieldMetadata("qfractalnow_config", "fractalnow", "1")
+            )
         finally:
             if process.poll() is None:
                 process.kill()

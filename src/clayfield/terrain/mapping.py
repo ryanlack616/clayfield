@@ -29,9 +29,19 @@ class MappingSettings:
     mapping_curve_points: tuple[tuple[float, float], ...] = ((0.0, 0.0), (1.0, 1.0))
 
     def validate(self) -> None:
-        dimensions = PhysicalDimensions(minimum_height_mm=self.minimum_height_mm, maximum_height_mm=self.maximum_height_mm)
+        dimensions = PhysicalDimensions(
+            minimum_height_mm=self.minimum_height_mm, maximum_height_mm=self.maximum_height_mm
+        )
         dimensions.validate()
-        values = (self.gamma, self.clamp_min, self.clamp_max, self.edge_falloff, self.edge_strength, self.offset_mm, self.scale)
+        values = (
+            self.gamma,
+            self.clamp_min,
+            self.clamp_max,
+            self.edge_falloff,
+            self.edge_strength,
+            self.offset_mm,
+            self.scale,
+        )
         if not np.isfinite(values).all():
             raise ValueError("Mapping settings must be finite")
         if self.gamma <= 0 or self.scale <= 0 or not 0 <= self.clamp_min <= self.clamp_max <= 1:
@@ -65,7 +75,9 @@ def map_field_to_physical(field: NormalizedField, settings: MappingSettings | No
         if settings.edge_falloff_mode == "smoothstep":
             mask = mask * mask * (3.0 - 2.0 * mask)
         values *= 1.0 - settings.edge_strength + settings.edge_strength * mask
-    dimensions = PhysicalDimensions(minimum_height_mm=settings.minimum_height_mm, maximum_height_mm=settings.maximum_height_mm)
+    dimensions = PhysicalDimensions(
+        minimum_height_mm=settings.minimum_height_mm, maximum_height_mm=settings.maximum_height_mm
+    )
     result = dimensions.minimum_height_mm + values * (dimensions.maximum_height_mm - dimensions.minimum_height_mm)
     result = result * settings.scale + settings.offset_mm
     return np.asarray(result, dtype=np.float32)

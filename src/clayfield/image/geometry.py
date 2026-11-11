@@ -3,6 +3,8 @@
 import cv2
 import numpy as np
 
+from clayfield.resource_budget import MAX_ABSOLUTE_RESOLUTION_DIMENSION
+
 
 def validate_geometry(margins, resize) -> None:
     if not isinstance(margins, (tuple, list)) or len(margins) != 4:
@@ -13,8 +15,18 @@ def validate_geometry(margins, resize) -> None:
     if left + right >= 100 or top + bottom >= 100:
         raise ValueError("Crop margins must leave a non-empty image")
     if resize is not None:
-        if not isinstance(resize, (tuple, list)) or len(resize) != 2 or any(isinstance(v, bool) or not isinstance(v, int) or not 2 <= v <= 8192 for v in resize):
-            raise ValueError("Resize dimensions must be integers from 2 to 8192 pixels")
+        # Use the same per-axis ceiling as the shared allocation budget; the
+        # previous 8192 literal was half the documented 16384 limit and made the
+        # same pipeline advertise two different "maximum" sizes.
+        if (
+            not isinstance(resize, (tuple, list))
+            or len(resize) != 2
+            or any(
+                isinstance(v, bool) or not isinstance(v, int) or not 2 <= v <= MAX_ABSOLUTE_RESOLUTION_DIMENSION
+                for v in resize
+            )
+        ):
+            raise ValueError(f"Resize dimensions must be integers from 2 to {MAX_ABSOLUTE_RESOLUTION_DIMENSION} pixels")
 
 
 def crop_bounds(width: int, height: int, margins) -> tuple[int, int, int, int]:
@@ -44,6 +56,8 @@ def apply_image_geometry(source: np.ndarray, margins=(0, 0, 0, 0), resize=None) 
     x0, y0, x1, y1 = crop_bounds(width, height, margins)
     result = source[y0:y1, x0:x1]
     if resize is not None and (result.shape[1], result.shape[0]) != tuple(resize):
-        interpolation = cv2.INTER_AREA if resize[0] <= result.shape[1] and resize[1] <= result.shape[0] else cv2.INTER_LINEAR
+        interpolation = (
+            cv2.INTER_AREA if resize[0] <= result.shape[1] and resize[1] <= result.shape[0] else cv2.INTER_LINEAR
+        )
         result = cv2.resize(result, tuple(resize), interpolation=interpolation)
     return result

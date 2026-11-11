@@ -1,11 +1,9 @@
 """Tests for native ClayField project persistence."""
 
-
-
-from pathlib import Path
 import json
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -82,10 +80,21 @@ def test_procedural_project_round_trip_has_no_embedded_image(tmp_path: Path) -> 
         algorithm="value_fbm",
         algorithm_version="1",
         seed=42,
-        parameters={"seed": 42, "base_frequency": 2.0, "octaves": 4, "persistence": 0.5, "lacunarity": 2.0, "amplitude": 1.0, "normalization": "auto", "tileable": False},
+        parameters={
+            "seed": 42,
+            "base_frequency": 2.0,
+            "octaves": 4,
+            "persistence": 0.5,
+            "lacunarity": 2.0,
+            "amplitude": 1.0,
+            "normalization": "auto",
+            "tileable": False,
+        },
     )
     pipeline = PipelineSnapshot.from_settings(descriptor, mapping=MappingSettings(maximum_height_mm=5.0))
-    state = ProjectState(source_type="fractal_noise", source_descriptor=descriptor.to_dict(), pipeline_snapshot=pipeline.to_dict())
+    state = ProjectState(
+        source_type="fractal_noise", source_descriptor=descriptor.to_dict(), pipeline_snapshot=pipeline.to_dict()
+    )
     project = save_project(state, tmp_path / "procedural.clayfield")
     with zipfile.ZipFile(project) as archive:
         metadata = json.loads(archive.read("project.json"))
@@ -103,20 +112,37 @@ def test_procedural_project_round_trip_has_no_embedded_image(tmp_path: Path) -> 
 
 def test_project_embeds_and_restores_external_secondary_field(tmp_path: Path) -> None:
     secondary = np.array([[0.0, 1.0], [0.5, 0.25]], dtype=np.float32)
-    descriptor = SourceDescriptor(source_type="heightmap", content_hash="external-hash", parameters={"filename": "external.png"})
+    descriptor = SourceDescriptor(
+        source_type="heightmap", content_hash="external-hash", parameters={"filename": "external.png"}
+    )
     pipeline = PipelineSnapshot.from_settings(
         SourceDescriptor(
             source_type="fractal_noise",
             algorithm="value_fbm",
             algorithm_version="1",
             seed=2,
-            parameters={"seed": 2, "base_frequency": 2.0, "octaves": 2, "persistence": 0.5, "lacunarity": 2.0, "amplitude": 1.0, "normalization": "auto", "tileable": False},
+            parameters={
+                "seed": 2,
+                "base_frequency": 2.0,
+                "octaves": 2,
+                "persistence": 0.5,
+                "lacunarity": 2.0,
+                "amplitude": 1.0,
+                "normalization": "auto",
+                "tileable": False,
+            },
         ),
         mapping=MappingSettings(maximum_height_mm=5.0),
         secondary_source=descriptor,
         composition={"enabled": True, "operation": "blend", "amount": 0.5, "range_policy": "clip"},
     )
-    state = ProjectState(source_type="fractal_noise", source_descriptor=pipeline.source.to_dict(), pipeline_snapshot=pipeline.to_dict(), secondary_source_descriptor=descriptor.to_dict(), secondary_field=secondary)
+    state = ProjectState(
+        source_type="fractal_noise",
+        source_descriptor=pipeline.source.to_dict(),
+        pipeline_snapshot=pipeline.to_dict(),
+        secondary_source_descriptor=descriptor.to_dict(),
+        secondary_field=secondary,
+    )
     project = save_project(state, tmp_path / "external.clayfield")
     restored = ProjectState()
     load_project(project, restored)
@@ -175,7 +201,16 @@ def test_procedural_recovery_snapshot_can_be_created(tmp_path: Path, monkeypatch
         algorithm="value_fbm",
         algorithm_version="1",
         seed=4,
-        parameters={"seed": 4, "base_frequency": 2.0, "octaves": 2, "persistence": 0.5, "lacunarity": 2.0, "amplitude": 1.0, "normalization": "auto", "tileable": False},
+        parameters={
+            "seed": 4,
+            "base_frequency": 2.0,
+            "octaves": 2,
+            "persistence": 0.5,
+            "lacunarity": 2.0,
+            "amplitude": 1.0,
+            "normalization": "auto",
+            "tileable": False,
+        },
     )
     state = ProjectState(source_type="fractal_noise", source_descriptor=descriptor.to_dict(), dirty=True)
     state.project_path = tmp_path / "procedural.clayfield"
@@ -238,15 +273,84 @@ def test_project_round_trip_reproduces_edited_physical_heightfield(tmp_path: Pat
     from clayfield.terrain.heightfield import PhysicalDimensions, generate_physical_heightfield, options_from_state
 
     source = np.arange(100, dtype=np.uint8).reshape(10, 10)
-    state = ProjectState(source_path=tmp_path / "source.png", source_image=source, crop_margins=(10, 0, 20, 0), image_resize=(12, 8), height_invert=True, height_normalize=True, height_offset_mm=1.5, height_scale=1.2, noise_octaves=3, noise_amplitude=0.1, noise_seed=7)
+    state = ProjectState(
+        source_path=tmp_path / "source.png",
+        source_image=source,
+        crop_margins=(10, 0, 20, 0),
+        image_resize=(12, 8),
+        height_invert=True,
+        height_normalize=True,
+        height_offset_mm=1.5,
+        height_scale=1.2,
+        noise_octaves=3,
+        noise_amplitude=0.1,
+        noise_seed=7,
+    )
     state.adjustment_settings = {"Brightness": 0.2}
+
     def result(project):
         image = to_grayscale(apply_image_geometry(project.source_image, project.crop_margins, project.image_resize))
         image = apply_adjustments(image, project.adjustment_settings, project.curve_points)
-        dims = PhysicalDimensions(project.terrain_width_mm, project.terrain_depth_mm, project.minimum_height_mm, project.maximum_height_mm)
-        return generate_physical_heightfield(image, dims, (16, 12), project.height_invert, noise_amplitude=project.noise_amplitude, noise_seed=project.noise_seed, options=options_from_state(project))
+        dims = PhysicalDimensions(
+            project.terrain_width_mm, project.terrain_depth_mm, project.minimum_height_mm, project.maximum_height_mm
+        )
+        return generate_physical_heightfield(
+            image,
+            dims,
+            (16, 12),
+            project.height_invert,
+            noise_amplitude=project.noise_amplitude,
+            noise_seed=project.noise_seed,
+            options=options_from_state(project),
+        )
+
     before = result(state)
     path = save_project(state, tmp_path / "edited.clayfield")
     restored = ProjectState()
     load_project(path, restored)
     np.testing.assert_allclose(result(restored), before)
+
+
+def test_sculpt_layer_round_trips(tmp_path: Path) -> None:
+    source = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+    source_path = tmp_path / "source.png"
+    assert cv2.imwrite(str(source_path), source)
+    state = ProjectState(source_path=source_path, source_image=source)
+    offsets = np.zeros((4, 4), dtype=np.float32)
+    offsets[1, 2] = 0.5
+    offsets[2, 1] = -0.25
+    state.sculpt_offsets = offsets
+
+    project = save_project(state, tmp_path / "sculpted.clayfield")
+    restored = ProjectState()
+    load_project(project, restored)
+
+    assert restored.sculpt_base is None
+    assert restored.sculpt_offsets is not None
+    np.testing.assert_array_equal(restored.sculpt_offsets, offsets)
+
+
+def test_project_without_a_sculpt_layer_loads_without_one(tmp_path: Path) -> None:
+    source = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+    source_path = tmp_path / "source.png"
+    assert cv2.imwrite(str(source_path), source)
+    state = ProjectState(source_path=source_path, source_image=source)
+
+    project = save_project(state, tmp_path / "plain.clayfield")
+    with zipfile.ZipFile(project) as archive:
+        assert "sculpt_offsets.npz" not in archive.namelist()
+    restored = ProjectState()
+    load_project(project, restored)
+    assert restored.sculpt_offsets is None
+
+
+def test_empty_sculpt_layer_is_not_persisted(tmp_path: Path) -> None:
+    source = np.array([[[10, 20, 30], [40, 50, 60]]], dtype=np.uint8)
+    source_path = tmp_path / "source.png"
+    assert cv2.imwrite(str(source_path), source)
+    state = ProjectState(source_path=source_path, source_image=source)
+    state.sculpt_offsets = np.zeros((4, 4), dtype=np.float32)
+
+    project = save_project(state, tmp_path / "zeroed.clayfield")
+    with zipfile.ZipFile(project) as archive:
+        assert "sculpt_offsets.npz" not in archive.namelist()

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 RESOURCE_DIR = Path(__file__).parents[1] / "src" / "clayfield" / "resources"
 
 
@@ -12,6 +11,8 @@ def test_viewport_shaders_expose_height_coloring_contract():
     assert "uniform bool height_coloring" in fragment
     assert "uniform float height_min" in fragment
     assert "uniform float height_max" in fragment
+    assert "uniform vec3 height_low_color" in fragment
+    assert "uniform vec3 height_high_color" in fragment
     assert "surface_height" in fragment
 
 
@@ -26,13 +27,7 @@ def test_viewport_shaders_preserve_displacement_and_lighting_paths():
 
 
 def test_viewport_uses_physical_height_range_and_preview_limits():
-    viewport = (
-        Path(__file__).parents[1]
-        / "src"
-        / "clayfield"
-        / "ui"
-        / "viewport.py"
-    ).read_text()
+    viewport = (Path(__file__).parents[1] / "src" / "clayfield" / "ui" / "viewport.py").read_text()
 
     assert "height_min_mm" in viewport
     assert "height_max_mm" in viewport

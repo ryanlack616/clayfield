@@ -2,64 +2,65 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from clayfield.app.cancellation import check_cancelled
+import numpy as np
+
+from clayfield.core.cancellation import check_cancelled
+from clayfield.field.composition import compose_fields
 from clayfield.field.generators import (
-    MandelbrotParameters,
-    NoiseParameters,
-    WaveParameters,
-    generate_fractal_noise,
-    generate_mandelbrot_field,
-    generate_wave_field,
-    RidgedNoiseParameters,
-    SdfParameters,
-    VoronoiParameters,
-    WarpedNoiseParameters,
-    generate_ridged_noise,
-    generate_sdf_field,
-    generate_voronoi_field,
-    generate_warped_noise,
-    ChladniParameters,
-    SpectralParameters,
-    ReactionDiffusionParameters,
-    PhyllotaxisParameters,
     CellularAutomataParameters,
-    generate_chladni_field,
-    generate_spectral_field,
-    generate_reaction_diffusion_field,
-    generate_phyllotaxis_field,
-    generate_cellular_automata_field,
-    FlowFieldParameters,
-    ErosionParameters,
-    generate_flow_field,
-    generate_eroded_field,
-    LSystemParameters,
+    ChladniParameters,
     CrackParameters,
-    generate_lsystem_field,
-    generate_crack_field,
-    TilingParameters,
-    generate_penrose_field,
-    generate_truchet_field,
-    SuperformulaParameters,
+    ErosionParameters,
+    FlowFieldParameters,
+    GaborParameters,
     GaussianPeakParameters,
     JuliaParameters,
+    LSystemParameters,
+    MandelbrotParameters,
     MoireParameters,
-    GaborParameters,
-    generate_superformula_field,
+    NoiseParameters,
+    PhyllotaxisParameters,
+    ReactionDiffusionParameters,
+    RidgedNoiseParameters,
+    SdfParameters,
+    SpectralParameters,
+    SuperformulaParameters,
+    TilingParameters,
+    VoronoiParameters,
+    WarpedNoiseParameters,
+    WaveParameters,
+    generate_cellular_automata_field,
+    generate_chladni_field,
+    generate_crack_field,
+    generate_eroded_field,
+    generate_flow_field,
+    generate_fractal_noise,
+    generate_gabor_field,
     generate_gaussian_peaks_field,
     generate_julia_field,
+    generate_lsystem_field,
+    generate_mandelbrot_field,
     generate_moire_field,
-    generate_gabor_field,
+    generate_penrose_field,
+    generate_phyllotaxis_field,
+    generate_reaction_diffusion_field,
+    generate_ridged_noise,
+    generate_sdf_field,
+    generate_spectral_field,
+    generate_superformula_field,
+    generate_truchet_field,
+    generate_voronoi_field,
+    generate_warped_noise,
+    generate_wave_field,
 )
-from clayfield.field.persistence import PipelineSnapshot
 from clayfield.field.model import FieldMetadata, NormalizedField
+from clayfield.field.persistence import PipelineSnapshot
 from clayfield.field.pipeline import FieldPipelineResult, evaluate_field_pipeline
 from clayfield.field.processing import FieldProcessingSettings, process_field, resize_field
-from clayfield.terrain.mapping import MappingSettings
-from clayfield.field.composition import compose_fields
 from clayfield.field.qfractalnow import render_qfractalnow_config
-import numpy as np
+from clayfield.terrain.mapping import MappingSettings
 
 
 def _generate_source(source, shape, external_fields=None, cancel_check=None):
@@ -90,11 +91,15 @@ def _generate_source(source, shape, external_fields=None, cancel_check=None):
     if source.source_type == "spectral":
         return generate_spectral_field(shape, SpectralParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "reaction_diffusion":
-        return generate_reaction_diffusion_field(shape, ReactionDiffusionParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_reaction_diffusion_field(
+            shape, ReactionDiffusionParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "phyllotaxis":
         return generate_phyllotaxis_field(shape, PhyllotaxisParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "cellular_automata":
-        return generate_cellular_automata_field(shape, CellularAutomataParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_cellular_automata_field(
+            shape, CellularAutomataParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "flow_field":
         return generate_flow_field(shape, FlowFieldParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "erosion":
@@ -108,9 +113,13 @@ def _generate_source(source, shape, external_fields=None, cancel_check=None):
     if source.source_type == "truchet":
         return generate_truchet_field(shape, TilingParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "superformula":
-        return generate_superformula_field(shape, SuperformulaParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_superformula_field(
+            shape, SuperformulaParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "gaussian_peaks":
-        return generate_gaussian_peaks_field(shape, GaussianPeakParameters(**source.parameters), cancel_check=cancel_check)
+        return generate_gaussian_peaks_field(
+            shape, GaussianPeakParameters(**source.parameters), cancel_check=cancel_check
+        )
     if source.source_type == "julia":
         return generate_julia_field(shape, JuliaParameters(**source.parameters), cancel_check=cancel_check)
     if source.source_type == "moire":
@@ -123,7 +132,9 @@ def _generate_source(source, shape, external_fields=None, cancel_check=None):
         rows, columns = shape
         x = np.linspace(0.0, 1.0, columns, dtype=np.float32)
         y = np.linspace(0.0, 1.0, rows, dtype=np.float32)
-        distance = np.hypot(x[None, :] - float(parameters.get("center_x", 0.5)), y[:, None] - float(parameters.get("center_y", 0.5)))
+        distance = np.hypot(
+            x[None, :] - float(parameters.get("center_x", 0.5)), y[:, None] - float(parameters.get("center_y", 0.5))
+        )
         inner = float(parameters.get("inner_radius", 0.0))
         outer = float(parameters.get("outer_radius", 0.5))
         if outer <= inner:
@@ -158,8 +169,14 @@ def evaluate_serialized_pipeline(
     composition = snapshot.composition or {}
     if snapshot.secondary_source is not None and composition.get("enabled", False):
         secondary = _generate_source(snapshot.secondary_source, shape, external_fields, cancel_check)
-        secondary = process_field(secondary, FieldProcessingSettings(**snapshot.secondary_processing), cancel_check=cancel_check)
-        mask = _generate_source(snapshot.mask_source, shape, external_fields, cancel_check) if snapshot.mask_source is not None else None
+        secondary = process_field(
+            secondary, FieldProcessingSettings(**snapshot.secondary_processing), cancel_check=cancel_check
+        )
+        mask = (
+            _generate_source(snapshot.mask_source, shape, external_fields, cancel_check)
+            if snapshot.mask_source is not None
+            else None
+        )
         field = compose_fields(
             field,
             secondary,

@@ -61,12 +61,12 @@ class CurveEditor(QWidget):
             delete_action.setEnabled(0 < nearest < len(self.points) - 1)
             delete_action.triggered.connect(lambda: self._delete_point(nearest))
             menu.addSeparator()
-            for label, preset in ((
+            for label, preset in (
                 ("Linear", [(0.0, 0.0), (1.0, 1.0)]),
                 ("S-curve", [(0.0, 0.0), (0.25, 0.1), (0.5, 0.5), (0.75, 0.9), (1.0, 1.0)]),
                 ("Lift shadows", [(0.0, 0.2), (0.5, 0.6), (1.0, 1.0)]),
                 ("Lower highlights", [(0.0, 0.0), (0.5, 0.4), (1.0, 0.8)]),
-            )):
+            ):
                 action = menu.addAction(label)
                 action.triggered.connect(lambda checked=False, points=preset: self._set_preset(points))
             menu.exec(event.globalPosition().toPoint())
@@ -116,10 +116,14 @@ class CurveEditor(QWidget):
         self.active = -1
 
     def _normalized(self, position: QPointF) -> tuple[float, float]:
-        return (max(0.0, min(1.0, position.x() / max(1, self.width()))), max(0.0, min(1.0, 1.0 - position.y() / max(1, self.height()))))
+        return (
+            max(0.0, min(1.0, position.x() / max(1, self.width()))),
+            max(0.0, min(1.0, 1.0 - position.y() / max(1, self.height()))),
+        )
 
     def _interpolated(self, x: float) -> float:
-        for left, right in zip(self.points, self.points[1:]):
+        # strict=False: adjacent-pair iteration is shorter by one by design.
+        for left, right in zip(self.points, self.points[1:], strict=False):
             if left[0] <= x <= right[0]:
                 fraction = (x - left[0]) / max(1e-6, right[0] - left[0])
                 return left[1] + fraction * (right[1] - left[1])

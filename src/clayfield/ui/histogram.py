@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtCore import QSize, QPointF, Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
@@ -21,12 +21,27 @@ class HistogramWidget(QWidget):
         self._active_marker = None
         self.setMinimumSize(QSize(180, 90))
 
-    def set_image(self, image: np.ndarray | None) -> None:
+    def set_image(self, image: np.ndarray | None, max_samples: int = 1_000_000) -> None:
+        """Compute the histogram from at most ``max_samples`` pixels.
+
+        A full-resolution 16384x16384 image is 268M pixels. Scanning it on the
+        UI thread for a 256-bin histogram is wasteful; stride-sampling preserves
+        the shape of the distribution while keeping the widget responsive.
+        """
         if image is None:
             self.values.fill(0.0)
         else:
-            values = np.clip(np.asarray(image, dtype=np.float32), 0.0, 1.0)
-            self.values = np.bincount((values * 255).astype(np.uint8).ravel(), minlength=256).astype(np.float32)
+            # Sample the source view first, then convert only the sample. The
+            # previous order converted the whole image to float32 (16 bytes per
+            # pixel) before striding, which allocated a full-size temporary on
+            # the GUI thread and defeated the max_samples bound.
+            flat = np.asarray(image).ravel()
+            if max_samples > 0 and flat.size > max_samples:
+                step = max(1, int(np.ceil(flat.size / max_samples)))
+                flat = flat[::step]
+            flat = np.asarray(flat, dtype=np.float32)
+            values = np.clip(flat, 0.0, 1.0)
+            self.values = np.bincount((values * 255).astype(np.uint8), minlength=256).astype(np.float32)
             peak = float(self.values.max())
             if peak:
                 self.values /= peak
@@ -76,7 +91,6 @@ class HistogramWidget(QWidget):
             return
         pen = QPen(self.palette().text().color())
         painter.setPen(pen)
-        width = max(1, self.width() // 256)
         baseline = self.height() - 4
         for index, value in enumerate(self.values):
             height = int(value * (self.height() - 8))

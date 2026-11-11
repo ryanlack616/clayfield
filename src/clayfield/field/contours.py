@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from clayfield.app.cancellation import check_cancelled
+from clayfield.core.cancellation import check_cancelled
 from clayfield.field.model import FieldMetadata, NormalizedField
 
 
@@ -17,11 +17,18 @@ class ContourParameters:
     invert: bool = False
 
     def validate(self) -> None:
-        if isinstance(self.bands, bool) or not 1 <= self.bands <= 256 or not np.isfinite(self.line_width) or not 0 < self.line_width <= 1:
+        if (
+            isinstance(self.bands, bool)
+            or not 1 <= self.bands <= 256
+            or not np.isfinite(self.line_width)
+            or not 0 < self.line_width <= 1
+        ):
             raise ValueError("Contour parameters are invalid")
 
 
-def apply_contours(field: NormalizedField, parameters: ContourParameters | None = None, *, cancel_check=None) -> NormalizedField:
+def apply_contours(
+    field: NormalizedField, parameters: ContourParameters | None = None, *, cancel_check=None
+) -> NormalizedField:
     """Convert a scalar field into raised contour bands."""
     parameters = parameters or ContourParameters()
     parameters.validate()

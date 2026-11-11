@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-import numpy as np
 import cv2
+import numpy as np
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 
@@ -19,7 +19,8 @@ def supports_gpu_adjustments(settings: dict) -> bool:
     return (
         0 <= float(settings.get("Blur", 0.0)) <= 20
         and 0 <= float(settings.get("Sharpen", 0.0)) <= 5
-        and 0 <= black < white <= 1 and 0 <= output_black <= output_white <= 1
+        and 0 <= black < white <= 1
+        and 0 <= output_black <= output_white <= 1
         and float(settings.get("Gamma", 1.0)) > 0
     )
 
@@ -90,10 +91,14 @@ class GpuImagePipeline:
                 raise RuntimeError("GPU image-processing framebuffer is incomplete")
             glViewport(0, 0, columns, rows)
             for uniform, key, default in (
-                ("black_point", "Black point", 0.0), ("white_point", "White point", 1.0),
-                ("gamma_value", "Gamma", 1.0), ("output_black", "Output black", 0.0),
-                ("output_white", "Output white", 1.0), ("brightness", "Brightness", 0.0),
-                ("contrast", "Contrast", 1.0), ("threshold_value", "Threshold", 0.5),
+                ("black_point", "Black point", 0.0),
+                ("white_point", "White point", 1.0),
+                ("gamma_value", "Gamma", 1.0),
+                ("output_black", "Output black", 0.0),
+                ("output_white", "Output white", 1.0),
+                ("brightness", "Brightness", 0.0),
+                ("contrast", "Contrast", 1.0),
+                ("threshold_value", "Threshold", 0.5),
             ):
                 glUniform1f(glGetUniformLocation(self.program, uniform), float(settings.get(key, default)))
             blur = float(settings.get("Blur", 0))
@@ -112,7 +117,14 @@ class GpuImagePipeline:
                 self._blur(self.output, self.scratch, 0, 9, 1.0)
                 self._blur(self.scratch, self.scratch2, 1, 9, 1.0)
             if sharp or (blur and threshold_enabled):
-                self._finish(self.output, self.scratch2 if sharp else self.output, self.scratch, sharp, threshold_enabled, float(settings.get("Threshold", 0.5)))
+                self._finish(
+                    self.output,
+                    self.scratch2 if sharp else self.output,
+                    self.scratch,
+                    sharp,
+                    threshold_enabled,
+                    float(settings.get("Threshold", 0.5)),
+                )
                 result_texture = self.scratch
             if not readback:
                 return result_texture
@@ -137,7 +149,7 @@ class GpuImagePipeline:
         glUniform1i(glGetUniformLocation(self.filter_program, "radius"), radius)
         kernel = cv2.getGaussianKernel(kernel_size, sigma, cv2.CV_32F).ravel()
         weights = np.zeros(61, dtype=np.float32)
-        weights[:radius + 1] = kernel[radius:]
+        weights[: radius + 1] = kernel[radius:]
         glUniform1fv(glGetUniformLocation(self.filter_program, "weights"), len(weights), weights)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, destination, 0)
         glDrawArrays(GL_TRIANGLES, 0, 3)

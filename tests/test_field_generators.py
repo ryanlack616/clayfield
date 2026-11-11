@@ -5,41 +5,41 @@ import pytest
 
 from clayfield.app.cancellation import WorkerCancelled
 from clayfield.field import (
+    CellularAutomataParameters,
+    ChladniParameters,
+    ContourParameters,
+    CrackParameters,
+    ErosionParameters,
     FieldMetadata,
+    FlowFieldParameters,
+    LSystemParameters,
     MandelbrotParameters,
     NoiseParameters,
     NormalizedField,
-    WaveParameters,
-    generate_fractal_noise,
+    PhyllotaxisParameters,
+    ReactionDiffusionParameters,
     RidgedNoiseParameters,
     SdfParameters,
+    SpectralParameters,
     VoronoiParameters,
     WarpedNoiseParameters,
+    WaveParameters,
+    apply_contours,
+    generate_cellular_automata_field,
+    generate_chladni_field,
+    generate_crack_field,
+    generate_eroded_field,
+    generate_flow_field,
+    generate_fractal_noise,
+    generate_lsystem_field,
+    generate_mandelbrot_field,
+    generate_phyllotaxis_field,
+    generate_reaction_diffusion_field,
     generate_ridged_noise,
     generate_sdf_field,
+    generate_spectral_field,
     generate_voronoi_field,
     generate_warped_noise,
-    ChladniParameters,
-    SpectralParameters,
-    ReactionDiffusionParameters,
-    PhyllotaxisParameters,
-    CellularAutomataParameters,
-    generate_chladni_field,
-    generate_spectral_field,
-    generate_reaction_diffusion_field,
-    generate_phyllotaxis_field,
-    generate_cellular_automata_field,
-    LSystemParameters,
-    CrackParameters,
-    generate_lsystem_field,
-    generate_crack_field,
-    FlowFieldParameters,
-    ErosionParameters,
-    generate_flow_field,
-    generate_eroded_field,
-    ContourParameters,
-    apply_contours,
-    generate_mandelbrot_field,
     generate_wave_field,
 )
 from clayfield.geometry.mesh_generator import generate_solid_mesh
@@ -102,7 +102,9 @@ def test_long_generator_honors_cancellation() -> None:
 
 
 def test_generator_reference_statistics_are_stable_with_tolerance() -> None:
-    noise = generate_fractal_noise((17, 23), NoiseParameters(seed=42, base_frequency=2, octaves=4, persistence=0.55, lacunarity=2))
+    noise = generate_fractal_noise(
+        (17, 23), NoiseParameters(seed=42, base_frequency=2, octaves=4, persistence=0.55, lacunarity=2)
+    )
     waves = generate_wave_field((17, 23), WaveParameters(frequency_x=2, frequency_y=3))
     mandelbrot = generate_mandelbrot_field((17, 23), MandelbrotParameters(iterations=32))
     assert noise.values.mean() == pytest.approx(0.59642726, abs=2e-5)
@@ -139,7 +141,9 @@ def test_p2_and_p3_pattern_sources_are_bounded() -> None:
 
 def test_sdf_boolean_operations_are_bounded() -> None:
     for operation in ("union", "difference", "intersection"):
-        source = generate_sdf_field((24, 24), SdfParameters(boolean_shape="circle", boolean_operation=operation, boolean_offset_x=0.2))
+        source = generate_sdf_field(
+            (24, 24), SdfParameters(boolean_shape="circle", boolean_operation=operation, boolean_offset_x=0.2)
+        )
         assert np.isfinite(source.values).all()
         assert 0.0 <= float(source.values.min()) <= float(source.values.max()) <= 1.0
 

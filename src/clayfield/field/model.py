@@ -7,7 +7,7 @@ mapping.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -53,17 +53,27 @@ def validate_normalized_field(field: np.ndarray, *, allow_out_of_range: bool = F
 
 @dataclass(frozen=True)
 class NormalizedField:
-    """Immutable published field with reproducibility metadata."""
+    """Immutable published field with reproducibility metadata.
+
+    ``copy`` defaults to ``True`` so the contract owns its data. A caller that
+    already owns a read-only float32 array can pass ``copy=False`` to wrap it
+    without a second full-image allocation; ``__post_init__`` still marks the
+    array read-only, so the immutability contract holds either way. The flag is
+    excluded from equality and repr because it is an ownership hint, not data.
+    """
 
     values: np.ndarray
     metadata: FieldMetadata
+    copy: bool = field(default=True, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.metadata.validate()
         values = validate_normalized_field(self.values)
         # Copy before marking read-only so callers cannot mutate a producer's
-        # working buffer through the field contract.
-        values = np.array(values, dtype=np.float32, copy=True)
+        # working buffer through the field contract. ``copy=False`` is only for
+        # arrays the caller has already dedicated to this field.
+        if self.copy:
+            values = np.array(values, dtype=np.float32, copy=True)
         values.setflags(write=False)
         object.__setattr__(self, "values", values)
 

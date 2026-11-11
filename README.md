@@ -13,6 +13,8 @@ validated STL/3MF export, heightmap export, and portable `.clayfield` projects.
 - Procedural composition with source-specific secondary-field controls and masks
 - Physical dimensions, base thickness, relief mode, and optional container walls
 - Floating canvas preview and compose controls with a camera-aware XYZ gizmo
+- Height-coloured terrain shading with a selectable low/high colour ramp
+- Surface-aware sculpt brush with Laplacian, Taubin, and bilateral smoothing
 - STL, 3MF, PNG, and TIFF export with validation and safety checks
 - Portable projects with embedded source images and QFractalNow configs
 - Optional GPU preview; CPU processing and export do not require a GPU
@@ -43,10 +45,11 @@ QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb .venv/bin/clayfield
 1. Choose a primary source in the left panel.
 2. Load an image, choose a procedural generator, or choose `QFractalNow config` and load a `.config` file.
 3. Configure the source-specific controls.
-4. Use `COMPOSE` at the bottom of the left panel for a secondary field or mask.
+4. Use `View → Compose…` for a secondary field or mask; the overlay's `×` closes it.
 5. Use `PROCESS` for preview selection, curves, levels, and image adjustments.
 6. Set physical dimensions and fabrication settings in the right panel.
-7. Inspect the viewport and export STL, 3MF, or a heightmap.
+7. Optionally switch the sculpt panel to `On` and drag over the surface to smooth it.
+8. Inspect the viewport and export STL, 3MF, or a heightmap.
 
 QFractalNow configs are embedded into the ClayField project. ClayField invokes
 the headless `fractalnow` renderer at the selected preview or export resolution.
@@ -66,10 +69,39 @@ ClayField defaults to `2048 × 2048`. Procedural sources follow the physical
 width/depth ratio, so a `250 × 200 mm` model uses approximately `2048 × 1638`
 samples instead of stretching a square field.
 
+## Sculpting
+
+The sculpt panel is a floating overlay in the bottom-left corner of the viewport.
+It starts hidden so a fresh launch leaves the canvas clear; `View → Sculpt Brush`
+(`Ctrl+B`) opens it and arms the brush in one step. Its `×` closes it again and
+disarms the brush. The brush smooths the surface and does not raise or lower it.
+While it is armed, left-drag paints instead of orbiting the camera; right-drag
+still orbits, middle-drag still pans and the wheel still zooms. Set the panel's
+`Brush` row back to `Off` to park the brush without closing the panel. The
+ring under the pointer is drawn in world space, so it shows the real brush radius
+on the surface you are about to edit.
+
+- `Radius` is in millimetres and defaults to 5 mm; adjust it to the model.
+- `Strength` scales the influence of each dab from 0 to 1.
+- `Falloff` selects linear, smoothstep, gaussian, or constant influence.
+- `Algorithm` selects Laplacian, Taubin, or bilateral smoothing.
+
+Dabs are spaced along the pointer path by arc length, so a fast stroke applies the
+same total influence as a slow one. Each press-drag-release sequence is one undo
+step; the Edit menu walks parameter edits and sculpt strokes in the order you made
+them. Sculpt work is stored as a displacement layer over the procedural base and
+is saved inside the `.clayfield` project, so changing a terrain parameter keeps the
+sculpt and reloading a project restores it. A resolution change cannot be mapped
+onto the new grid, so the layer is discarded and the status bar says so.
+
 ## Tests
 
 ```sh
-PYTHONPATH=.:src .venv/bin/pytest -q
+# Either form works; pyproject.toml already sets pythonpath = ["src"], so the
+# PYTHONPATH prefix is only needed when invoking a pytest outside the project.
+.venv/bin/pytest -q
+# or, with uv and the test extra installed in the project environment:
+uv run --extra test python -m pytest -q
 ```
 
 Optional checks:
@@ -79,6 +111,17 @@ CLAYFIELD_STRESS=1 .venv/bin/pytest -q tests/test_stress.py
 QT_STYLE_OVERRIDE=Fusion QT_QPA_PLATFORM=xcb CLAYFIELD_TEST_GL=1 .venv/bin/pytest -q tests/test_gpu_pipeline.py
 CLAYFIELD_PRUSA_SLICER=/path/to/prusa-slicer .venv/bin/pytest -q tests/test_slicer_integration.py
 ```
+
+## Linting and formatting
+
+```sh
+.venv/bin/pip install -e '.[dev,test]'
+.venv/bin/ruff check .          # lint; expected to report no findings
+.venv/bin/ruff format --check . # format check without rewriting files
+```
+
+With uv: `uv run --extra dev ruff check .`. Configuration is in `pyproject.toml`
+(`line-length = 120`, rules `E`, `F`, `I`, `UP`, `B`).
 
 ## Build A Linux Bundle
 
@@ -97,10 +140,12 @@ git archive --format=tar.gz --prefix=clayfield-2.0.0/ HEAD \
 
 ## Project Layout
 
+- `src/clayfield/core`: shared leaf primitives with no Qt/image/mesh dependencies
 - `src/clayfield/app`: application lifecycle, state, persistence, and workers
 - `src/clayfield/field`: normalized fields, procedural sources, composition
 - `src/clayfield/image`: loading, grayscale conversion, curves, and processing
 - `src/clayfield/terrain`: physical mapping and fabrication analysis
+- `src/clayfield/sculpt`: brush falloffs, surface picking, smoothing kernels, stroke history
 - `src/clayfield/geometry`: solid mesh and container generation
 - `src/clayfield/export`: STL, 3MF, heightmap output, and verification
 - `src/clayfield/ui`: Qt panels, viewport, camera, overlays, and controls

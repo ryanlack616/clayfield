@@ -2,20 +2,58 @@
 
 from pathlib import Path
 
-import numpy as np
 import cv2
+import numpy as np
 import pytest
+import trimesh
 
 from clayfield.app.worker import WorkerCancelled
-from clayfield.export.tasks import analyze_image_export_task, analyze_procedural_export_task, export_heightmap_task, export_mesh_task, export_procedural_heightmap_task, export_procedural_mesh_task
-from clayfield.image.pipeline import AdjustmentCache, apply_adjustments
-from clayfield.geometry.mesh_generator import generate_solid_mesh
-from clayfield.export.stl import export_stl
 from clayfield.export.heightmap import export_heightmap
-from clayfield.terrain.heightfield import PhysicalDimensions
+from clayfield.export.stl import export_stl
+from clayfield.export.tasks import (
+    analyze_image_export_task,
+    analyze_procedural_export_task,
+    export_heightmap_task,
+    export_mesh_task,
+    export_procedural_heightmap_task,
+    export_procedural_mesh_task,
+)
 from clayfield.field import PipelineSnapshot, SourceDescriptor
+from clayfield.geometry.mesh_generator import generate_solid_mesh
+from clayfield.image.pipeline import AdjustmentCache, apply_adjustments
+from clayfield.terrain.heightfield import PhysicalDimensions
 from clayfield.terrain.mapping import MappingSettings
-import trimesh
+
+
+def _raise_value_error():
+    raise ValueError("worker boom")
+
+
+def test_worker_reports_traceback_on_failure() -> None:
+    from clayfield.app.worker import FunctionWorker
+
+    failures: list[str] = []
+    worker = FunctionWorker(_raise_value_error)
+    worker.signals.failed.connect(failures.append)
+    worker.run()
+
+    assert len(failures) == 1
+    assert "ValueError: worker boom" in failures[0]
+    assert "Traceback (most recent call last)" in failures[0]
+
+
+def test_worker_reports_cancellation_without_a_traceback() -> None:
+    from clayfield.app.worker import FunctionWorker
+
+    failures: list[str] = []
+    cancellations: list[bool] = []
+    worker = FunctionWorker(lambda: (_ for _ in ()).throw(WorkerCancelled()))
+    worker.signals.failed.connect(failures.append)
+    worker.signals.cancelled.connect(lambda: cancellations.append(True))
+    worker.run()
+
+    assert cancellations == [True]
+    assert not failures
 
 
 def test_pipeline_applies_persisted_inversion() -> None:
@@ -70,8 +108,12 @@ def test_mesh_task_reports_progress(tmp_path: Path) -> None:
 def test_mesh_export_is_flat_on_the_build_plate(tmp_path: Path) -> None:
     path = export_mesh_task(
         np.array([[0.0, 1.0], [0.0, 1.0]], dtype=np.float32),
-        PhysicalDimensions(60, 40, 0, 3), (8, 8), 5, "positive",
-        tmp_path / "flat.stl", "stl",
+        PhysicalDimensions(60, 40, 0, 3),
+        (8, 8),
+        5,
+        "positive",
+        tmp_path / "flat.stl",
+        "stl",
     )
     mesh = trimesh.load(path, force="mesh")
     np.testing.assert_allclose(mesh.extents, [60, 40, 8], atol=1e-4)
@@ -98,14 +140,25 @@ def _procedural_snapshot() -> PipelineSnapshot:
         algorithm="value_fbm",
         algorithm_version="1",
         seed=8,
-        parameters={"seed": 8, "base_frequency": 2.0, "octaves": 3, "persistence": 0.5, "lacunarity": 2.0, "amplitude": 1.0, "normalization": "auto", "tileable": False},
+        parameters={
+            "seed": 8,
+            "base_frequency": 2.0,
+            "octaves": 3,
+            "persistence": 0.5,
+            "lacunarity": 2.0,
+            "amplitude": 1.0,
+            "normalization": "auto",
+            "tileable": False,
+        },
     )
     return PipelineSnapshot.from_settings(source, mapping=MappingSettings(maximum_height_mm=5.0))
 
 
 def test_procedural_mesh_and_heightmap_tasks_export_at_requested_resolution(tmp_path: Path) -> None:
     snapshot = _procedural_snapshot()
-    mesh_path = export_procedural_mesh_task(snapshot, PhysicalDimensions(100, 100, 0, 5), (8, 8), 3, "positive", tmp_path / "procedural.stl", "stl")
+    mesh_path = export_procedural_mesh_task(
+        snapshot, PhysicalDimensions(100, 100, 0, 5), (8, 8), 3, "positive", tmp_path / "procedural.stl", "stl"
+    )
     mesh = trimesh.load(mesh_path, force="mesh")
     np.testing.assert_allclose(mesh.extents, [100, 100, 8], atol=1e-4)
     assert mesh.is_watertight
@@ -147,6 +200,7 @@ def test_negative_heightmap_represents_recessed_surface(tmp_path: Path) -> None:
 
 def test_adjustment_cache_reuses_unaffected_stages(monkeypatch):
     import clayfield.image.pipeline as pipeline
+
     image = np.random.default_rng(1).random((32, 32), dtype=np.float32)
     points = [(0.0, 0.0), (0.4, 0.6), (1.0, 1.0)]
     cache = AdjustmentCache()
@@ -159,10 +213,12 @@ def test_adjustment_cache_reuses_unaffected_stages(monkeypatch):
 
 def test_mesh_generation_checks_cancellation_between_chunks():
     calls = 0
+
     def cancelled():
         nonlocal calls
         calls += 1
         return calls >= 4
+
     with pytest.raises(WorkerCancelled):
         generate_solid_mesh(np.zeros((512, 512), dtype=np.float32), 100, 100, 5, cancel_check=cancelled)
 
@@ -171,8 +227,10 @@ def test_cancelled_stl_write_preserves_existing_destination(tmp_path: Path):
     mesh = generate_solid_mesh(np.zeros((4, 4), dtype=np.float32), 20, 20, 3)
     output = tmp_path / "existing.stl"
     output.write_bytes(b"previous")
+
     def cancelled():
         return bool(list(tmp_path.glob(".existing.stl.*.tmp")))
+
     with pytest.raises(WorkerCancelled):
         export_stl(mesh, output, cancel_check=cancelled)
     assert output.read_bytes() == b"previous"
@@ -182,8 +240,10 @@ def test_cancelled_stl_write_preserves_existing_destination(tmp_path: Path):
 def test_cancelled_heightmap_write_preserves_existing_destination(tmp_path: Path):
     output = tmp_path / "existing.png"
     output.write_bytes(b"previous")
+
     def cancelled():
         return bool(list(tmp_path.glob(".existing.png.*.png")))
+
     with pytest.raises(WorkerCancelled):
         export_heightmap(np.ones((4, 4), dtype=np.float32), output, cancel_check=cancelled)
     assert output.read_bytes() == b"previous"

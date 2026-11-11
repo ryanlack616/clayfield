@@ -4,6 +4,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+# Mesh creation plus validation retains several topology and coordinate arrays
+# at once. The factor is measured, not guessed: peak RSS for
+# generate_solid_mesh + validate_mesh was 7.2-7.5x the mesh's own persistent
+# bytes at 512, 1024, 2048 and 4096 square samples on the 32 GB target host
+# (see ``tests/test_mesh_estimates.py`` for the recorded ratios). The previous
+# 20x figure predated the vectorized edge-topology check and overstated the
+# working set by roughly 2.7x, which rejected 4096-square exports that actually
+# fit in 14 GiB. ``estimate_mesh_export`` adds the persistent mesh bytes and the
+# 7x working set, so its total is 8x persistent, about 7-11% above the measured
+# 7.2-7.5x peak. The measurement covers generation plus validation only; the
+# Trimesh reload in export_stl/export_3mf is a separate, unmeasured peak.
+MESH_WORKING_FACTOR = 7
+
 
 @dataclass(frozen=True)
 class MeshEstimate:
@@ -52,12 +65,10 @@ def estimate_solid_mesh(rows: int, columns: int) -> MeshEstimate:
         triangle_count=triangle_count,
         vertex_bytes=vertex_bytes,
         face_bytes=face_bytes,
-        # Mesh creation, orientation, Trimesh validation, and export verification
-        # keep several topology and coordinate arrays alive simultaneously.
-        # Validation and export can retain Trimesh adjacency, bounds, area,
-        # component, and temporary topology arrays simultaneously. Keep this
-        # conservative enough to cover observed validation peaks.
-        working_bytes=persistent_bytes * 20,
+        # Mesh creation, orientation, validation and export verification keep
+        # several topology and coordinate arrays alive simultaneously. See
+        # ``MESH_WORKING_FACTOR`` for the measurement behind this multiplier.
+        working_bytes=persistent_bytes * MESH_WORKING_FACTOR,
     )
 
 

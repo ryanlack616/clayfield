@@ -1,17 +1,17 @@
 """Exercise the GPU preview and authoritative CPU replacement in a real window."""
 
-from pathlib import Path
 import sys
 import time
 import traceback
+from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
-from clayfield.app.application import configure_opengl
 import clayfield.ui.image_panel as image_panel
 import clayfield.ui.main_window as main_window
+from clayfield.app.application import configure_opengl
 from clayfield.ui.gpu_pipeline import GpuImagePipeline
 
 configure_opengl()
@@ -23,9 +23,13 @@ window.image_panel.refresh_from_state()
 window.show()
 events = []
 gpu_process = GpuImagePipeline.process
+
+
 def assert_no_readback(self, *args, **kwargs):
     assert kwargs.get("readback") is False
     return gpu_process(self, *args, **kwargs)
+
+
 GpuImagePipeline.process = assert_no_readback
 window.viewport.gpu_adjustments_ready.connect(lambda generation, result: events.append(generation))
 stage = 0

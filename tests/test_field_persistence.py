@@ -22,7 +22,16 @@ def noise_snapshot() -> PipelineSnapshot:
         algorithm="value_fbm",
         algorithm_version="1",
         seed=42,
-        parameters={"seed": 42, "base_frequency": 2.0, "octaves": 4, "persistence": 0.5, "lacunarity": 2.0, "amplitude": 1.0, "normalization": "auto", "tileable": False},
+        parameters={
+            "seed": 42,
+            "base_frequency": 2.0,
+            "octaves": 4,
+            "persistence": 0.5,
+            "lacunarity": 2.0,
+            "amplitude": 1.0,
+            "normalization": "auto",
+            "tileable": False,
+        },
     )
     return PipelineSnapshot.from_settings(
         source,
@@ -46,7 +55,16 @@ def test_snapshot_rejects_unsupported_pipeline_algorithm_version() -> None:
 
 def test_pipeline_cache_key_changes_with_shape_or_parameters() -> None:
     snapshot = noise_snapshot()
-    changed = PipelineSnapshot.from_dict({**snapshot.to_dict(), "source": {**snapshot.to_dict()["source"], "seed": 43, "parameters": {**snapshot.to_dict()["source"]["parameters"], "seed": 43}}})
+    changed = PipelineSnapshot.from_dict(
+        {
+            **snapshot.to_dict(),
+            "source": {
+                **snapshot.to_dict()["source"],
+                "seed": 43,
+                "parameters": {**snapshot.to_dict()["source"]["parameters"], "seed": 43},
+            },
+        }
+    )
     assert pipeline_cache_key(snapshot, (32, 32)) != pipeline_cache_key(snapshot, (16, 16))
     assert pipeline_cache_key(snapshot, (32, 32)) != pipeline_cache_key(changed, (32, 32))
 
@@ -54,7 +72,9 @@ def test_pipeline_cache_key_changes_with_shape_or_parameters() -> None:
 def test_serialized_pipeline_is_reproducible_and_reports_progress() -> None:
     progress = []
     snapshot = noise_snapshot()
-    first = evaluate_serialized_pipeline(snapshot, (32, 32), progress_callback=lambda percent, message: progress.append((percent, message)))
+    first = evaluate_serialized_pipeline(
+        snapshot, (32, 32), progress_callback=lambda percent, message: progress.append((percent, message))
+    )
     second = evaluate_serialized_pipeline(snapshot, (32, 32))
     np.testing.assert_array_equal(first.physical_heightfield, second.physical_heightfield)
     assert progress == [(50, "Generated normalized source field"), (100, "Mapped physical heightfield")]
@@ -66,7 +86,21 @@ def test_serialized_secondary_field_and_radial_mask_are_composed() -> None:
         source_type="wave_interference",
         algorithm="wave_interference",
         algorithm_version="1",
-        parameters={"mode": "radial", "radial_frequency": 4.0, "radial_phase": 0.0, "center_x": 0.5, "center_y": 0.5, "output_amplitude": 1.0, "frequency_x": 3.0, "frequency_y": 3.0, "amplitude_x": 1.0, "amplitude_y": 1.0, "phase_x": 0.0, "phase_y": 0.0, "normalization": "auto"},
+        parameters={
+            "mode": "radial",
+            "radial_frequency": 4.0,
+            "radial_phase": 0.0,
+            "center_x": 0.5,
+            "center_y": 0.5,
+            "output_amplitude": 1.0,
+            "frequency_x": 3.0,
+            "frequency_y": 3.0,
+            "amplitude_x": 1.0,
+            "amplitude_y": 1.0,
+            "phase_x": 0.0,
+            "phase_y": 0.0,
+            "normalization": "auto",
+        },
     )
     mask = SourceDescriptor(source_type="radial_mask", parameters={"inner_radius": 0.1, "outer_radius": 0.7})
     snapshot = PipelineSnapshot.from_settings(
@@ -83,7 +117,9 @@ def test_serialized_secondary_field_and_radial_mask_are_composed() -> None:
 
 def test_external_secondary_field_is_injected_at_pipeline_resolution() -> None:
     primary = noise_snapshot().source
-    external = SourceDescriptor(source_type="heightmap", content_hash="external-hash", parameters={"filename": "external.png"})
+    external = SourceDescriptor(
+        source_type="heightmap", content_hash="external-hash", parameters={"filename": "external.png"}
+    )
     snapshot = PipelineSnapshot.from_settings(
         primary,
         mapping=MappingSettings(maximum_height_mm=5.0),
@@ -91,7 +127,10 @@ def test_external_secondary_field_is_injected_at_pipeline_resolution() -> None:
         composition={"enabled": True, "operation": "blend", "amount": 0.5, "range_policy": "clip"},
     )
     from clayfield.field import FieldMetadata, NormalizedField
-    external_field = NormalizedField(np.array([[0.0, 1.0], [1.0, 0.0]], dtype=np.float32), FieldMetadata("external", "fixture"))
+
+    external_field = NormalizedField(
+        np.array([[0.0, 1.0], [1.0, 0.0]], dtype=np.float32), FieldMetadata("external", "fixture")
+    )
     result = evaluate_serialized_pipeline(snapshot, (12, 12), external_fields={"external-hash": external_field})
     assert result.normalized_field.shape == (12, 12)
 

@@ -26,15 +26,24 @@ def configure_opengl() -> None:
 def run() -> int:
     """Create the application and enter the Qt event loop."""
     from clayfield import __version__
+
     if sys.argv[1:] == ["--version"]:
         print(f"ClayField {__version__}")
         return 0
     if sys.argv[1:] == ["--self-test"]:
         import numpy as np
+
         from clayfield.geometry.mesh_generator import generate_solid_mesh
         from clayfield.geometry.validation import validate_mesh
+
         resources = Path(__file__).resolve().parents[1] / "resources"
-        for name in ("test_grid.vert", "test_grid.frag", "image_process.vert", "image_process.frag", "image_filter.frag"):
+        for name in (
+            "test_grid.vert",
+            "test_grid.frag",
+            "image_process.vert",
+            "image_process.frag",
+            "image_filter.frag",
+        ):
             if not (resources / name).is_file():
                 raise RuntimeError(f"Missing shader resource: {name}")
         mesh = generate_solid_mesh(np.array([[0, 1], [1, 2]], dtype=np.float32), 20, 20, 3)
@@ -45,7 +54,9 @@ def run() -> int:
     if sys.argv[1:] == ["--gl-self-test"]:
         import numpy as np
         from PySide6.QtCore import QTimer
+
         from clayfield.ui.viewport import Viewport
+
         configure_opengl()
         application = QApplication([sys.argv[0]])
         viewport = Viewport()
@@ -61,26 +72,41 @@ def run() -> int:
             surface_pixels = np.frombuffer(frame.bits(), dtype=np.uint8).copy() if not frame.isNull() else np.array([])
             viewport.clear_heightfield()
             empty_frame = viewport.grabFramebuffer()
-            empty_pixels = np.frombuffer(empty_frame.bits(), dtype=np.uint8) if not empty_frame.isNull() else np.array([])
-            changed = int(np.count_nonzero(surface_pixels != empty_pixels)) if surface_pixels.shape == empty_pixels.shape else 0
+            empty_pixels = (
+                np.frombuffer(empty_frame.bits(), dtype=np.uint8) if not empty_frame.isNull() else np.array([])
+            )
+            changed = (
+                int(np.count_nonzero(surface_pixels != empty_pixels))
+                if surface_pixels.shape == empty_pixels.shape
+                else 0
+            )
             gpu_error = float("inf")
             try:
                 from clayfield.image.pipeline import apply_adjustments
                 from clayfield.ui.gpu_pipeline import GpuImagePipeline
+
                 image = np.array([[0.0, 0.2, 1.0], [0.8, 0.5, 0.1]], dtype=np.float32)
                 settings = {"Gamma": 1.4, "Brightness": 0.1, "inverted": True}
                 points = [(0.0, 0.0), (0.5, 0.3), (1.0, 1.0)]
                 viewport.makeCurrent()
                 pipeline = GpuImagePipeline()
                 try:
-                    gpu_error = float(np.max(np.abs(pipeline.process(image, settings, points) - apply_adjustments(image, settings, points))))
+                    gpu_error = float(
+                        np.max(
+                            np.abs(
+                                pipeline.process(image, settings, points) - apply_adjustments(image, settings, points)
+                            )
+                        )
+                    )
                 finally:
                     pipeline.close()
                     viewport.doneCurrent()
             except Exception as error:
                 failures.append(f"GPU processing failed: {error}")
             success = not failures and viewport.isValid() and vertex_count > 0 and changed > 100 and gpu_error <= 0.001
-            print(f"OpenGL {viewport.version}; terrain vertices: {vertex_count}; changed pixel channels: {changed}; GPU error: {gpu_error:.6f}")
+            print(
+                f"OpenGL {viewport.version}; terrain vertices: {vertex_count}; changed pixel channels: {changed}; GPU error: {gpu_error:.6f}"
+            )
             if failures:
                 print("; ".join(failures), file=sys.stderr)
             application.exit(0 if success else 1)

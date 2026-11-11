@@ -20,9 +20,13 @@ def test_open_tray_adds_frame_above_the_model_and_validates() -> None:
 
 def test_open_tray_rejects_negative_relief() -> None:
     with pytest.raises(ValueError, match="positive relief"):
-        prepare_container_heightfield(np.zeros((4, 4), dtype=np.float32), 20, 20, ContainerSettings("open_tray"), relief_mode="negative")
+        prepare_container_heightfield(
+            np.zeros((4, 4), dtype=np.float32), 20, 20, ContainerSettings("open_tray"), relief_mode="negative"
+        )
 
 
 def test_open_tray_rejects_walls_larger_than_outside_dimensions() -> None:
     with pytest.raises(ValueError, match="no interior"):
-        prepare_container_heightfield(np.zeros((4, 4), dtype=np.float32), 4, 4, ContainerSettings("open_tray", wall_thickness_mm=3))
+        prepare_container_heightfield(
+            np.zeros((4, 4), dtype=np.float32), 4, 4, ContainerSettings("open_tray", wall_thickness_mm=3)
+        )
