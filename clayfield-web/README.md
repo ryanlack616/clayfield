@@ -116,10 +116,13 @@ operates on `Heightfield`. Core `Field2D` stays unitless.
 Invariant: `evaluated = base + sculptOffsets` in millimetres; export reads the
 evaluated heightfield.
 
-16-bit sources: `createImageBitmap`/`ImageDecoder` decode 16-bit PNG to 8-bit, so
-16-bit PNG needs a custom decoder or an 8-bit-only acceptance. 16-bit TIFF uses
-the dedicated decoder in `@clayfield/relief`. Decide which 16-bit formats v1
-accepts; do not claim 16-bit PNG without a decoder.
+16-bit sources (decided): 8-bit PNG/JPEG/BMP go through the browser
+(`createImageBitmap`). 16-bit PNG and 16-bit TIFF go through a custom decoder in
+`@clayfield/relief`: PNG via `DecompressionStream('deflate')` + unfilter; TIFF via
+a minimal reader (LZW/PackBits/Deflate/uncompressed, strip/tile, SampleFormat).
+`createImageBitmap` silently truncates 16-bit PNG to 8-bit, so it is never used
+for 16-bit sources. If the custom decoder is not ready at D0, v1 accepts 8-bit
+only and the 16-bit path is a D1 task — but the promise is not dropped.
 
 ---
 
@@ -245,7 +248,8 @@ after C8b. This ordering removes the original "API frozen too late" conflict.
 
 ## 11. Open scope decisions
 
-- **Presets** — desktop ships them. Either keep as a JSON import/export in
+- **Presets** — desktop ships them; **recommend dropping for v1** (JSON
+  import/export is cheap to add later). Either keep as a JSON import/export in
   `@clayfield/relief` or explicitly drop for v1.
 - **Crop/resize** — keep if v4 `image_geometry` must round-trip; otherwise drop
   and reject v4 projects that use it.
@@ -273,6 +277,9 @@ after C8b. This ordering removes the original "API frozen too late" conflict.
 ---
 
 ## 13. Risks
+
+Design-level risk summary. The authoritative register (probability, impact,
+trigger) is [`../docs/planning/delivery-and-risks.md`](../docs/planning/delivery-and-risks.md).
 
 | Risk | Mitigation |
 |---|---|

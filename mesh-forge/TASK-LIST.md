@@ -40,7 +40,8 @@ Refs: README §3, §4, §5, §14
 - [ ] `@mesh-forge/math`, `@mesh-forge/buffers`, `@mesh-forge/geometry`
 - [ ] `mesh-forge-core` buffers (`Field2D`, `MeshBuffers`, validation, resample)
 - [ ] Contract taxonomy types (`SourceAdapter`/`Importer`, `Operation`, `Query`, `Exporter`, `Analyzer`, `Pipeline`)
-- [ ] **Exit:** property tests pass native; wasm build smoke; taxonomy types compile
+- [ ] **Exit:** property tests pass native; wasm build smoke; `tsc --noEmit
+      --strict` over `contracts/types.ts` exits 0
 
 ### C2 — Document + undo
 Refs: README §6, §7

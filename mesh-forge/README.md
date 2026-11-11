@@ -118,7 +118,9 @@ Note: `Field2D`/`ImageBuffer`/`MeshBuffers` live in `@mesh-forge/buffers`, not i
 ## 4. Contract taxonomy (the key fix)
 
 Do **not** model every capability as `Operation`. Use six capability contracts
-(plus `Command` for undo).
+(plus `Command` for undo). Authoritative field-level definitions live in
+[`contracts/types.ts`](contracts/types.ts); this section is the map, not the
+contract.
 
 | Contract | Responsibility | Produces/consumes |
 |---|---|---|
@@ -198,7 +200,10 @@ pipeline stack.
   which is why the double buffer is the default.
 - Dirty-rect reporting for incremental texture upload.
 - Transferable-`ArrayBuffer` fallback with the same logical layout when
-  `crossOriginIsolated` is false.
+  `crossOriginIsolated` is false. Cancellation in this mode is
+  `worker.terminate()` only — a busy Rust loop cannot poll a message. Budgets
+  must be small enough that termination is acceptable, or the job is split into
+  short chunks.
 - C3 exit criteria: multi-buffer SAB + cancellation + fallback + worker
   crash/restart tests pass.
 
@@ -238,10 +243,15 @@ project.zip
 - Separate versions: container, `DocumentEnvelope.schemaVersion`, per-op version.
 - `MigrationRunner` chains app migrations; unknown future version opens
   read-only.
-- Never mutate old files in place; write a new archive. There is no portable
-  atomic rename in FSA/OPFS: use write-to-temp + rename where the host supports
-  it, and a download/IndexedDB fallback where it does not. State the per-browser
-  strategy in the persistence contract before C6.
+- Never mutate old files in place; write a new archive. **Atomicity strategy
+  (decided):** the archive is content-addressed (`project-<sha256>.zip`); the
+  commit point is replacing `manifest.json`, which names the current archive. A
+  crash mid-write leaves the old manifest pointing at the old archive. Per host:
+  FSA writes the new manifest to a temp file and `move()`s it over the old one
+  where `FileSystemFileHandle.move()` exists (Chromium); otherwise the manifest
+  lives in IndexedDB and the swap is a single transaction; without either, fall
+  back to download. There is no portable atomic rename in FSA/OPFS, so the
+  manifest pointer is the only swap point.
 - Golden fixtures per schema version.
 
 ---
@@ -374,6 +384,9 @@ C4–C7 are the long poles, and C8b is off the critical path.
 ---
 
 ## 15. Risks
+
+Design-level risk summary. The authoritative register (probability, impact,
+trigger) is [`../docs/planning/delivery-and-risks.md`](../docs/planning/delivery-and-risks.md).
 
 | Risk | Symptom | Mitigation |
 |---|---|---|

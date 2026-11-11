@@ -1,0 +1,29 @@
+{
+  "$comment": "Contract versions for mesh-forge. Bump independently; see abi-v1.md.",
+  "abiVersion": 1,
+  "coreVersion": "0.1.0",
+  "opsetVersion": 1,
+  "opVersion": 1,
+  "containerVersion": 1,
+  "schemaVersion": 1,
+  "frozenAt": null,
+  "frozenSubset": [
+    "PortType",
+    "OperationDescriptor",
+    "OperationInstance",
+    "DocumentEnvelope",
+    "Scene",
+    "Node",
+    "Command",
+    "Transaction",
+    "UndoManager",
+    "RpcEnvelope",
+    "JobHandle",
+    "GenerationToken",
+    "CancelToken",
+    "Progress",
+    "CapabilityManifest",
+    "Handle",
+    "ErrorCode"
+  ]
+}
